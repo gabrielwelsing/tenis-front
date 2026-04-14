@@ -12,7 +12,12 @@ export default defineConfig({
     },
   },
   server: {
-    host: true, // expõe na rede local para testar no Samsung via Wi-Fi
+    host: true,
     port: 5173,
+  },
+  preview: {
+    host: true,
+    port: 4173,
+    allowedHosts: ['all'],
   },
 });
