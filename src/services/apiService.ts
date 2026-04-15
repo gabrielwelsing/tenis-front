@@ -1,38 +1,49 @@
 // =============================================================================
-// API SERVICE — Comunicação com o tenis-back (Railway)
+// API SERVICE — Comunicação com o tenis-back
 // =============================================================================
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
-export interface ClipPayload {
+export interface ClipRecord {
   id: string;
-  timestamp: number;
+  timestamp: string;
   videoDurationMs: number;
   audioDurationMs: number | null;
   driveVideoUrl: string;
   driveAudioUrl: string | null;
-}
-
-export interface ClipRecord extends ClipPayload {
-  createdAt: string;
   syncStatus: string;
+  createdAt: string;
 }
 
-// ---------------------------------------------------------------------------
-// saveClip — persiste os metadados do lance no PostgreSQL via tenis-back
-// ---------------------------------------------------------------------------
-export async function saveClip(payload: ClipPayload): Promise<void> {
+// Salva metadados do vídeo (sem áudio ainda)
+export async function saveVideo(params: {
+  id: string;
+  timestamp: number;
+  videoDurationMs: number;
+  driveVideoUrl: string;
+}): Promise<void> {
   const res = await fetch(`${BASE_URL}/clips`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...params, driveAudioUrl: null, audioDurationMs: null }),
   });
-  if (!res.ok) throw new Error(`Erro ao salvar clip: ${res.status}`);
+  if (!res.ok) throw new Error(`Erro ao salvar vídeo: ${res.status}`);
 }
 
-// ---------------------------------------------------------------------------
-// getClips — lista todos os lances do banco (para a tela de histórico)
-// ---------------------------------------------------------------------------
+// Vincula áudio ao vídeo de timestamp mais próximo
+export async function saveAudio(params: {
+  timestamp: number;
+  audioDurationMs: number;
+  driveAudioUrl: string;
+}): Promise<void> {
+  const res = await fetch(`${BASE_URL}/clips/audio`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error(`Erro ao salvar áudio: ${res.status}`);
+}
+
 export async function getClips(): Promise<ClipRecord[]> {
   const res = await fetch(`${BASE_URL}/clips`);
   if (!res.ok) throw new Error(`Erro ao carregar clips: ${res.status}`);

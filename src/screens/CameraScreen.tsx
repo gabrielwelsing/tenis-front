@@ -1,46 +1,44 @@
 // =============================================================================
-// CAMERA SCREEN — Tela principal (casca de UI — web)
+// CAMERA SCREEN — Dois botões separados: Vídeo e Áudio
+// =============================================================================
+// Fluxo:
+//   BOTÃO VÍDEO (vermelho) — salva os últimos 20s do buffer → Drive
+//   BOTÃO ÁUDIO (azul)     — abre gravador de comentário → Drive → vincula
+//                            ao vídeo de timestamp mais próximo
+//
+// Os arquivos são separados no Drive. O áudio é o comentário do professor
+// sobre o lance que acabou de acontecer.
 // =============================================================================
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { cameraService }    from '@services/cameraService';
-import { audioService }     from '@services/audioService';
-import { bluetoothRemote }  from '@services/bluetoothRemote';
-import { uploadClip }       from '@services/driveService';
-import { saveClip }         from '@services/apiService';
-import { RecordButton }     from '@components/RecordButton';
-import { AudioRecorderModal } from '@components/AudioRecorderModal';
+import { cameraService }  from '@services/cameraService';
+import { audioService }   from '@services/audioService';
+import { bluetoothRemote } from '@services/bluetoothRemote';
+import { uploadVideo, uploadAudio } from '@services/driveService';
+import { saveVideo, saveAudio }     from '@services/apiService';
+import { AudioRecorderModal }       from '@components/AudioRecorderModal';
 
-type Phase = 'init' | 'buffering' | 'clipping' | 'audio' | 'uploading' | 'error';
-
-interface AudioState {
-  pendingId: string | null;
-  pendingVideoBlob: Blob | null;
-  pendingVideoDurationMs: number;
-  isRecording: boolean;
-  elapsed: number;
-  volume: number;
-}
-
-const INIT_AUDIO: AudioState = {
-  pendingId: null, pendingVideoBlob: null, pendingVideoDurationMs: 0,
-  isRecording: false, elapsed: 0, volume: 0,
-};
+type VideoPhase = 'init' | 'buffering' | 'saving_video' | 'error';
+type AudioPhase = 'idle' | 'recording' | 'saving_audio';
 
 export default function CameraScreen({ onGoHistory }: { onGoHistory: () => void }) {
-  const videoEl  = useRef<HTMLVideoElement>(null);
-  const phaseRef = useRef<Phase>('init');
+  const videoEl     = useRef<HTMLVideoElement>(null);
+  const videoPhaseRef = useRef<VideoPhase>('init');
+
+  const [videoPhase, setVideoPhaseState] = useState<VideoPhase>('init');
+  const [audioPhase, setAudioPhase]      = useState<AudioPhase>('idle');
+  const [bufSec,     setBufSec]          = useState(0);
+  const [lastSaved,  setLastSaved]       = useState<string | null>(null); // feedback ao professor
+  const [isSyncing,  setIsSyncing]       = useState(false);
+
+  // Estado do gravador de áudio
+  const [elapsed,    setElapsed]   = useState(0);
+  const [volume,     setVolume]    = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const meterRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [phase,      setPhaseState] = useState<Phase>('init');
-  const [bufSec,     setBufSec]     = useState(0);
-  const [btActive,   setBtActive]   = useState(false);
-  const [isSyncing,  setIsSyncing]  = useState(false);
-  const [audio,      setAudio]      = useState<AudioState>(INIT_AUDIO);
-
-  const setPhase = (p: Phase) => { phaseRef.current = p; setPhaseState(p); };
+  const setVideoPhase = (p: VideoPhase) => { videoPhaseRef.current = p; setVideoPhaseState(p); };
 
   // -------------------------------------------------------------------------
   // Inicializa câmera
@@ -48,199 +46,227 @@ export default function CameraScreen({ onGoHistory }: { onGoHistory: () => void 
   useEffect(() => {
     if (!videoEl.current) return;
     cameraService.start(videoEl.current)
-      .then(() => setPhase('buffering'))
-      .catch(() => setPhase('error'));
+      .then(() => setVideoPhase('buffering'))
+      .catch(() => setVideoPhase('error'));
 
     return () => { cameraService.stop(); bluetoothRemote.stop(); };
   }, []);
 
-  // Atualiza contador do buffer a cada segundo
+  // Atualiza contador do buffer
   useEffect(() => {
-    if (phase !== 'buffering') return;
-    const id = setInterval(() => setBufSec(cameraService.bufferSeconds), 1_000);
+    if (videoPhase !== 'buffering') return;
+    const id = setInterval(() => setBufSec(cameraService.bufferSeconds), 500);
     return () => clearInterval(id);
-  }, [phase]);
+  }, [videoPhase]);
 
-  // Reativa Wake Lock quando a aba volta ao foco
+  // Reativa Wake Lock ao voltar para aba
   useEffect(() => {
-    const onVisible = () => cameraService.reacquireWakeLockIfNeeded();
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    const fn = () => cameraService.reacquireWakeLockIfNeeded();
+    document.addEventListener('visibilitychange', fn);
+    return () => document.removeEventListener('visibilitychange', fn);
   }, []);
 
-  // -------------------------------------------------------------------------
-  // Bluetooth remote
-  // -------------------------------------------------------------------------
+  // BT Remote → aciona vídeo
   useEffect(() => {
-    if (phase === 'buffering') {
+    if (videoPhase === 'buffering') {
       bluetoothRemote.start(() => {
-        setBtActive(true);
-        if (phaseRef.current === 'buffering') handleClip();
+        if (videoPhaseRef.current === 'buffering') handleSaveVideo();
       });
     } else {
       bluetoothRemote.stop();
     }
-  }, [phase]);
+  }, [videoPhase]);
 
   // -------------------------------------------------------------------------
-  // Fluxo: salvar lance
+  // BOTÃO VÍDEO — salva os últimos 20s
   // -------------------------------------------------------------------------
-  const handleClip = useCallback(async () => {
-    if (phaseRef.current !== 'buffering') return;
-    setPhase('clipping');
+  const handleSaveVideo = useCallback(async () => {
+    if (videoPhaseRef.current !== 'buffering') return;
+    setVideoPhase('saving_video');
+    setIsSyncing(true);
 
     const result = await cameraService.saveClip();
-    if (!result.success || !result.blob) { setPhase('buffering'); return; }
+    if (!result.success || !result.blob) {
+      setVideoPhase('buffering');
+      setIsSyncing(false);
+      return;
+    }
 
-    const id = uuidv4();
-    setAudio({ ...INIT_AUDIO, pendingId: id, pendingVideoBlob: result.blob, pendingVideoDurationMs: result.durationMs ?? 0 });
-    setPhase('audio');
+    const timestamp = Date.now();
+    const id        = uuidv4();
 
-    // Inicia gravação de áudio automaticamente
-    const started = await audioService.startRecording();
-    if (!started) { setPhase('buffering'); return; }
+    try {
+      const driveVideoUrl = await uploadVideo(result.blob, timestamp);
+      await saveVideo({ id, timestamp, videoDurationMs: result.durationMs ?? 0, driveVideoUrl });
+      setLastSaved(new Date(timestamp).toLocaleTimeString('pt-BR'));
+    } catch (e) {
+      console.error('[Video] Erro no upload:', e);
+    }
 
-    setAudio((a) => ({ ...a, isRecording: true }));
-
-    let elapsed = 0;
-    timerRef.current = setInterval(() => { elapsed++; setAudio((a) => ({ ...a, elapsed })); }, 1_000);
-    meterRef.current = setInterval(() => {
-      setAudio((a) => ({ ...a, volume: audioService.getVolume() }));
-    }, 100);
+    setIsSyncing(false);
+    setVideoPhase('buffering');
   }, []);
 
   // -------------------------------------------------------------------------
-  // Fluxo: salvar áudio → upload Drive → salvar metadados no backend
+  // BOTÃO ÁUDIO — abre gravador de comentário
   // -------------------------------------------------------------------------
-  const handleAudioStop = useCallback(async () => {
+  const handleStartAudio = useCallback(async () => {
+    if (audioPhase !== 'idle') return;
+
+    const started = await audioService.startRecording();
+    if (!started) return;
+
+    setAudioPhase('recording');
+    setElapsed(0);
+
+    let secs = 0;
+    timerRef.current = setInterval(() => { secs++; setElapsed(secs); }, 1_000);
+    meterRef.current = setInterval(() => setVolume(audioService.getVolume()), 100);
+  }, [audioPhase]);
+
+  const handleStopAudio = useCallback(async () => {
     clearInterval(timerRef.current!);
     clearInterval(meterRef.current!);
-    setPhase('uploading');
+    setAudioPhase('saving_audio');
     setIsSyncing(true);
 
-    const audioResult = await audioService.stopRecording();
-    const { pendingId, pendingVideoBlob, pendingVideoDurationMs } = audio;
-    if (!pendingId || !pendingVideoBlob) { setPhase('buffering'); return; }
-
+    const result    = await audioService.stopRecording();
     const timestamp = Date.now();
-    try {
-      const { driveVideoUrl, driveAudioUrl } = await uploadClip({
-        videoBlob: pendingVideoBlob,
-        audioBlob: audioResult.blob ?? null,
-        timestamp,
-      });
-      await saveClip({
-        id: pendingId,
-        timestamp,
-        videoDurationMs: pendingVideoDurationMs,
-        audioDurationMs: audioResult.durationMs ?? null,
-        driveVideoUrl,
-        driveAudioUrl,
-      });
-    } catch (e) {
-      console.error('[CameraScreen] Erro no upload:', e);
-    } finally {
-      setIsSyncing(false);
+
+    if (result.success && result.blob) {
+      try {
+        const driveAudioUrl = await uploadAudio(result.blob, timestamp);
+        await saveAudio({
+          timestamp,
+          audioDurationMs: result.durationMs ?? 0,
+          driveAudioUrl,
+        });
+      } catch (e) {
+        console.error('[Audio] Erro no upload:', e);
+      }
     }
 
-    setAudio(INIT_AUDIO);
-    setPhase('buffering');
-  }, [audio]);
+    setIsSyncing(false);
+    setAudioPhase('idle');
+  }, []);
 
-  const handleAudioCancel = useCallback(async () => {
+  const handleCancelAudio = useCallback(() => {
     clearInterval(timerRef.current!);
     clearInterval(meterRef.current!);
     audioService.cancelRecording();
-    setAudio(INIT_AUDIO);
-    setPhase('buffering');
+    setAudioPhase('idle');
   }, []);
 
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
-  const statusLabel: Record<Phase, string> = {
-    init:      'Iniciando...',
-    buffering: 'BUFFER ATIVO',
-    clipping:  'Salvando lance...',
-    audio:     'Gravando comentário',
-    uploading: 'Enviando para Drive...',
-    error:     'ERRO DE CÂMERA',
-  };
-  const dotColor: Partial<Record<Phase, string>> = {
-    buffering: '#44ff88',
-    uploading: '#ffcc00',
-    error:     '#ff4444',
-  };
+  const videoDisabled = videoPhase !== 'buffering' || bufSec < 5;
 
   return (
-    <div style={styles.container}>
-      {/* Preview da câmera — tela cheia */}
-      <video ref={videoEl} autoPlay playsInline muted style={styles.video} />
+    <div style={s.container}>
+      {/* Preview câmera */}
+      <video ref={videoEl} autoPlay playsInline muted style={s.video} />
 
-      {/* Overlay de controles */}
-      <div style={styles.overlay}>
+      {/* Overlay */}
+      <div style={s.overlay}>
 
-        {/* Barra de status superior */}
-        <div style={styles.topBar}>
-          <StatusPill color={dotColor[phase] ?? '#ffaa00'} label={statusLabel[phase]} />
-          <StatusPill color={btActive ? '#4fc3f7' : '#555'} label={btActive ? 'REMOTE BT' : 'SEM REMOTE'} />
-          {isSyncing && <StatusPill color="#ffcc00" label="ENVIANDO..." />}
+        {/* Status superior */}
+        <div style={s.topBar}>
+          <Pill color={videoPhase === 'buffering' ? '#44ff88' : '#ffaa00'}>
+            {videoPhase === 'buffering' ? `BUFFER ${bufSec}s / 20s` : videoPhase === 'saving_video' ? 'SALVANDO...' : 'INICIANDO...'}
+          </Pill>
+          {isSyncing && <Pill color="#ffcc00">ENVIANDO DRIVE...</Pill>}
+          {lastSaved && <Pill color="#4fc3f7">Salvo às {lastSaved}</Pill>}
         </div>
 
-        {/* Botão de histórico (canto superior direito) */}
-        <button onClick={onGoHistory} style={styles.historyBtn}>Histórico</button>
+        {/* Botão Histórico */}
+        <button onClick={onGoHistory} style={s.histBtn}>Histórico</button>
 
-        {/* Botão de clipping (canto direito, fácil acesso) */}
-        <div style={styles.controls}>
-          <RecordButton
-            onPress={handleClip}
-            disabled={phase !== 'buffering'}
-            bufferSeconds={bufSec}
-          />
+        {/* Controles laterais */}
+        <div style={s.controls}>
+
+          {/* BOTÃO VÍDEO — salva últimos 20s */}
+          <div style={s.btnGroup}>
+            <span style={s.btnLabel}>LANCE</span>
+            <button
+              onClick={handleSaveVideo}
+              disabled={videoDisabled}
+              style={{ ...s.circleBtn, ...s.videoBtnColor, opacity: videoDisabled ? 0.35 : 1 }}
+            >
+              <div style={s.circleBtnInner} />
+            </button>
+            <span style={s.btnHint}>
+              {bufSec < 5 ? 'aguardando buffer...' : 'aperte para salvar\nos últimos 20s'}
+            </span>
+          </div>
+
+          {/* BOTÃO ÁUDIO — grava comentário */}
+          <div style={s.btnGroup}>
+            <span style={s.btnLabel}>COMENTÁRIO</span>
+            <button
+              onClick={handleStartAudio}
+              disabled={audioPhase !== 'idle' || videoPhase === 'init'}
+              style={{
+                ...s.circleBtn, ...s.audioBtnColor,
+                opacity: audioPhase !== 'idle' ? 0.35 : 1,
+              }}
+            >
+              <span style={{ fontSize: 28 }}>🎙</span>
+            </button>
+            <span style={s.btnHint}>gravar comentário{'\n'}de voz</span>
+          </div>
+
         </div>
 
       </div>
 
-      {/* Modal de áudio */}
+      {/* Modal de gravação de áudio */}
       <AudioRecorderModal
-        visible={phase === 'audio'}
-        isRecording={audio.isRecording}
-        volume={audio.volume}
-        elapsedSeconds={audio.elapsed}
-        onStop={handleAudioStop}
-        onCancel={handleAudioCancel}
+        visible={audioPhase === 'recording' || audioPhase === 'saving_audio'}
+        isRecording={audioPhase === 'recording'}
+        volume={volume}
+        elapsedSeconds={elapsed}
+        onStop={handleStopAudio}
+        onCancel={handleCancelAudio}
       />
     </div>
   );
 }
 
-function StatusPill({ color, label }: { color: string; label: string }) {
+function Pill({ color, children }: { color: string; children: React.ReactNode }) {
   return (
-    <div style={pillStyles.pill}>
-      <div style={{ ...pillStyles.dot, background: color }} />
-      <span style={pillStyles.text}>{label}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#00000088', padding: '6px 12px', borderRadius: 20 }}>
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+      <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: 1 }}>{children}</span>
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const s: Record<string, React.CSSProperties> = {
   container: { position: 'relative', width: '100vw', height: '100dvh', background: '#000', overflow: 'hidden' },
-  video: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' },
-  overlay: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: 16 },
-  topBar: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  controls: { position: 'absolute', right: 32, top: '50%', transform: 'translateY(-50%)' },
-  historyBtn: {
+  video:     { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' },
+  overlay:   { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: 16 },
+  topBar:    { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  histBtn:   {
     position: 'absolute', top: 16, right: 16,
     background: '#ffffff22', border: '1px solid #ffffff44',
-    color: '#fff', padding: '6px 14px', borderRadius: 20,
-    fontSize: 12, cursor: 'pointer',
+    color: '#fff', padding: '6px 14px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
   },
-};
-const pillStyles: Record<string, React.CSSProperties> = {
-  pill: {
-    display: 'flex', alignItems: 'center', gap: 6,
-    background: '#00000088', padding: '6px 12px', borderRadius: 20,
+  controls:  {
+    position: 'absolute', right: 24, top: '50%',
+    transform: 'translateY(-50%)',
+    display: 'flex', flexDirection: 'column', gap: 32, alignItems: 'center',
   },
-  dot: { width: 8, height: 8, borderRadius: '50%' },
-  text: { color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: 1 },
+  btnGroup:  { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
+  btnLabel:  { color: '#ffffffcc', fontSize: 10, fontWeight: 700, letterSpacing: 1.5 },
+  btnHint:   { color: '#ffffff66', fontSize: 9, textAlign: 'center', whiteSpace: 'pre-line', maxWidth: 90 },
+  circleBtn: {
+    width: 72, height: 72, borderRadius: '50%',
+    border: 'none', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'opacity .2s',
+  },
+  videoBtnColor: { background: '#ff4444', boxShadow: '0 0 20px #ff444488' },
+  audioBtnColor: { background: '#1a73e8', boxShadow: '0 0 20px #1a73e888' },
+  circleBtnInner:{ width: 52, height: 52, borderRadius: '50%', background: '#fff' },
 };
