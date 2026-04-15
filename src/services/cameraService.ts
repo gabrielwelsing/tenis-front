@@ -99,13 +99,14 @@ class CameraService {
 
     // Para o recorder atual e aguarda o blob ser entregue
     if (this.recorder?.state === 'recording') {
+      const currentRecorder = this.recorder;
       await new Promise<void>((resolve) => {
-        const prev = this.recorder!.onstop;
-        this.recorder!.onstop = (e) => {
-          prev?.call(this.recorder, e as Event);
+        const prev = currentRecorder.onstop;
+        currentRecorder.onstop = (e) => {
+          prev?.call(currentRecorder, e as Event);
           resolve();
         };
-        this.recorder!.stop();
+        currentRecorder.stop();
       });
     }
 
