@@ -1,16 +1,17 @@
 // =============================================================================
 // CAMERA SERVICE — Buffer Circular via MediaRecorder API (Web)
 // =============================================================================
-// Estratégia:
-//   - getUserMedia para acessar a câmera traseira do Samsung
-//   - MediaRecorder grava em chunks de SEGMENT_MS milissegundos
-//   - Array circular de MAX_SEGMENTS chunks (blobs em memória)
-//   - saveClip(): concatena os blobs em um único Blob e gera arquivo .webm
-//   - Wake Lock API: mantém a tela do Samsung acesa durante toda a sessão
+// Como funciona:
+//   1. Câmera grava continuamente em chunks de SEGMENT_MS milissegundos
+//   2. Cada chunk vira um Blob e entra num array circular de MAX_SEGMENTS posições
+//   3. Quando o array enche, o chunk mais antigo é descartado (sem disco — só memória)
+//   4. Ao apertar o botão: para o chunk atual, junta todos os blobs em um único
+//      arquivo e devolve — são os ÚLTIMOS 20 segundos gravados ANTES do botão
+//   5. O buffer retoma automaticamente após o saveClip()
 // =============================================================================
 
-const SEGMENT_MS   = 5_000;  // 5s por chunk
-const MAX_SEGMENTS = 4;      // 4 × 5s = 20 segundos de buffer
+const SEGMENT_MS   = 5_000; // 5s por chunk
+const MAX_SEGMENTS = 4;     // 4 × 5s = 20 segundos de buffer
 
 export interface ClipResult {
   success: boolean;
@@ -24,121 +25,155 @@ class CameraService {
   private recorder: MediaRecorder | null = null;
   private segments: Blob[] = [];
   private wakeLock: WakeLockSentinel | null = null;
-  private previewEl: HTMLVideoElement | null = null;
-  private rotationTimer: ReturnType<typeof setInterval> | null = null;
-  private segmentStartTime = 0;
+  private rotationTimer: ReturnType<typeof setTimeout> | null = null;
+  private active = false;
+  private mimeType = '';
 
   // -------------------------------------------------------------------------
-  // start — solicita câmera traseira, exibe preview e inicia o buffer
+  // start — abre câmera traseira, exibe preview e inicia o buffer circular
   // -------------------------------------------------------------------------
   async start(previewElement: HTMLVideoElement): Promise<void> {
-    this.previewEl = previewElement;
-
     this.stream = await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: { ideal: 'environment' }, // câmera traseira no Samsung
-        width: { ideal: 1280 },
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1280 },
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
       },
-      audio: false, // áudio gerenciado separadamente pelo AudioService
+      audio: false,
     });
 
     previewElement.srcObject = this.stream;
-    previewElement.play();
+    await previewElement.play();
 
-    // Mantém tela acesa (Wake Lock)
-    await this.acquireWakeLock();
-
-    this.startRotation();
-  }
-
-  // -------------------------------------------------------------------------
-  // startRotation — inicia o loop de gravação em chunks
-  // -------------------------------------------------------------------------
-  private startRotation(): void {
-    this.startSegment();
-    this.rotationTimer = setInterval(() => {
-      this.recorder?.stop(); // dispara ondataavailable + onStop → próximo segmento
-    }, SEGMENT_MS);
-  }
-
-  private startSegment(): void {
-    if (!this.stream) return;
-
-    // Prefere VP9 para melhor compressão; fallback para VP8 (suporte amplo no Android)
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+    this.mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
       ? 'video/webm;codecs=vp9'
       : 'video/webm;codecs=vp8';
 
-    this.recorder = new MediaRecorder(this.stream, { mimeType });
-    this.segmentStartTime = Date.now();
+    this.active = true;
+    this.segments = [];
+    await this.acquireWakeLock();
+    this.startSegment();
+  }
+
+  // -------------------------------------------------------------------------
+  // startSegment — grava um chunk de SEGMENT_MS ms e agenda o próximo
+  // Cada segmento encadeia automaticamente o próximo via onstop
+  // -------------------------------------------------------------------------
+  private startSegment(): void {
+    if (!this.active || !this.stream) return;
 
     const chunks: BlobPart[] = [];
+    this.recorder = new MediaRecorder(this.stream, { mimeType: this.mimeType });
 
     this.recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunks.push(e.data);
     };
 
     this.recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: mimeType });
-      this.pushSegment(blob);
+      // Adiciona o chunk ao buffer circular
+      const blob = new Blob(chunks, { type: this.mimeType });
+      if (blob.size > 0) {
+        this.segments.push(blob);
+        if (this.segments.length > MAX_SEGMENTS) {
+          this.segments.shift(); // descarta o mais antigo
+        }
+      }
+
+      // Inicia o próximo chunk automaticamente (loop do buffer)
+      if (this.active) {
+        this.startSegment();
+      }
     };
 
     this.recorder.start();
-  }
 
-  private pushSegment(blob: Blob): void {
-    this.segments.push(blob);
-    if (this.segments.length > MAX_SEGMENTS) {
-      this.segments.shift(); // descarta o mais antigo (sem necessidade de deletar disco)
-    }
+    // Agenda o stop deste chunk após SEGMENT_MS — dispara onstop → próximo chunk
+    this.rotationTimer = setTimeout(() => {
+      if (this.recorder?.state === 'recording') {
+        this.recorder.stop();
+      }
+    }, SEGMENT_MS);
   }
 
   // -------------------------------------------------------------------------
-  // saveClip — consolida o buffer em um único Blob .webm
-  // Roda inteiramente na main thread mas é instantâneo pois só concatena
-  // Blobs já em memória (sem re-encode, sem I/O de disco)
+  // saveClip — consolida os últimos 20s em um único Blob
+  //
+  // Fluxo:
+  //   1. Pausa o loop (active = false) para não iniciar novo chunk após o stop
+  //   2. Para o chunk atual e aguarda o blob final ser adicionado ao array
+  //   3. Copia todos os blobs do buffer
+  //   4. Retoma o buffer (active = true → startSegment)
+  //   5. Retorna o Blob concatenado
   // -------------------------------------------------------------------------
   async saveClip(): Promise<ClipResult> {
-    if (this.segments.length === 0) {
-      return { success: false, error: 'Buffer vazio.' };
+    if (!this.active || !this.stream) {
+      return { success: false, error: 'Buffer inativo.' };
     }
 
-    // Para o segmento atual para fechar o blob
-    this.recorder?.stop();
-    await new Promise((r) => setTimeout(r, 200));
+    if (this.segments.length === 0 && this.recorder?.state !== 'recording') {
+      return { success: false, error: 'Buffer vazio — aguarde alguns segundos.' };
+    }
 
+    // Pausa o loop para capturar o chunk atual sem iniciar outro
+    this.active = false;
+    if (this.rotationTimer) {
+      clearTimeout(this.rotationTimer);
+      this.rotationTimer = null;
+    }
+
+    // Para o gravador atual e aguarda o blob ser entregue via onstop
+    if (this.recorder?.state === 'recording') {
+      await new Promise<void>((resolve) => {
+        const original = this.recorder!.onstop;
+        this.recorder!.onstop = (e) => {
+          original?.call(this.recorder, e as Event);
+          resolve();
+        };
+        this.recorder!.stop();
+      });
+    }
+
+    // Snapshot dos segmentos — estes são os últimos ~20s antes do botão
     const snapshot = [...this.segments];
-    const totalMs  = snapshot.length * SEGMENT_MS;
 
-    // Concatenação de Blobs — sem CPU extra (apenas ponteiros de memória)
-    const merged = new Blob(snapshot, { type: snapshot[0].type });
+    // Retoma o buffer para continuar gravando após o clipping
+    this.active = true;
+    this.startSegment();
+
+    if (snapshot.length === 0) {
+      return { success: false, error: 'Buffer vazio — aguarde alguns segundos.' };
+    }
+
+    const merged   = new Blob(snapshot, { type: this.mimeType });
+    const totalMs  = snapshot.length * SEGMENT_MS;
 
     return { success: true, blob: merged, durationMs: totalMs };
   }
 
   // -------------------------------------------------------------------------
-  // stop — para tudo e libera a câmera
+  // stop — encerra tudo e libera câmera
   // -------------------------------------------------------------------------
   async stop(): Promise<void> {
-    if (this.rotationTimer) clearInterval(this.rotationTimer);
+    this.active = false;
+    if (this.rotationTimer) clearTimeout(this.rotationTimer);
     this.recorder?.stop();
     this.stream?.getTracks().forEach((t) => t.stop());
-    this.stream = null;
+    this.stream   = null;
     this.segments = [];
+    this.recorder = null;
     await this.releaseWakeLock();
   }
 
   // -------------------------------------------------------------------------
-  // Wake Lock — mantém a tela do Samsung acesa
+  // Wake Lock — mantém tela do Samsung acesa
   // -------------------------------------------------------------------------
   private async acquireWakeLock(): Promise<void> {
     try {
       if ('wakeLock' in navigator) {
         this.wakeLock = await navigator.wakeLock.request('screen');
       }
-    } catch { /* dispositivo pode negar — não é crítico */ }
+    } catch { /* não crítico */ }
   }
 
   private async releaseWakeLock(): Promise<void> {
@@ -146,19 +181,16 @@ class CameraService {
     this.wakeLock = null;
   }
 
-  // Reaquire wake lock quando o app volta ao foco
   async reacquireWakeLockIfNeeded(): Promise<void> {
-    if (this.stream && !this.wakeLock) {
-      await this.acquireWakeLock();
-    }
+    if (this.stream && !this.wakeLock) await this.acquireWakeLock();
   }
 
   get bufferSeconds(): number {
-    return Math.min(this.segments.length * (SEGMENT_MS / 1000), 20);
+    return this.segments.length * (SEGMENT_MS / 1000);
   }
 
   get isActive(): boolean {
-    return this.stream !== null;
+    return this.active;
   }
 }
 
