@@ -3,6 +3,7 @@
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
+import type { SaveMode } from '../App';
 import { getClips, type ClipRecord } from '@services/apiService';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -12,13 +13,14 @@ const STATUS_COLOR: Record<string, string> = {
   synced: '#2e7d32', pending: '#555', uploading: '#f9a825', error: '#c62828',
 };
 
-export default function HistoryScreen({ onBack }: { onBack: () => void }) {
+export default function HistoryScreen({ onBack, saveMode }: { onBack: () => void; saveMode: SaveMode }) {
   const [clips, setClips] = useState<ClipRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (saveMode === 'local') { setLoading(false); return; }
     getClips().then(setClips).finally(() => setLoading(false));
-  }, []);
+  }, [saveMode]);
 
   return (
     <div style={styles.container}>
