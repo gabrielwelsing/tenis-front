@@ -43,8 +43,13 @@ function LoginScreen({ onLogin }: { onLogin: (mode: SaveMode) => void }) {
 
   return (
     <div style={s.page}>
+      {/* Camadas de fundo */}
+      <div style={s.bgImage} />
+      <div style={s.bgOverlay} />
+      <div style={s.bgSides} />
+
+      {/* Formulário ancorado na parte inferior */}
       <div style={s.card}>
-        <img src="/carlao.png" alt="Carlão Tênis" style={s.avatar} />
         <h1 style={s.title}>Tenis Coach com Carlos</h1>
         <p style={s.sub}>Escolha como entrar</p>
 
@@ -124,55 +129,89 @@ export default function Root() {
 // Estilos
 // ---------------------------------------------------------------------------
 const s: Record<string, React.CSSProperties> = {
-  page:  { minHeight: '100dvh', background: '#0d0d1a', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  card:   { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '32px 40px 40px', maxWidth: 360, width: '100%' },
-  avatar: { width: 180, height: 'auto', borderRadius: 16, marginBottom: 4 },
-  title:  { color: '#fff', fontSize: 26, fontWeight: 700, margin: 0, textAlign: 'center' },
-  sub:    { color: '#888', fontSize: 14, margin: 0 },
+  // ── Layout
+  page: {
+    position: 'relative', minHeight: '100dvh', overflow: 'hidden',
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+  },
+
+  // ── Fundo
+  bgImage: {
+    position: 'fixed', inset: 0,
+    backgroundImage: 'url(/court-bg.png)',
+    backgroundPosition: 'top center',
+    backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat',
+  },
+  bgOverlay: {
+    position: 'fixed', inset: 0,
+    background: 'linear-gradient(to bottom, transparent 0%, transparent 42%, rgba(0,0,0,0.55) 58%, rgba(0,0,0,0.82) 74%, rgba(0,0,0,0.92) 100%)',
+  },
+  bgSides: {
+    position: 'fixed', inset: 0,
+    background: 'radial-gradient(ellipse at 0% 65%, rgba(0,0,0,0.3) 0%, transparent 50%), radial-gradient(ellipse at 100% 65%, rgba(0,0,0,0.3) 0%, transparent 50%)',
+  },
+
+  // ── Card
+  card: {
+    position: 'relative', zIndex: 10,
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    gap: 14, padding: '0 24px 48px', maxWidth: 360, width: '100%',
+  },
+  title: {
+    color: '#fff', fontSize: 28, fontWeight: 800, margin: 0,
+    textAlign: 'center', lineHeight: 1.2,
+    textShadow: '0 2px 12px rgba(0,0,0,0.9)',
+  },
+  sub: { color: '#cce0ff', fontSize: 14, margin: 0, textShadow: '0 1px 6px rgba(0,0,0,0.8)' },
 
   googleBtn: {
-    width: '100%', padding: '14px 20px', borderRadius: 12,
+    width: '100%', padding: '15px 20px', borderRadius: 14,
     background: '#1a73e8', border: 'none', color: '#fff',
-    fontSize: 15, fontWeight: 600, cursor: 'pointer',
+    fontSize: 15, fontWeight: 700, cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
   },
 
   divider: {
-    width: '100%', textAlign: 'center', color: '#444',
-    fontSize: 13, borderTop: '1px solid #222', paddingTop: 16,
+    width: '100%', textAlign: 'center', color: 'rgba(180,210,255,0.5)',
+    fontSize: 12, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 14,
   },
 
   admToggle: {
-    background: 'none', border: '1px solid #444',
-    color: '#aaa', padding: '12px 20px', borderRadius: 12,
-    fontSize: 14, cursor: 'pointer', width: '100%',
+    width: '100%', padding: '15px 20px', borderRadius: 14,
+    border: '1.5px solid rgba(255,255,255,0.25)', color: '#cce0ff',
+    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+    background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)',
   },
 
   admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
-  admTitle:{ color: '#ccc', fontSize: 13, textAlign: 'center', margin: 0 },
+  admTitle: { color: '#cce0ff', fontSize: 13, textAlign: 'center', margin: 0 },
 
   input: {
     width: '100%', padding: '12px 14px', borderRadius: 10,
-    background: '#1a1a2e', border: '1px solid #333',
+    background: 'rgba(0,0,20,0.6)', border: '1px solid rgba(255,255,255,0.2)',
     color: '#fff', fontSize: 15, boxSizing: 'border-box',
+    backdropFilter: 'blur(4px)',
   },
 
   admBtn: {
-    width: '100%', padding: '14px 20px', borderRadius: 12,
+    width: '100%', padding: '15px 20px', borderRadius: 14,
     background: '#2e7d32', border: 'none', color: '#fff',
-    fontSize: 15, fontWeight: 600, cursor: 'pointer',
+    fontSize: 15, fontWeight: 700, cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
   },
 
   badge: {
-    background: '#ffffff22', padding: '2px 8px',
+    background: 'rgba(255,255,255,0.2)', padding: '3px 9px',
     borderRadius: 20, fontSize: 10, letterSpacing: 0.5,
   },
 
   error: { color: '#ff6666', fontSize: 13, margin: 0, textAlign: 'center' },
 
   hint: {
-    color: '#555', fontSize: 11, textAlign: 'center',
-    lineHeight: 1.6, whiteSpace: 'pre-line', marginTop: 8,
+    color: 'rgba(160,200,255,0.65)', fontSize: 11, textAlign: 'center',
+    lineHeight: 1.6, whiteSpace: 'pre-line', marginTop: 4,
   },
 };
