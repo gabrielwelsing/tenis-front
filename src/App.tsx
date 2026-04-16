@@ -45,7 +45,7 @@ function LoginScreen({ onLogin }: { onLogin: (mode: SaveMode) => void }) {
     <div style={s.page}>
       <div style={s.card}>
         <img src="/carlao.png" alt="Carlão Tênis" style={s.avatar} />
-        <h1 style={s.title}>Tenis Coach Cam</h1>
+        <h1 style={s.title}>Tenis Coach com Carlos</h1>
         <p style={s.sub}>Escolha como entrar</p>
 
         {/* Login Google → salva no Drive */}
