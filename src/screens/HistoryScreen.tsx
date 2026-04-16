@@ -27,7 +27,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 function fromDrive(c: ClipRecord): DisplayClip {
   return {
-    id: c.id, timestamp: c.timestamp,
+    id: c.id, timestamp: Number(c.timestamp),
     videoDurationMs: c.videoDurationMs ?? 0,
     audioDurationMs: c.audioDurationMs,
     driveVideoUrl: c.driveVideoUrl,
