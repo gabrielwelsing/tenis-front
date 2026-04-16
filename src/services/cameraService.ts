@@ -91,11 +91,17 @@ class CameraService {
       const now    = Date.now();
       const cutoff = now - MAX_MS;
 
-      // Adiciona o novo chunk
       this.chunks.push({ data: e.data, time: now });
 
-      // Remove chunks mais antigos que MAX_MS — mantém só os últimos 20s
-      this.chunks = this.chunks.filter((c) => c.time >= cutoff);
+      // chunks[0] é o segmento de inicialização (cabeçalho WebM/MP4 com info de codec).
+      // Sem ele o arquivo fica sem cabeçalho e não abre em nenhum player.
+      // Por isso preservamos sempre o índice 0 e filtramos só a partir do índice 1.
+      if (this.chunks.length > 1) {
+        this.chunks = [
+          this.chunks[0],
+          ...this.chunks.slice(1).filter((c) => c.time >= cutoff),
+        ];
+      }
     };
 
     this.recorder.onerror = () => {
