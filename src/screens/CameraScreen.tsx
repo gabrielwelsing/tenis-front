@@ -37,7 +37,6 @@ export default function CameraScreen({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const meterRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Guarda o nome do lance atual (ex: "lance3") para vincular o áudio
   const currentLanceRef = useRef<string | null>(null);
 
   const setVideoPhase = (p: VideoPhase) => { videoPhaseRef.current = p; setVideoPhaseState(p); };
@@ -94,12 +93,10 @@ export default function CameraScreen({
     const timestamp = Date.now();
 
     if (saveMode === 'local') {
-      // Modo ADM: baixa o arquivo direto no celular
-      const lance = saveVideoLocally(result.blob);
+      const lance = saveVideoLocally(result.blob, result.durationMs ?? 0);
       currentLanceRef.current = lance;
       setLastSaved(lance);
     } else {
-      // Modo Drive: faz upload e salva metadados no banco
       try {
         const driveVideoUrl = await uploadVideo(result.blob, timestamp);
         await saveVideo({
@@ -146,11 +143,9 @@ export default function CameraScreen({
 
     if (result.success && result.blob) {
       if (saveMode === 'local') {
-        // Modo ADM: baixa o áudio com o mesmo nome do lance
         const lance = currentLanceRef.current ?? `lance_audio_${timestamp}`;
-        saveAudioLocally(result.blob, lance);
+        saveAudioLocally(result.blob, lance, result.durationMs ?? 0);
       } else {
-        // Modo Drive: sobe o áudio e vincula ao vídeo mais próximo
         try {
           const driveAudioUrl = await uploadAudio(result.blob, timestamp);
           await saveAudio({
@@ -179,6 +174,7 @@ export default function CameraScreen({
   // Render
   // -------------------------------------------------------------------------
   const videoDisabled = videoPhase !== 'buffering' || bufSec < 5;
+  const audioDisabled = audioPhase !== 'idle' || videoPhase === 'init';
 
   return (
     <div style={s.container}>
@@ -192,12 +188,16 @@ export default function CameraScreen({
               ? `BUFFER ${bufSec}s / 20s`
               : videoPhase === 'saving_video' ? 'SALVANDO...' : 'INICIANDO...'}
           </Pill>
-          {isSyncing && <Pill color="#ffcc00">
-            {saveMode === 'local' ? 'BAIXANDO...' : 'ENVIANDO DRIVE...'}
-          </Pill>}
-          {lastSaved && <Pill color="#4fc3f7">
-            {saveMode === 'local' ? `✓ ${lastSaved} salvo` : `✓ salvo às ${lastSaved}`}
-          </Pill>}
+          {isSyncing && (
+            <Pill color="#ffcc00">
+              {saveMode === 'local' ? 'BAIXANDO...' : 'ENVIANDO...'}
+            </Pill>
+          )}
+          {lastSaved && (
+            <Pill color="#4fc3f7">
+              {saveMode === 'local' ? `✓ ${lastSaved} salvo` : `✓ salvo às ${lastSaved}`}
+            </Pill>
+          )}
           <Pill color={saveMode === 'drive' ? '#1a73e8' : '#2e7d32'}>
             {saveMode === 'drive' ? 'DRIVE' : 'LOCAL'}
           </Pill>
@@ -214,12 +214,18 @@ export default function CameraScreen({
             <button
               onClick={handleSaveVideo}
               disabled={videoDisabled}
-              style={{ ...s.circleBtn, background: '#ff4444', boxShadow: '0 0 20px #ff444488', opacity: videoDisabled ? 0.35 : 1 }}
+              style={{
+                ...s.circleBtn,
+                background: '#ff4444',
+                boxShadow: videoDisabled ? 'none' : '0 0 24px #ff444488',
+                opacity: videoDisabled ? 0.4 : 1,
+                filter: videoDisabled ? 'grayscale(0.6)' : 'none',
+              }}
             >
               <div style={s.circleBtnInner} />
             </button>
             <span style={s.btnHint}>
-              {bufSec < 5 ? 'aguardando\nbuffer...' : 'últimos 20s'}
+              {bufSec < 5 ? `aguardando...\n${bufSec}s / 5s` : 'últimos 20s'}
             </span>
           </div>
 
@@ -228,8 +234,14 @@ export default function CameraScreen({
             <span style={s.btnLabel}>COMENTÁRIO</span>
             <button
               onClick={handleStartAudio}
-              disabled={audioPhase !== 'idle' || videoPhase === 'init'}
-              style={{ ...s.circleBtn, background: '#1a73e8', boxShadow: '0 0 20px #1a73e888', opacity: audioPhase !== 'idle' ? 0.35 : 1 }}
+              disabled={audioDisabled}
+              style={{
+                ...s.circleBtn,
+                background: '#1a73e8',
+                boxShadow: audioDisabled ? 'none' : '0 0 24px #1a73e888',
+                opacity: audioDisabled ? 0.4 : 1,
+                filter: audioDisabled ? 'grayscale(0.6)' : 'none',
+              }}
             >
               <span style={{ fontSize: 28 }}>🎙</span>
             </button>
@@ -253,23 +265,52 @@ export default function CameraScreen({
 
 function Pill({ color, children }: { color: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#00000088', padding: '6px 12px', borderRadius: 20 }}>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6,
+      background: '#000000aa', padding: '6px 12px', borderRadius: 20,
+      backdropFilter: 'blur(4px)',
+    }}>
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
       <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: 1 }}>{children}</span>
     </div>
   );
 }
 
 const s: Record<string, React.CSSProperties> = {
-  container:      { position: 'relative', width: '100vw', height: '100dvh', background: '#000', overflow: 'hidden' },
-  video:          { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' },
-  overlay:        { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: 16 },
-  topBar:         { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  histBtn:        { position: 'absolute', top: 16, right: 16, background: '#ffffff22', border: '1px solid #ffffff44', color: '#fff', padding: '6px 14px', borderRadius: 20, fontSize: 12, cursor: 'pointer' },
-  controls:       { position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: 32, alignItems: 'center' },
-  btnGroup:       { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
-  btnLabel:       { color: '#ffffffcc', fontSize: 10, fontWeight: 700, letterSpacing: 1.5 },
-  btnHint:        { color: '#ffffff66', fontSize: 9, textAlign: 'center', whiteSpace: 'pre-line', maxWidth: 90 },
-  circleBtn:      { width: 72, height: 72, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity .2s' },
-  circleBtnInner: { width: 52, height: 52, borderRadius: '50%', background: '#fff' },
+  container: {
+    position: 'relative', width: '100vw', height: '100dvh',
+    background: '#000', overflow: 'hidden',
+  },
+  video: {
+    position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+  },
+  overlay: {
+    position: 'absolute', inset: 0,
+    display: 'flex', flexDirection: 'column',
+    padding: 16,
+    paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
+  },
+  topBar: { display: 'flex', gap: 8, flexWrap: 'wrap', maxWidth: 'calc(100% - 100px)' },
+  histBtn: {
+    position: 'absolute', top: 16, right: 16,
+    background: '#00000088', border: '1px solid #ffffff33',
+    color: '#fff', padding: '10px 18px',
+    borderRadius: 20, fontSize: 13, cursor: 'pointer',
+    minHeight: 44, backdropFilter: 'blur(4px)',
+  },
+  controls: {
+    position: 'absolute', right: 24, top: '50%',
+    transform: 'translateY(-50%)',
+    display: 'flex', flexDirection: 'column', gap: 36, alignItems: 'center',
+  },
+  btnGroup: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
+  btnLabel: { color: '#ffffffdd', fontSize: 11, fontWeight: 700, letterSpacing: 1.5 },
+  btnHint:  { color: '#ffffffaa', fontSize: 11, textAlign: 'center', whiteSpace: 'pre-line', maxWidth: 90 },
+  circleBtn: {
+    width: 76, height: 76, borderRadius: '50%',
+    border: 'none', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'opacity .2s, filter .2s, box-shadow .2s',
+  },
+  circleBtnInner: { width: 54, height: 54, borderRadius: '50%', background: '#fff' },
 };
