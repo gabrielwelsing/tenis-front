@@ -44,6 +44,7 @@ function LoginScreen({ onLogin }: { onLogin: (mode: SaveMode) => void }) {
   return (
     <div style={s.page}>
       <div style={s.card}>
+        <img src="/carlao.png" alt="Carlão Tênis" style={s.avatar} />
         <h1 style={s.title}>Tenis Coach Cam</h1>
         <p style={s.sub}>Escolha como entrar</p>
 
@@ -124,9 +125,10 @@ export default function Root() {
 // ---------------------------------------------------------------------------
 const s: Record<string, React.CSSProperties> = {
   page:  { minHeight: '100dvh', background: '#0d0d1a', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  card:  { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: 40, maxWidth: 360, width: '100%' },
-  title: { color: '#fff', fontSize: 26, fontWeight: 700, margin: 0, textAlign: 'center' },
-  sub:   { color: '#888', fontSize: 14, margin: 0 },
+  card:   { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '32px 40px 40px', maxWidth: 360, width: '100%' },
+  avatar: { width: 180, height: 'auto', borderRadius: 16, marginBottom: 4 },
+  title:  { color: '#fff', fontSize: 26, fontWeight: 700, margin: 0, textAlign: 'center' },
+  sub:    { color: '#888', fontSize: 14, margin: 0 },
 
   googleBtn: {
     width: '100%', padding: '14px 20px', borderRadius: 12,
