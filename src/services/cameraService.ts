@@ -32,10 +32,11 @@ interface TimedChunk {
 
 function getSupportedMimeType(): string {
   const types = [
+    'video/mp4;codecs=avc1,mp4a.40.2', // MP4/H.264 — aceito pelo WhatsApp
+    'video/mp4',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
     'video/webm',
-    'video/mp4',
   ];
   return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
 }
