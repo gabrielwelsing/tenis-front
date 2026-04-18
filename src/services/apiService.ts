@@ -15,7 +15,6 @@ export interface ClipRecord {
   createdAt: string;
 }
 
-// Salva metadados do vídeo (sem áudio ainda)
 export async function saveVideo(params: {
   id: string;
   timestamp: number;
@@ -30,11 +29,12 @@ export async function saveVideo(params: {
   if (!res.ok) throw new Error(`Erro ao salvar vídeo: ${res.status}`);
 }
 
-// Vincula áudio ao vídeo de timestamp mais próximo
+// videoId: ID do vídeo mais recente — vincula o áudio diretamente (sem adivinhação)
 export async function saveAudio(params: {
   timestamp: number;
   audioDurationMs: number;
   driveAudioUrl: string;
+  videoId?: string;
 }): Promise<void> {
   const res = await fetch(`${BASE_URL}/clips/audio`, {
     method: 'POST',

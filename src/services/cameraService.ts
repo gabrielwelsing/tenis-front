@@ -1,22 +1,18 @@
 // =============================================================================
 // CAMERA SERVICE — Buffer Circular via timeslice contínuo (Web)
 // =============================================================================
-// Abordagem correta para buffer circular na web:
-//
-// ❌ ERRADO: gravar em segmentos separados e concatenar os Blobs
-//    → Cada segmento tem seu próprio cabeçalho WebM/MP4
-//    → Concatenar Blobs gera arquivo inválido — player lê só o 1º segmento
-//
 // ✅ CORRETO: um único MediaRecorder contínuo com timeslice
 //    → timeslice = 200ms → ondataavailable dispara a cada 200ms
-//    → Guardamos cada chunk com seu timestamp em um array
-//    → Descartamos chunks com mais de MAX_MS milissegundos
-//    → Ao salvar: juntamos só os chunks dos últimos 20s em um único Blob
-//    → Como é um stream contínuo, o Blob resultante é um vídeo válido
+//    → chunks[0] (init segment com headers) é SEMPRE preservado
+//    → Demais chunks são filtrados pelo tempo configurado (20-50s)
+//    → Ao salvar: juntamos todos os chunks em um único Blob válido
 // =============================================================================
 
-const TIMESLICE_MS = 200;    // coleta chunk a cada 200ms
-const MAX_MS       = 20_000; // janela do buffer: últimos 20 segundos
+const TIMESLICE_MS   = 200;
+const DURATION_KEY   = 'tenis_max_seconds';
+const DEFAULT_SEC    = 20;
+const VALID_DURATIONS = [20, 30, 40, 50] as const;
+export type BufferDuration = typeof VALID_DURATIONS[number];
 
 export interface ClipResult {
   success: boolean;
@@ -27,12 +23,12 @@ export interface ClipResult {
 
 interface TimedChunk {
   data: BlobPart;
-  time: number; // timestamp de quando o chunk chegou
+  time: number;
 }
 
 function getSupportedMimeType(): string {
   const types = [
-    'video/mp4;codecs=avc1,mp4a.40.2', // MP4/H.264 — aceito pelo WhatsApp
+    'video/mp4;codecs=avc1,mp4a.40.2',
     'video/mp4',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
@@ -41,31 +37,47 @@ function getSupportedMimeType(): string {
   return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
 }
 
-class CameraService {
-  private stream: MediaStream | null   = null;
-  private recorder: MediaRecorder | null = null;
-  private chunks: TimedChunk[]         = [];
-  private wakeLock: WakeLockSentinel | null = null;
-  private mimeType = '';
-  private active   = false;
+function loadMaxMs(): number {
+  const saved = parseInt(localStorage.getItem(DURATION_KEY) ?? '', 10);
+  return VALID_DURATIONS.includes(saved as BufferDuration) ? saved * 1000 : DEFAULT_SEC * 1000;
+}
 
-  // -------------------------------------------------------------------------
-  // start — abre câmera + microfone, exibe preview e inicia buffer contínuo
-  // -------------------------------------------------------------------------
+class CameraService {
+  private stream:   MediaStream | null     = null;
+  private recorder: MediaRecorder | null   = null;
+  private chunks:   TimedChunk[]           = [];
+  private wakeLock: WakeLockSentinel | null = null;
+  private mimeType  = '';
+  private active    = false;
+  private maxMs     = loadMaxMs();
+
+  // ── Duração configurável ────────────────────────────────────────────────────
+  get maxSeconds(): BufferDuration {
+    return (this.maxMs / 1000) as BufferDuration;
+  }
+
+  setMaxDuration(seconds: BufferDuration): void {
+    this.maxMs = seconds * 1000;
+    localStorage.setItem(DURATION_KEY, String(seconds));
+  }
+
+  // ── start — abre câmera + microfone e inicia buffer contínuo ────────────────
   async start(previewElement: HTMLVideoElement): Promise<void> {
+    this.maxMs = loadMaxMs(); // relê ao iniciar (garante valor atualizado)
+
     this.stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
-        width:     { ideal: 1280 },
-        height:    { ideal: 720 },
-        frameRate: { ideal: 30 },
+        width:      { ideal: 1280 },
+        height:     { ideal: 720 },
+        frameRate:  { ideal: 30 },
       },
-      audio: true, // captura áudio da quadra junto com o vídeo
+      audio: true,
     });
 
     previewElement.srcObject = this.stream;
     previewElement.setAttribute('playsinline', 'true');
-    previewElement.muted = true; // mudo no preview para não criar eco
+    previewElement.muted = true;
     await previewElement.play();
 
     this.mimeType = getSupportedMimeType();
@@ -76,9 +88,7 @@ class CameraService {
     this.startRecorder();
   }
 
-  // -------------------------------------------------------------------------
-  // startRecorder — inicia o recorder contínuo com timeslice
-  // -------------------------------------------------------------------------
+  // ── startRecorder ────────────────────────────────────────────────────────────
   private startRecorder(): void {
     if (!this.stream) return;
 
@@ -89,13 +99,12 @@ class CameraService {
       if (!e.data || e.data.size === 0) return;
 
       const now    = Date.now();
-      const cutoff = now - MAX_MS;
+      const cutoff = now - this.maxMs;
 
       this.chunks.push({ data: e.data, time: now });
 
-      // chunks[0] é o segmento de inicialização (cabeçalho WebM/MP4 com info de codec).
-      // Sem ele o arquivo fica sem cabeçalho e não abre em nenhum player.
-      // Por isso preservamos sempre o índice 0 e filtramos só a partir do índice 1.
+      // chunks[0] = init segment (headers do container — NUNCA descartar)
+      // Filtramos apenas a partir do índice 1 para manter o arquivo válido
       if (this.chunks.length > 1) {
         this.chunks = [
           this.chunks[0],
@@ -105,33 +114,25 @@ class CameraService {
     };
 
     this.recorder.onerror = () => {
-      // Se o recorder falhar, tenta reiniciar
-      if (this.active) {
-        setTimeout(() => this.startRecorder(), 500);
-      }
+      if (this.active) setTimeout(() => this.startRecorder(), 500);
     };
 
-    // timeslice: dispara ondataavailable a cada TIMESLICE_MS
     this.recorder.start(TIMESLICE_MS);
   }
 
-  // -------------------------------------------------------------------------
-  // saveClip — consolida os últimos 20s em um único Blob válido
-  // -------------------------------------------------------------------------
+  // ── saveClip — consolida o buffer em um único Blob válido ───────────────────
   async saveClip(): Promise<ClipResult> {
     if (!this.active || !this.recorder || this.chunks.length === 0) {
       return { success: false, error: 'Buffer vazio — aguarde alguns segundos.' };
     }
 
-    // Pede o último pedaço de dados antes de montar o Blob
     this.recorder.requestData();
     await new Promise((r) => setTimeout(r, 300));
 
     const snapshot  = [...this.chunks];
     const totalMs   = snapshot.length * TIMESLICE_MS;
-    const clampedMs = Math.min(totalMs, MAX_MS);
+    const clampedMs = Math.min(totalMs, this.maxMs);
 
-    // Todos os chunks do mesmo recorder formam um stream contínuo e válido
     const merged = new Blob(snapshot.map((c) => c.data), {
       type: this.mimeType || 'video/webm',
     });
@@ -139,9 +140,7 @@ class CameraService {
     return { success: true, blob: merged, durationMs: clampedMs };
   }
 
-  // -------------------------------------------------------------------------
-  // stop — encerra tudo e libera recursos
-  // -------------------------------------------------------------------------
+  // ── stop — encerra tudo e libera recursos ───────────────────────────────────
   async stop(): Promise<void> {
     this.active = false;
     if (this.recorder?.state !== 'inactive') this.recorder?.stop();
@@ -152,9 +151,7 @@ class CameraService {
     await this.releaseWakeLock();
   }
 
-  // -------------------------------------------------------------------------
-  // Wake Lock — mantém tela acesa
-  // -------------------------------------------------------------------------
+  // ── Wake Lock ────────────────────────────────────────────────────────────────
   private async acquireWakeLock(): Promise<void> {
     try {
       if ('wakeLock' in navigator) {
@@ -172,15 +169,16 @@ class CameraService {
     if (this.stream && !this.wakeLock) await this.acquireWakeLock();
   }
 
-  // Segundos acumulados no buffer (0 a 20)
+  // ── Getters ──────────────────────────────────────────────────────────────────
   get bufferSeconds(): number {
     if (this.chunks.length === 0) return 0;
-    const oldest  = this.chunks[0].time;
-    const newest  = this.chunks[this.chunks.length - 1].time;
-    return Math.min(Math.round((newest - oldest) / 1000), 20);
+    const oldest = this.chunks[0].time;
+    const newest = this.chunks[this.chunks.length - 1].time;
+    return Math.min(Math.round((newest - oldest) / 1000), this.maxMs / 1000);
   }
 
   get isActive(): boolean { return this.active; }
 }
 
 export const cameraService = new CameraService();
+export { VALID_DURATIONS };
