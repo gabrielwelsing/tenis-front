@@ -60,6 +60,8 @@ export default function InstagramScreen({ onBack }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  // AudioContext kept alive across renders (createMediaElementSource can only be called once)
+  const audioCtxRef = useRef<{ ctx: AudioContext; dest: MediaStreamAudioDestinationNode } | null>(null);
 
   // Drag state
   const dragStartRef = useRef<{ px: number; py: number; bx: number; by: number } | null>(null);
@@ -243,6 +245,24 @@ export default function InstagramScreen({ onBack }: Props) {
 
       setOutputMime(mimeType);
       const canvasStream = canvas.captureStream(30);
+
+      // Capture audio from the video element via AudioContext
+      try {
+        if (!audioCtxRef.current) {
+          const ctx2 = new AudioContext();
+          const source = ctx2.createMediaElementSource(v);
+          const dest = ctx2.createMediaStreamDestination();
+          source.connect(dest);
+          source.connect(ctx2.destination); // also play to speaker
+          audioCtxRef.current = { ctx: ctx2, dest };
+        }
+        await audioCtxRef.current.ctx.resume();
+        const audioTrack = audioCtxRef.current.dest.stream.getAudioTracks()[0];
+        if (audioTrack) canvasStream.addTrack(audioTrack);
+      } catch {
+        // Audio capture not available — continue without audio
+      }
+
       const mr = new MediaRecorder(canvasStream, { mimeType });
       const chunks: BlobPart[] = [];
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
@@ -588,19 +608,21 @@ const s: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   pageTitle: {
-    fontSize: 18,
-    fontWeight: 700,
+    fontSize: 20,
+    fontWeight: 800,
     margin: 0,
     flex: 1,
+    letterSpacing: -0.3,
   },
   backBtn: {
     background: 'rgba(255,255,255,0.1)',
     border: '1px solid rgba(255,255,255,0.2)',
-    color: '#fff',
-    padding: '8px 16px',
-    borderRadius: 20,
+    color: '#cce0ff',
+    padding: '10px 16px',
+    borderRadius: 16,
     cursor: 'pointer',
     fontSize: 14,
+    fontWeight: 600,
     minHeight: 44,
   },
 

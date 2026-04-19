@@ -47,13 +47,17 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const [currentAngles, setCurrentAngles] = useState<JointAngles | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
 
   const ZOOM_LEVELS = [1, 1.5, 2, 3];
+  const PAN_STEP = 60;
 
   const videoRef   = useRef<HTMLVideoElement>(null);
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const rafRef     = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const panStartRef = useRef<{ px: number; py: number; sx: number; sy: number } | null>(null);
 
   // -------------------------------------------------------------------------
   // Init MediaPipe on mount
@@ -202,6 +206,40 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
   const toggleRate = () => setPlaybackRate(r => r === 1 ? 0.5 : 1);
 
+  const changeZoom = (next: number) => {
+    setZoom(next);
+    if (next === 1) { setPanX(0); setPanY(0); }
+  };
+
+  // ── Pan handlers ──────────────────────────────────────────────────────────
+  const handlePanStart = useCallback((e: React.TouchEvent | React.MouseEvent) => {
+    if (zoom <= 1) return;
+    const px = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const py = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    panStartRef.current = { px, py, sx: panX, sy: panY };
+  }, [zoom, panX, panY]);
+
+  useEffect(() => {
+    const onMove = (e: TouchEvent | MouseEvent) => {
+      if (!panStartRef.current) return;
+      const px = 'touches' in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+      const py = 'touches' in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
+      setPanX(panStartRef.current.sx + (px - panStartRef.current.px));
+      setPanY(panStartRef.current.sy + (py - panStartRef.current.py));
+    };
+    const onEnd = () => { panStartRef.current = null; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+  }, []);
+
   // -------------------------------------------------------------------------
   // Drag & drop (PC)
   // -------------------------------------------------------------------------
@@ -321,8 +359,12 @@ export default function BiomechanicsScreen({ onBack }: Props) {
         // ── Mobile layout ──────────────────────────────────────────────────
         <div style={s.mobileBody}>
           {/* Video area */}
-          <div style={s.videoWrapper}>
-            <div style={{ ...s.zoomInner, transform: `scale(${zoom})` }}>
+          <div
+            style={s.videoWrapper}
+            onMouseDown={handlePanStart}
+            onTouchStart={handlePanStart}
+          >
+            <div style={{ ...s.zoomInner, transform: `translate(${panX}px,${panY}px) scale(${zoom})`, cursor: zoom > 1 ? 'grab' : 'default' }}>
               {videoUrl ? (
                 <>
                   <video
@@ -356,35 +398,35 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
           {/* Controls */}
           {videoUrl && (
-            <div style={s.controls}>
-              <button onClick={() => stepFrame(-1)} style={s.ctrlBtn}>◀</button>
-              <button onClick={togglePlay} style={s.ctrlBtnMain}>
-                {isPlaying ? '⏸' : '▶'}
-              </button>
-              <button onClick={() => stepFrame(1)} style={s.ctrlBtn}>▶▶</button>
-              <button onClick={toggleRate} style={s.rateBtn}>
-                {playbackRate === 1 ? '1x' : '0.5x'}
-              </button>
-              <button
-                onClick={() => {
-                  const idx = ZOOM_LEVELS.indexOf(zoom);
-                  setZoom(ZOOM_LEVELS[Math.min(idx + 1, ZOOM_LEVELS.length - 1)]);
-                }}
-                style={s.zoomBtn}
-                disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-              >＋</button>
-              <button
-                onClick={() => {
-                  const idx = ZOOM_LEVELS.indexOf(zoom);
-                  setZoom(ZOOM_LEVELS[Math.max(idx - 1, 0)]);
-                }}
-                style={s.zoomBtn}
-                disabled={zoom === 1}
-              >－</button>
+            <>
+              <div style={s.controls}>
+                <button onClick={() => stepFrame(-1)} style={s.ctrlBtn}>◀</button>
+                <button onClick={togglePlay} style={s.ctrlBtnMain}>{isPlaying ? '⏸' : '▶'}</button>
+                <button onClick={() => stepFrame(1)} style={s.ctrlBtn}>▶▶</button>
+                <button onClick={toggleRate} style={s.rateBtn}>{playbackRate === 1 ? '1x' : '0.5x'}</button>
+                <button
+                  onClick={() => changeZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.indexOf(zoom) + 1, ZOOM_LEVELS.length - 1)])}
+                  style={s.zoomBtn} disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+                >＋</button>
+                <button
+                  onClick={() => changeZoom(ZOOM_LEVELS[Math.max(ZOOM_LEVELS.indexOf(zoom) - 1, 0)])}
+                  style={s.zoomBtn} disabled={zoom === 1}
+                >－</button>
+                {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
+              </div>
+              {/* Directional pan buttons (visible when zoomed) */}
               {zoom > 1 && (
-                <span style={s.zoomLabel}>{zoom}x</span>
+                <div style={s.panControls}>
+                  <button onClick={() => setPanY(p => p + PAN_STEP)} style={s.panBtn}>↑</button>
+                  <div style={s.panRow}>
+                    <button onClick={() => setPanX(p => p + PAN_STEP)} style={s.panBtn}>←</button>
+                    <button onClick={() => { setPanX(0); setPanY(0); }} style={s.panCenterBtn}>⊙</button>
+                    <button onClick={() => setPanX(p => p - PAN_STEP)} style={s.panBtn}>→</button>
+                  </div>
+                  <button onClick={() => setPanY(p => p - PAN_STEP)} style={s.panBtn}>↓</button>
+                </div>
               )}
-            </div>
+            </>
           )}
 
           {/* Angle panel */}
@@ -397,8 +439,8 @@ export default function BiomechanicsScreen({ onBack }: Props) {
           <div style={s.desktopLeft}>
             {/* Drag & drop zone or video */}
             {videoUrl ? (
-              <div style={s.videoWrapper}>
-                <div style={{ ...s.zoomInner, transform: `scale(${zoom})` }}>
+              <div style={s.videoWrapper} onMouseDown={handlePanStart} onTouchStart={handlePanStart}>
+                <div style={{ ...s.zoomInner, transform: `translate(${panX}px,${panY}px) scale(${zoom})`, cursor: zoom > 1 ? 'grab' : 'default' }}>
                   <video
                     ref={videoRef}
                     src={videoUrl}
@@ -435,24 +477,15 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
             {/* Controls */}
             <div style={s.controls}>
-              {videoUrl && (
-                <button onClick={() => fileInputRef.current?.click()} style={{ ...s.ctrlBtn, fontSize: 12 }}>📁</button>
-              )}
+              {videoUrl && <button onClick={() => fileInputRef.current?.click()} style={{ ...s.ctrlBtn, fontSize: 12 }}>📁</button>}
               <button onClick={() => stepFrame(-1)} style={s.ctrlBtn}>◀</button>
-              <button onClick={togglePlay} style={s.ctrlBtnMain} disabled={!videoUrl}>
-                {isPlaying ? '⏸' : '▶'}
-              </button>
+              <button onClick={togglePlay} style={s.ctrlBtnMain} disabled={!videoUrl}>{isPlaying ? '⏸' : '▶'}</button>
               <button onClick={() => stepFrame(1)} style={s.ctrlBtn}>▶▶</button>
               <button onClick={toggleRate} style={s.rateBtn}>{playbackRate === 1 ? '1x' : '0.5x'}</button>
-              <button
-                onClick={() => { const i = ZOOM_LEVELS.indexOf(zoom); setZoom(ZOOM_LEVELS[Math.min(i + 1, ZOOM_LEVELS.length - 1)]); }}
-                style={s.zoomBtn} disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-              >＋</button>
-              <button
-                onClick={() => { const i = ZOOM_LEVELS.indexOf(zoom); setZoom(ZOOM_LEVELS[Math.max(i - 1, 0)]); }}
-                style={s.zoomBtn} disabled={zoom === 1}
-              >－</button>
+              <button onClick={() => changeZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.indexOf(zoom) + 1, ZOOM_LEVELS.length - 1)])} style={s.zoomBtn} disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}>＋</button>
+              <button onClick={() => changeZoom(ZOOM_LEVELS[Math.max(ZOOM_LEVELS.indexOf(zoom) - 1, 0)])} style={s.zoomBtn} disabled={zoom === 1}>－</button>
               {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
+              {zoom > 1 && <button onClick={() => { setPanX(0); setPanY(0); }} style={s.panCenterBtn}>⊙</button>}
             </div>
           </div>
 
@@ -710,6 +743,46 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     minWidth: 28,
     textAlign: 'center' as const,
+  },
+  panControls: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 4,
+    padding: '6px 0 8px',
+    background: 'rgba(0,0,0,0.3)',
+    flexShrink: 0,
+  },
+  panRow: {
+    display: 'flex',
+    gap: 4,
+    alignItems: 'center',
+  },
+  panBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    background: 'rgba(79,195,247,0.15)',
+    border: '1px solid rgba(79,195,247,0.4)',
+    color: '#4fc3f7',
+    fontSize: 20,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panCenterBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 18,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Angle panel
