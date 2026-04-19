@@ -6,18 +6,25 @@ import React, { useState } from 'react';
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import { setAccessToken } from '@services/driveService';
 import { admLogin, admLogout, setCurrentUser } from '@services/localSaveService';
-import CameraScreen  from '@screens/CameraScreen';
-import HistoryScreen from '@screens/HistoryScreen';
+import CameraScreen       from '@screens/CameraScreen';
+import HistoryScreen      from '@screens/HistoryScreen';
+import BiomechanicsScreen from '@screens/BiomechanicsScreen';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 
 export type SaveMode = 'drive' | 'local';
-type Screen = 'camera' | 'history';
+type Screen = 'camera' | 'history' | 'biomechanics';
 
 // ---------------------------------------------------------------------------
 // Tela de Login
 // ---------------------------------------------------------------------------
-function LoginScreen({ onLogin }: { onLogin: (mode: SaveMode, username?: string) => void }) {
+function LoginScreen({
+  onLogin,
+  onGoAnalysis,
+}: {
+  onLogin: (mode: SaveMode, username?: string) => void;
+  onGoAnalysis: () => void;
+}) {
   const [showAdm, setShowAdm] = useState(false);
   const [user,    setUser]    = useState('');
   const [pass,    setPass]    = useState('');
@@ -56,6 +63,11 @@ function LoginScreen({ onLogin }: { onLogin: (mode: SaveMode, username?: string)
       <div style={s.card}>
         <h1 style={s.title}>Tenis Coach com Carlos</h1>
         <p style={s.sub}>Escolha como entrar</p>
+
+        <button onClick={() => onGoAnalysis()} style={s.bioBtn}>
+          🦴 Análise Biomecânica
+          <span style={s.badge}>sem login</span>
+        </button>
 
         <button onClick={() => loginGoogle()} style={s.googleBtn}>
           <span>🔵</span> Entrar com Google
@@ -124,7 +136,19 @@ function App() {
     setScreen('camera');
   };
 
-  if (!saveMode) return <LoginScreen onLogin={handleLogin} />;
+  // Biomechanics is accessible without login
+  if (screen === 'biomechanics') {
+    return <BiomechanicsScreen onBack={() => setScreen('camera')} />;
+  }
+
+  if (!saveMode) {
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        onGoAnalysis={() => setScreen('biomechanics')}
+      />
+    );
+  }
 
   return screen === 'camera'
     ? <CameraScreen
@@ -181,6 +205,14 @@ const s: Record<string, React.CSSProperties> = {
     textShadow: '0 2px 12px rgba(0,0,0,0.9)',
   },
   sub:      { color: '#cce0ff', fontSize: 14, margin: 0, textShadow: '0 1px 6px rgba(0,0,0,0.8)' },
+  bioBtn: {
+    width: '100%', padding: '15px 20px', borderRadius: 14,
+    background: 'rgba(0,20,30,0.7)', border: '2px solid #4fc3f7', color: '#4fc3f7',
+    fontSize: 15, fontWeight: 700, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    boxShadow: '0 4px 20px rgba(79,195,247,0.2)',
+    backdropFilter: 'blur(6px)',
+  },
   googleBtn: {
     width: '100%', padding: '15px 20px', borderRadius: 14,
     background: '#1a73e8', border: 'none', color: '#fff',
