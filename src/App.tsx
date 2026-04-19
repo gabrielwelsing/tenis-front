@@ -9,11 +9,14 @@ import { admLogin, admLogout, setCurrentUser } from '@services/localSaveService'
 import CameraScreen       from '@screens/CameraScreen';
 import HistoryScreen      from '@screens/HistoryScreen';
 import BiomechanicsScreen from '@screens/BiomechanicsScreen';
+import HomeScreen         from '@screens/HomeScreen';
+import ComparisonScreen   from '@screens/ComparisonScreen';
+import InstagramScreen    from '@screens/InstagramScreen';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 
 export type SaveMode = 'drive' | 'local';
-type Screen = 'camera' | 'history' | 'biomechanics';
+export type Screen = 'camera' | 'history' | 'biomechanics' | 'home' | 'comparison' | 'instagram';
 
 // ---------------------------------------------------------------------------
 // Tela de Login
@@ -122,23 +125,24 @@ function LoginScreen({
 function App() {
   const [saveMode,  setSaveMode]  = useState<SaveMode | null>(null);
   const [username,  setUsername]  = useState<string>('');
-  const [screen,    setScreen]    = useState<Screen>('camera');
+  const [screen,    setScreen]    = useState<Screen>('home');
 
   const handleLogin = (mode: SaveMode, user?: string) => {
     if (user) { setCurrentUser(user); setUsername(user); }
     setSaveMode(mode);
+    setScreen('home');
   };
 
   const handleLogout = () => {
     admLogout();
     setSaveMode(null);
     setUsername('');
-    setScreen('camera');
+    setScreen('home');
   };
 
   // Biomechanics is accessible without login
   if (screen === 'biomechanics') {
-    return <BiomechanicsScreen onBack={() => setScreen('camera')} />;
+    return <BiomechanicsScreen onBack={() => setScreen(saveMode ? 'home' : 'home')} />;
   }
 
   if (!saveMode) {
@@ -150,17 +154,46 @@ function App() {
     );
   }
 
-  return screen === 'camera'
-    ? <CameraScreen
-        saveMode={saveMode}
-        username={username}
-        onGoHistory={() => setScreen('history')}
-        onLogout={handleLogout}
-      />
-    : <HistoryScreen
-        saveMode={saveMode}
-        onBack={() => setScreen('camera')}
-      />;
+  switch (screen) {
+    case 'home':
+      return (
+        <HomeScreen
+          saveMode={saveMode}
+          username={username}
+          onLogout={handleLogout}
+          onNavigate={setScreen}
+        />
+      );
+    case 'camera':
+      return (
+        <CameraScreen
+          saveMode={saveMode}
+          username={username}
+          onGoHistory={() => setScreen('history')}
+          onLogout={() => setScreen('home')}
+        />
+      );
+    case 'history':
+      return (
+        <HistoryScreen
+          saveMode={saveMode}
+          onBack={() => setScreen('home')}
+        />
+      );
+    case 'comparison':
+      return <ComparisonScreen onBack={() => setScreen('home')} />;
+    case 'instagram':
+      return <InstagramScreen onBack={() => setScreen('home')} />;
+    default:
+      return (
+        <HomeScreen
+          saveMode={saveMode}
+          username={username}
+          onLogout={handleLogout}
+          onNavigate={setScreen}
+        />
+      );
+  }
 }
 
 export default function Root() {
