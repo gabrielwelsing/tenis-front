@@ -54,6 +54,7 @@ export default function InstagramScreen({ onBack }: Props) {
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
+  const [outputMime, setOutputMime] = useState('video/mp4');
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -240,6 +241,7 @@ export default function InstagramScreen({ onBack }: Props) {
           .find(m => MediaRecorder.isTypeSupported(m))
       ) ?? 'video/webm';
 
+      setOutputMime(mimeType);
       const canvasStream = canvas.captureStream(30);
       const mr = new MediaRecorder(canvasStream, { mimeType });
       const chunks: BlobPart[] = [];
@@ -303,23 +305,35 @@ export default function InstagramScreen({ onBack }: Props) {
   // Share / Download
   // ---------------------------------------------------------------------------
 
-  const handleDownload = () => {
-    if (!outputUrl) return;
-    const a = document.createElement('a');
-    a.href = outputUrl;
-    a.download = 'reel_tenis.mp4';
-    a.click();
-  };
+  const outputExt = outputMime.includes('mp4') ? 'mp4' : 'webm';
+  const outputFilename = `reel_tenis.${outputExt}`;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const canShareFiles = typeof navigator.share === 'function' &&
+    typeof navigator.canShare === 'function';
 
-  const handleShare = async () => {
-    if (!outputUrl || !navigator.share) return;
+  const handleSaveOrShare = async () => {
+    if (!outputUrl) return;
     try {
       const resp = await fetch(outputUrl);
       const blob = await resp.blob();
-      const file = new File([blob], 'reel_tenis.mp4', { type: 'video/mp4' });
-      await navigator.share({ files: [file], title: 'Reel de Tênis' });
-    } catch {
-      alert('Compartilhamento não disponível neste dispositivo.');
+      const file = new File([blob], outputFilename, { type: outputMime });
+      if (canShareFiles && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Reel de Tênis' });
+      } else {
+        // Fallback: trigger download
+        const a = document.createElement('a');
+        a.href = outputUrl;
+        a.download = outputFilename;
+        a.click();
+      }
+    } catch (err: unknown) {
+      // User cancelled share — not an error
+      if (err instanceof Error && err.name !== 'AbortError') {
+        const a = document.createElement('a');
+        a.href = outputUrl;
+        a.download = outputFilename;
+        a.click();
+      }
     }
   };
 
@@ -400,21 +414,21 @@ export default function InstagramScreen({ onBack }: Props) {
             playsInline
           />
           <div style={s.doneActions}>
-            <button onClick={handleDownload} style={{ ...s.primaryBtn, background: '#1565c0' }}>
-              ⬇️ Baixar para o celular
+            <button onClick={handleSaveOrShare} style={{ ...s.primaryBtn, background: '#c2185b' }}>
+              {isIOS ? '📲 Salvar no Rolo da Câmera' : '⬇️ Salvar Vídeo'}
             </button>
-            {typeof navigator.share === 'function' && (
-              <button onClick={handleShare} style={{ ...s.primaryBtn, background: '#c2185b' }}>
-                📤 Compartilhar
-              </button>
-            )}
-            <button onClick={() => { setPhase('select'); setVideoFile(null); setVideoUrl(null); setOutputUrl(null); }} style={s.secondaryBtn}>
+            <button
+              onClick={() => { setPhase('select'); setVideoFile(null); setVideoUrl(null); setOutputUrl(null); }}
+              style={s.secondaryBtn}
+            >
               🔄 Processar outro vídeo
             </button>
           </div>
           <div style={s.instagramNote}>
             <p style={s.noteText}>
-              Após baixar, abra o Instagram → Nova publicação → Selecione o vídeo
+              {isIOS
+                ? 'Toque em "Salvar no Rolo da Câmera" → escolha "Salvar Vídeo" para ir direto para as Fotos.'
+                : 'Após salvar, abra o Instagram → Nova publicação → Selecione o vídeo.'}
             </p>
           </div>
         </div>

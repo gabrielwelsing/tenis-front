@@ -59,7 +59,7 @@ export default function ComparisonScreen({ onBack }: Props) {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState<0.5 | 1>(1);
-  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const syncRAFRef = useRef<number | null>(null);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawActive, setDrawActive] = useState(false);
@@ -105,6 +105,13 @@ export default function ComparisonScreen({ onBack }: Props) {
   // Comparison phase — playback sync
   // ---------------------------------------------------------------------------
 
+  const stopSyncRAF = useCallback(() => {
+    if (syncRAFRef.current !== null) {
+      cancelAnimationFrame(syncRAFRef.current);
+      syncRAFRef.current = null;
+    }
+  }, []);
+
   const startSync = useCallback(() => {
     if (!videoARef.current || !videoBRef.current) return;
     if (slotA.startTime === null || slotB.startTime === null) return;
@@ -114,40 +121,56 @@ export default function ComparisonScreen({ onBack }: Props) {
     const vb = videoBRef.current;
     const startA = slotA.startTime;
     const startB = slotB.startTime;
-    const endA = slotA.endTime;
-    const endB = slotB.endTime;
+    const endA   = slotA.endTime;
+    const endB   = slotB.endTime;
+    const rate   = playbackRate;
+
+    stopSyncRAF();
 
     va.currentTime = startA;
     vb.currentTime = startB;
-    va.playbackRate = playbackRate;
-    vb.playbackRate = playbackRate;
-    va.play().catch(() => {});
-    vb.play().catch(() => {});
+    va.playbackRate = rate;
+    vb.playbackRate = rate;
+
+    // Play both in the same tick (required for iOS gesture policy)
+    Promise.all([va.play(), vb.play()]).catch(() => {});
     setIsPlaying(true);
 
-    if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
-    syncIntervalRef.current = setInterval(() => {
-      if (!va || !vb) return;
-      const elapsed = va.currentTime - startA;
-      const bExpected = startB + elapsed;
-      if (Math.abs(vb.currentTime - bExpected) > 0.1) {
-        vb.currentTime = bExpected;
+    // RAF loop — uses playback-rate nudge instead of seeking (no pause side-effect on iOS)
+    const tick = () => {
+      if (va.paused || vb.paused) {
+        // If one stopped unexpectedly, stop both
+        va.pause(); vb.pause();
+        setIsPlaying(false);
+        return;
       }
       if (va.currentTime >= endA || vb.currentTime >= endB) {
-        va.pause();
-        vb.pause();
+        va.pause(); vb.pause();
         setIsPlaying(false);
-        if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
+        return;
       }
-    }, 500);
-  }, [slotA.startTime, slotA.endTime, slotB.startTime, slotB.endTime, playbackRate]);
+      // Drift correction: adjust vb playback rate only, never seek
+      const elapsed   = va.currentTime - startA;
+      const bExpected = startB + elapsed;
+      const drift     = vb.currentTime - bExpected; // positive = vb ahead
+      if (Math.abs(drift) < 0.15) {
+        vb.playbackRate = rate;
+      } else if (drift > 0) {
+        vb.playbackRate = rate * 0.85; // slow down vb
+      } else {
+        vb.playbackRate = rate * 1.15; // speed up vb
+      }
+      syncRAFRef.current = requestAnimationFrame(tick);
+    };
+    syncRAFRef.current = requestAnimationFrame(tick);
+  }, [slotA.startTime, slotA.endTime, slotB.startTime, slotB.endTime, playbackRate, stopSyncRAF]);
 
   const pauseSync = useCallback(() => {
     videoARef.current?.pause();
     videoBRef.current?.pause();
     setIsPlaying(false);
-    if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
-  }, []);
+    stopSyncRAF();
+  }, [stopSyncRAF]);
 
   const handlePlayPause = () => {
     if (isPlaying) pauseSync();
@@ -155,8 +178,7 @@ export default function ComparisonScreen({ onBack }: Props) {
   };
 
   const handleRestart = () => {
-    if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
-    setIsPlaying(false);
+    pauseSync();
     if (videoARef.current && slotA.startTime !== null) videoARef.current.currentTime = slotA.startTime;
     if (videoBRef.current && slotB.startTime !== null) videoBRef.current.currentTime = slotB.startTime;
   };
@@ -165,10 +187,13 @@ export default function ComparisonScreen({ onBack }: Props) {
     if (!videoARef.current || !videoBRef.current) return;
     if (slotA.startTime === null || slotB.startTime === null) return;
     if (slotA.endTime === null || slotB.endTime === null) return;
+    const wasPlaying = isPlaying;
+    pauseSync();
     const newA = clamp(videoARef.current.currentTime + deltaSeconds, slotA.startTime, slotA.endTime);
     const elapsed = newA - slotA.startTime;
     videoARef.current.currentTime = newA;
     videoBRef.current.currentTime = clamp(slotB.startTime + elapsed, slotB.startTime, slotB.endTime);
+    if (wasPlaying) setTimeout(() => startSync(), 150);
   };
 
   const toggleRate = () => {
@@ -178,9 +203,7 @@ export default function ComparisonScreen({ onBack }: Props) {
     if (videoBRef.current) videoBRef.current.playbackRate = next;
   };
 
-  useEffect(() => {
-    return () => { if (syncIntervalRef.current) clearInterval(syncIntervalRef.current); };
-  }, []);
+  useEffect(() => { return () => stopSyncRAF(); }, [stopSyncRAF]);
 
   // ---------------------------------------------------------------------------
   // Draw canvas

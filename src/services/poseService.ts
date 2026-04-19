@@ -191,38 +191,80 @@ const BADGE_COLORS = {
   hip:   '#ffb74d',
 } as const;
 
+// Compute the actual video content area inside the canvas (objectFit: contain letterboxing)
+function videoContentRect(
+  canvasW: number,
+  canvasH: number,
+  videoW: number,
+  videoH: number,
+): { x: number; y: number; w: number; h: number } {
+  if (!videoW || !videoH) return { x: 0, y: 0, w: canvasW, h: canvasH };
+  const va = videoW / videoH;
+  const ca = canvasW / canvasH;
+  if (va > ca) {
+    const h = canvasW / va;
+    return { x: 0, y: (canvasH - h) / 2, w: canvasW, h };
+  } else {
+    const w = canvasH * va;
+    return { x: (canvasW - w) / 2, y: 0, w, h: canvasH };
+  }
+}
+
 export function drawPoseFrame(
   ctx: CanvasRenderingContext2D,
   frame: PoseFrame,
-  w: number,
-  h: number,
+  canvasW: number,
+  canvasH: number,
+  videoEl?: HTMLVideoElement | null,
 ): void {
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, canvasW, canvasH);
 
-  // Draw skeleton — connectors via DrawingUtils, dots drawn manually (small & solid)
+  // Resolve the actual video content rect (accounts for letterbox/pillarbox)
+  const rect = videoContentRect(
+    canvasW, canvasH,
+    videoEl?.videoWidth ?? 0, videoEl?.videoHeight ?? 0,
+  );
+
+  // Helper: landmark → canvas pixel
+  const px = (lm: NormalizedLandmark) => rect.x + lm.x * rect.w;
+  const py = (lm: NormalizedLandmark) => rect.y + lm.y * rect.h;
+
+  // Draw skeleton connectors
   const drawingUtils = new DrawingUtils(ctx);
-  drawingUtils.drawConnectors(frame.landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-    color: 'rgba(255,255,255,0.35)',
-    lineWidth: 1.5,
+  // Use DrawingUtils only for connectors — it uses normalized coords mapped to full canvas,
+  // so we need to draw connectors manually too for correct letterbox offset.
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineCap = 'round';
+  PoseLandmarker.POSE_CONNECTIONS.forEach(({ start, end }) => {
+    const a = frame.landmarks[start];
+    const b = frame.landmarks[end];
+    if (!a || !b) return;
+    if ((a.visibility ?? 0) < VISIBILITY_THRESHOLD || (b.visibility ?? 0) < VISIBILITY_THRESHOLD) return;
+    ctx.beginPath();
+    ctx.moveTo(px(a), py(a));
+    ctx.lineTo(px(b), py(b));
+    ctx.stroke();
   });
+  void drawingUtils; // imported but used only for POSE_CONNECTIONS reference above
 
-  // Small solid dots for each visible landmark
+  // Small solid dots (2px radius = visually sharp and small)
   ctx.globalAlpha = 1;
   frame.landmarks.forEach((lm) => {
     if ((lm.visibility ?? 0) < VISIBILITY_THRESHOLD) return;
     ctx.beginPath();
-    ctx.arc(lm.x * w, lm.y * h, 2.5, 0, Math.PI * 2);
+    ctx.arc(px(lm), py(lm), 2, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.fill();
   });
 
-  // Draw angle badges
-  drawBadge(ctx, frame.landmarks, frame.angles.elbowLeft,  LANDMARK_INDICES.LEFT_ELBOW,  w, h, BADGE_COLORS.elbow);
-  drawBadge(ctx, frame.landmarks, frame.angles.elbowRight, LANDMARK_INDICES.RIGHT_ELBOW, w, h, BADGE_COLORS.elbow);
-  drawBadge(ctx, frame.landmarks, frame.angles.kneeLeft,   LANDMARK_INDICES.LEFT_KNEE,   w, h, BADGE_COLORS.knee);
-  drawBadge(ctx, frame.landmarks, frame.angles.kneeRight,  LANDMARK_INDICES.RIGHT_KNEE,  w, h, BADGE_COLORS.knee);
-  drawBadge(ctx, frame.landmarks, frame.angles.hipLeft,    LANDMARK_INDICES.LEFT_HIP,    w, h, BADGE_COLORS.hip);
-  drawBadge(ctx, frame.landmarks, frame.angles.hipRight,   LANDMARK_INDICES.RIGHT_HIP,   w, h, BADGE_COLORS.hip);
+  // Angle badges
+  drawBadge(ctx, frame.landmarks, frame.angles.elbowLeft,  LANDMARK_INDICES.LEFT_ELBOW,  rect, BADGE_COLORS.elbow);
+  drawBadge(ctx, frame.landmarks, frame.angles.elbowRight, LANDMARK_INDICES.RIGHT_ELBOW, rect, BADGE_COLORS.elbow);
+  drawBadge(ctx, frame.landmarks, frame.angles.kneeLeft,   LANDMARK_INDICES.LEFT_KNEE,   rect, BADGE_COLORS.knee);
+  drawBadge(ctx, frame.landmarks, frame.angles.kneeRight,  LANDMARK_INDICES.RIGHT_KNEE,  rect, BADGE_COLORS.knee);
+  drawBadge(ctx, frame.landmarks, frame.angles.hipLeft,    LANDMARK_INDICES.LEFT_HIP,    rect, BADGE_COLORS.hip);
+  drawBadge(ctx, frame.landmarks, frame.angles.hipRight,   LANDMARK_INDICES.RIGHT_HIP,   rect, BADGE_COLORS.hip);
 }
 
 function drawBadge(
@@ -230,16 +272,15 @@ function drawBadge(
   landmarks: NormalizedLandmark[],
   angle: number | null,
   landmarkIdx: number,
-  w: number,
-  h: number,
+  rect: { x: number; y: number; w: number; h: number },
   color: string,
 ): void {
   if (angle === null) return;
   const lm = landmarks[landmarkIdx];
   if (!lm || (lm.visibility ?? 0) < VISIBILITY_THRESHOLD) return;
 
-  const x = lm.x * w;
-  const y = lm.y * h;
+  const x = rect.x + lm.x * rect.w;
+  const y = rect.y + lm.y * rect.h;
   const text = `${angle}°`;
 
   ctx.font = 'bold 11px sans-serif';

@@ -46,6 +46,9 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const [playbackRate, setPlaybackRate] = useState<0.5 | 1>(1);
   const [currentAngles, setCurrentAngles] = useState<JointAngles | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [zoom, setZoom] = useState(1);
+
+  const ZOOM_LEVELS = [1, 1.5, 2, 3];
 
   const videoRef   = useRef<HTMLVideoElement>(null);
   const canvasRef  = useRef<HTMLCanvasElement>(null);
@@ -98,7 +101,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
     const frame = detectFrame(v, v.currentTime * 1000);
     if (frame) {
-      drawPoseFrame(ctx, frame, c.width, c.height);
+      drawPoseFrame(ctx, frame, c.width, c.height, v);
       setCurrentAngles(frame.angles);
     }
     rafRef.current = requestAnimationFrame(renderLoop);
@@ -171,7 +174,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       if (!c || !ctx) return;
       const frame = detectFrame(v, v.currentTime * 1000);
       if (frame) {
-        drawPoseFrame(ctx, frame, c.width, c.height);
+        drawPoseFrame(ctx, frame, c.width, c.height, v);
         setCurrentAngles(frame.angles);
       }
     }
@@ -319,26 +322,28 @@ export default function BiomechanicsScreen({ onBack }: Props) {
         <div style={s.mobileBody}>
           {/* Video area */}
           <div style={s.videoWrapper}>
-            {videoUrl ? (
-              <>
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  style={s.video}
-                  playsInline
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onPlay={handlePlay}
-                  onPause={handlePause}
-                  onEnded={handleEnded}
-                  onSeeked={handleSeeked}
-                />
-                <canvas ref={canvasRef} style={s.canvas} />
-              </>
-            ) : (
-              <div style={s.emptyVideo}>
-                <p style={s.emptyText}>Nenhum vídeo selecionado</p>
-              </div>
-            )}
+            <div style={{ ...s.zoomInner, transform: `scale(${zoom})` }}>
+              {videoUrl ? (
+                <>
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    style={s.video}
+                    playsInline
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onPlay={handlePlay}
+                    onPause={handlePause}
+                    onEnded={handleEnded}
+                    onSeeked={handleSeeked}
+                  />
+                  <canvas ref={canvasRef} style={s.canvas} />
+                </>
+              ) : (
+                <div style={s.emptyVideo}>
+                  <p style={s.emptyText}>Nenhum vídeo selecionado</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Pick file button */}
@@ -352,14 +357,33 @@ export default function BiomechanicsScreen({ onBack }: Props) {
           {/* Controls */}
           {videoUrl && (
             <div style={s.controls}>
-              <button onClick={() => stepFrame(-1)} style={s.ctrlBtn} disabled={!isMobile && isPlaying}>◀</button>
+              <button onClick={() => stepFrame(-1)} style={s.ctrlBtn}>◀</button>
               <button onClick={togglePlay} style={s.ctrlBtnMain}>
                 {isPlaying ? '⏸' : '▶'}
               </button>
-              <button onClick={() => stepFrame(1)} style={s.ctrlBtn} disabled={!isMobile && isPlaying}>▶▶</button>
+              <button onClick={() => stepFrame(1)} style={s.ctrlBtn}>▶▶</button>
               <button onClick={toggleRate} style={s.rateBtn}>
                 {playbackRate === 1 ? '1x' : '0.5x'}
               </button>
+              <button
+                onClick={() => {
+                  const idx = ZOOM_LEVELS.indexOf(zoom);
+                  setZoom(ZOOM_LEVELS[Math.min(idx + 1, ZOOM_LEVELS.length - 1)]);
+                }}
+                style={s.zoomBtn}
+                disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+              >＋</button>
+              <button
+                onClick={() => {
+                  const idx = ZOOM_LEVELS.indexOf(zoom);
+                  setZoom(ZOOM_LEVELS[Math.max(idx - 1, 0)]);
+                }}
+                style={s.zoomBtn}
+                disabled={zoom === 1}
+              >－</button>
+              {zoom > 1 && (
+                <span style={s.zoomLabel}>{zoom}x</span>
+              )}
             </div>
           )}
 
@@ -374,18 +398,20 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             {/* Drag & drop zone or video */}
             {videoUrl ? (
               <div style={s.videoWrapper}>
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  style={s.video}
-                  playsInline
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onPlay={handlePlay}
-                  onPause={handlePause}
-                  onEnded={handleEnded}
-                  onSeeked={handleSeeked}
-                />
-                <canvas ref={canvasRef} style={s.canvas} />
+                <div style={{ ...s.zoomInner, transform: `scale(${zoom})` }}>
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    style={s.video}
+                    playsInline
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onPlay={handlePlay}
+                    onPause={handlePause}
+                    onEnded={handleEnded}
+                    onSeeked={handleSeeked}
+                  />
+                  <canvas ref={canvasRef} style={s.canvas} />
+                </div>
               </div>
             ) : (
               <div
@@ -410,21 +436,23 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             {/* Controls */}
             <div style={s.controls}>
               {videoUrl && (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{ ...s.ctrlBtn, fontSize: 12 }}
-                >
-                  📁
-                </button>
+                <button onClick={() => fileInputRef.current?.click()} style={{ ...s.ctrlBtn, fontSize: 12 }}>📁</button>
               )}
               <button onClick={() => stepFrame(-1)} style={s.ctrlBtn}>◀</button>
               <button onClick={togglePlay} style={s.ctrlBtnMain} disabled={!videoUrl}>
                 {isPlaying ? '⏸' : '▶'}
               </button>
               <button onClick={() => stepFrame(1)} style={s.ctrlBtn}>▶▶</button>
-              <button onClick={toggleRate} style={s.rateBtn}>
-                {playbackRate === 1 ? '1x' : '0.5x'}
-              </button>
+              <button onClick={toggleRate} style={s.rateBtn}>{playbackRate === 1 ? '1x' : '0.5x'}</button>
+              <button
+                onClick={() => { const i = ZOOM_LEVELS.indexOf(zoom); setZoom(ZOOM_LEVELS[Math.min(i + 1, ZOOM_LEVELS.length - 1)]); }}
+                style={s.zoomBtn} disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+              >＋</button>
+              <button
+                onClick={() => { const i = ZOOM_LEVELS.indexOf(zoom); setZoom(ZOOM_LEVELS[Math.max(i - 1, 0)]); }}
+                style={s.zoomBtn} disabled={zoom === 1}
+              >－</button>
+              {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
             </div>
           </div>
 
@@ -549,6 +577,15 @@ const s: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  zoomInner: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    transformOrigin: 'center center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   video: {
     width: '100%',
     height: '100%',
@@ -559,6 +596,8 @@ const s: Record<string, React.CSSProperties> = {
     position: 'absolute',
     top: 0,
     left: 0,
+    width: '100%',
+    height: '100%',
     pointerEvents: 'none',
   },
   emptyVideo: {
@@ -652,6 +691,25 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     cursor: 'pointer',
     minWidth: 52,
+  },
+  zoomBtn: {
+    padding: '10px 14px',
+    borderRadius: 10,
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 700,
+    cursor: 'pointer',
+    minWidth: 44,
+    lineHeight: 1,
+  },
+  zoomLabel: {
+    color: '#4fc3f7',
+    fontSize: 13,
+    fontWeight: 700,
+    minWidth: 28,
+    textAlign: 'center' as const,
   },
 
   // Angle panel
