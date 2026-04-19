@@ -1,10 +1,9 @@
 // =============================================================================
-// APP — Login Google (Drive) ou Perfil local (ADM)
+// APP — Login local (ADM + senha)
 // =============================================================================
 
 import React, { useState } from 'react';
-import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
-import { setAccessToken } from '@services/driveService';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { admLogin, admLogout, setCurrentUser } from '@services/localSaveService';
 import CameraScreen       from '@screens/CameraScreen';
 import HistoryScreen      from '@screens/HistoryScreen';
@@ -19,27 +18,30 @@ export type SaveMode = 'drive' | 'local';
 export type Screen = 'camera' | 'history' | 'biomechanics' | 'home' | 'comparison' | 'instagram';
 
 // ---------------------------------------------------------------------------
+// Ícone Instagram (SVG inline)
+// ---------------------------------------------------------------------------
+function InstaIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="2" width="20" height="20" rx="6" stroke="white" strokeWidth="2"/>
+      <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="2"/>
+      <circle cx="17.5" cy="6.5" r="1.2" fill="white"/>
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Tela de Login
 // ---------------------------------------------------------------------------
 function LoginScreen({
   onLogin,
-  onGoAnalysis,
 }: {
   onLogin: (mode: SaveMode, username?: string) => void;
-  onGoAnalysis: () => void;
 }) {
-  const [showAdm, setShowAdm] = useState(false);
-  const [user,    setUser]    = useState('');
-  const [pass,    setPass]    = useState('');
-  const [info,    setInfo]    = useState('');
-  const [error,   setError]   = useState('');
-
-  const loginGoogle = useGoogleLogin({
-    flow: 'implicit',
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    onSuccess: (res) => { setAccessToken(res.access_token); onLogin('drive'); },
-    onError:   () => setError('Falha no login Google.'),
-  });
+  const [user,  setUser]  = useState('');
+  const [pass,  setPass]  = useState('');
+  const [info,  setInfo]  = useState('');
+  const [error, setError] = useState('');
 
   const handleAdmLogin = () => {
     setError(''); setInfo('');
@@ -63,66 +65,44 @@ function LoginScreen({
       <div style={s.bgOverlay} />
       <div style={s.bgSides} />
 
+      {/* Instagram — canto superior direito */}
+      <a
+        href="https://www.instagram.com/jogartenisto/"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={s.instaCorner}
+        title="@jogartenisto"
+      >
+        <InstaIcon />
+      </a>
+
       <div style={s.card}>
         <h1 style={s.title}>Tenis Coach com Carlos</h1>
-        <p style={s.sub}>Escolha como entrar</p>
+        <p style={s.sub}>Entre com seu perfil</p>
 
-        <a
-          href="https://www.instagram.com/jogartenisto/"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={s.instaBtn}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="2" width="20" height="20" rx="6" stroke="white" strokeWidth="2"/>
-            <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="2"/>
-            <circle cx="17.5" cy="6.5" r="1.2" fill="white"/>
-          </svg>
-          @jogartenisto
-        </a>
-
-        <button onClick={() => onGoAnalysis()} style={s.bioBtn}>
-          🦴 Análise Biomecânica
-          <span style={s.badge}>sem login</span>
-        </button>
-
-        <button onClick={() => loginGoogle()} style={s.googleBtn}>
-          <span>🔵</span> Entrar com Google
-          <span style={s.badge}>salva no Drive</span>
-        </button>
-
-        <div style={s.divider}><span>ou</span></div>
-
-        {!showAdm ? (
-          <button onClick={() => setShowAdm(true)} style={s.admToggle}>
-            Entrar com perfil local
+        <div style={s.admForm}>
+          <input
+            style={s.input}
+            placeholder="Nome (ex: Carlos)"
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+          <input
+            style={s.input}
+            placeholder="Senha"
+            type="password"
+            value={pass}
+            onChange={(e) => setPass(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdmLogin()}
+          />
+          {error && <p style={s.error}>{error}</p>}
+          {info  && <p style={s.infoMsg}>{info}</p>}
+          <button onClick={handleAdmLogin} style={s.admBtn}>
+            Entrar
           </button>
-        ) : (
-          <div style={s.admForm}>
-            <p style={s.admTitle}>Perfil local — salva no celular</p>
-            <input
-              style={s.input}
-              placeholder="Nome (ex: Carlos)"
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              autoCapitalize="none"
-              autoCorrect="off"
-            />
-            <input
-              style={s.input}
-              placeholder="Senha"
-              type="password"
-              value={pass}
-              onChange={(e) => setPass(e.target.value)}
-            />
-            {error && <p style={s.error}>{error}</p>}
-            {info  && <p style={s.infoMsg}>{info}</p>}
-            <button onClick={handleAdmLogin} style={s.admBtn}>
-              Entrar / Criar perfil
-              <span style={s.badge}>salva no celular</span>
-            </button>
-          </div>
-        )}
+        </div>
 
         <p style={s.hint}>
           Primeira vez? Digite seu nome e crie uma senha.{'\n'}
@@ -137,9 +117,9 @@ function LoginScreen({
 // App principal
 // ---------------------------------------------------------------------------
 function App() {
-  const [saveMode,  setSaveMode]  = useState<SaveMode | null>(null);
-  const [username,  setUsername]  = useState<string>('');
-  const [screen,    setScreen]    = useState<Screen>('home');
+  const [saveMode, setSaveMode] = useState<SaveMode | null>(null);
+  const [username, setUsername] = useState<string>('');
+  const [screen,   setScreen]   = useState<Screen>('home');
 
   const handleLogin = (mode: SaveMode, user?: string) => {
     if (user) { setCurrentUser(user); setUsername(user); }
@@ -154,18 +134,8 @@ function App() {
     setScreen('home');
   };
 
-  // Biomechanics is accessible without login
-  if (screen === 'biomechanics') {
-    return <BiomechanicsScreen onBack={() => setScreen(saveMode ? 'home' : 'home')} />;
-  }
-
   if (!saveMode) {
-    return (
-      <LoginScreen
-        onLogin={handleLogin}
-        onGoAnalysis={() => setScreen('biomechanics')}
-      />
-    );
+    return <LoginScreen onLogin={handleLogin} />;
   }
 
   switch (screen) {
@@ -194,6 +164,8 @@ function App() {
           onBack={() => setScreen('home')}
         />
       );
+    case 'biomechanics':
+      return <BiomechanicsScreen onBack={() => setScreen('home')} />;
     case 'comparison':
       return <ComparisonScreen onBack={() => setScreen('home')} />;
     case 'instagram':
@@ -241,6 +213,15 @@ const s: Record<string, React.CSSProperties> = {
     position: 'fixed', inset: 0,
     background: 'radial-gradient(ellipse at 0% 65%, rgba(0,0,0,0.3) 0%, transparent 50%), radial-gradient(ellipse at 100% 65%, rgba(0,0,0,0.3) 0%, transparent 50%)',
   },
+  // Instagram — ícone pequeno fixo no canto superior direito
+  instaCorner: {
+    position: 'fixed', top: 16, right: 16, zIndex: 50,
+    width: 44, height: 44, borderRadius: 14,
+    background: 'linear-gradient(135deg, #405de6 0%, #833ab4 30%, #c13584 55%, #e1306c 75%, #fd1d1d 88%, #f56040 100%)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 2px 12px rgba(193,53,132,0.5)',
+    textDecoration: 'none',
+  },
   card: {
     position: 'relative', zIndex: 10,
     display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -251,61 +232,24 @@ const s: Record<string, React.CSSProperties> = {
     textAlign: 'center', lineHeight: 1.2,
     textShadow: '0 2px 12px rgba(0,0,0,0.9)',
   },
-  sub:      { color: '#cce0ff', fontSize: 14, margin: 0, textShadow: '0 1px 6px rgba(0,0,0,0.8)' },
-  bioBtn: {
-    width: '100%', padding: '15px 20px', borderRadius: 14,
-    background: 'rgba(0,20,30,0.7)', border: '2px solid #4fc3f7', color: '#4fc3f7',
-    fontSize: 15, fontWeight: 700, cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-    boxShadow: '0 4px 20px rgba(79,195,247,0.2)',
+  sub: { color: '#cce0ff', fontSize: 14, margin: 0, textShadow: '0 1px 6px rgba(0,0,0,0.8)' },
+  admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 12 },
+  input: {
+    width: '100%', padding: '14px 16px', borderRadius: 12,
+    background: 'rgba(0,0,20,0.65)', border: '1px solid rgba(255,255,255,0.2)',
+    color: '#fff', fontSize: 15, boxSizing: 'border-box',
     backdropFilter: 'blur(6px)',
   },
-  googleBtn: {
-    width: '100%', padding: '15px 20px', borderRadius: 14,
-    background: '#1a73e8', border: 'none', color: '#fff',
-    fontSize: 15, fontWeight: 700, cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-  },
-  divider: {
-    width: '100%', textAlign: 'center', color: 'rgba(180,210,255,0.5)',
-    fontSize: 12, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 14,
-  },
-  admToggle: {
-    width: '100%', padding: '15px 20px', borderRadius: 14,
-    border: '1.5px solid rgba(255,255,255,0.25)', color: '#cce0ff',
-    fontSize: 14, fontWeight: 600, cursor: 'pointer',
-    background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)',
-  },
-  admForm:  { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
-  admTitle: { color: '#cce0ff', fontSize: 13, textAlign: 'center', margin: 0 },
-  input: {
-    width: '100%', padding: '12px 14px', borderRadius: 10,
-    background: 'rgba(0,0,20,0.6)', border: '1px solid rgba(255,255,255,0.2)',
-    color: '#fff', fontSize: 15, boxSizing: 'border-box',
-    backdropFilter: 'blur(4px)',
-  },
   admBtn: {
-    width: '100%', padding: '15px 20px', borderRadius: 14,
+    width: '100%', padding: '16px 20px', borderRadius: 14,
     background: '#2e7d32', border: 'none', color: '#fff',
-    fontSize: 15, fontWeight: 700, cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+    fontSize: 16, fontWeight: 700, cursor: 'pointer',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
   },
-  badge:   { background: 'rgba(255,255,255,0.2)', padding: '3px 9px', borderRadius: 20, fontSize: 10, letterSpacing: 0.5 },
   error:   { color: '#ff6666', fontSize: 13, margin: 0, textAlign: 'center' },
   infoMsg: { color: '#44ff88', fontSize: 13, margin: 0, textAlign: 'center' },
   hint: {
     color: 'rgba(160,200,255,0.65)', fontSize: 11, textAlign: 'center',
     lineHeight: 1.6, whiteSpace: 'pre-line', marginTop: 4,
-  },
-  instaBtn: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-    width: '100%', padding: '13px 20px', borderRadius: 14,
-    background: 'linear-gradient(135deg, #405de6 0%, #833ab4 30%, #c13584 55%, #e1306c 75%, #fd1d1d 88%, #f56040 100%)',
-    border: 'none', color: '#fff', fontSize: 14, fontWeight: 700,
-    cursor: 'pointer', textDecoration: 'none',
-    boxShadow: '0 4px 20px rgba(193,53,132,0.45)',
-    letterSpacing: 0.3,
   },
 };
