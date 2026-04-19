@@ -40,6 +40,33 @@ function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
 }
 
+// Draw a video frame into a rectangle, maintaining aspect ratio (letterbox/pillarbox)
+function drawVideoToRect(
+  ctx: CanvasRenderingContext2D,
+  video: HTMLVideoElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x, y, w, h);
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (!vw || !vh) return;
+  const va = vw / vh;
+  const ca = w / h;
+  let dx = x, dy = y, dw = w, dh = h;
+  if (va > ca) {
+    dh = w / va;
+    dy = y + (h - dh) / 2;
+  } else {
+    dw = h * va;
+    dx = x + (w - dw) / 2;
+  }
+  ctx.drawImage(video, dx, dy, dw, dh);
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -67,7 +94,8 @@ export default function ComparisonScreen({ onBack }: Props) {
   const [drawColor, setDrawColor] = useState<DrawColor>('#ff4444');
   const [paths, setPaths] = useState<DrawPath[]>([]);
   const [currentPath, setCurrentPath] = useState<DrawPath | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);       // draw tools overlay
+  const displayCanvasRef = useRef<HTMLCanvasElement>(null); // video display
   const compareAreaRef = useRef<HTMLDivElement>(null);
 
   const [isNarrating, setIsNarrating] = useState(false);
@@ -136,19 +164,57 @@ export default function ComparisonScreen({ onBack }: Props) {
     Promise.all([va.play(), vb.play()]).catch(() => {});
     setIsPlaying(true);
 
-    // RAF loop — uses playback-rate nudge instead of seeking (no pause side-effect on iOS)
+    // RAF loop — draws both videos to canvas so iOS "two simultaneous videos" restriction is bypassed.
+    // We never check .paused here because it would fire before the async play() resolves, stopping
+    // both videos on the very first frame. Instead we only check the end condition.
     const tick = () => {
-      if (va.paused || vb.paused) {
-        // If one stopped unexpectedly, stop both
+      // Draw both videos into the display canvas
+      const dc = displayCanvasRef.current;
+      if (dc) {
+        const ctx = dc.getContext('2d');
+        if (ctx) {
+          const w = dc.width;
+          const h = dc.height;
+          const halfH = Math.floor(h / 2);
+
+          // Black fill + video A in top half
+          if (va.readyState >= 2) drawVideoToRect(ctx, va, 0, 0, w, halfH);
+          else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, halfH); }
+
+          // Video B in bottom half
+          if (vb.readyState >= 2) drawVideoToRect(ctx, vb, 0, halfH, w, h - halfH);
+          else { ctx.fillStyle = '#000'; ctx.fillRect(0, halfH, w, h - halfH); }
+
+          // Separator line
+          ctx.fillStyle = 'rgba(255,255,255,0.3)';
+          ctx.fillRect(0, halfH - 1, w, 2);
+
+          // Label A
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.beginPath();
+          ctx.roundRect(8, 8, 88, 22, 11);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillText('A — Aluno', 14, 23);
+
+          // Label B
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.beginPath();
+          ctx.roundRect(8, halfH + 8, 108, 22, 11);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.fillText('B — Referência', 14, halfH + 23);
+        }
+      }
+
+      // End condition — use ended flag or time check
+      if (va.ended || vb.ended || va.currentTime >= endA || vb.currentTime >= endB) {
         va.pause(); vb.pause();
         setIsPlaying(false);
         return;
       }
-      if (va.currentTime >= endA || vb.currentTime >= endB) {
-        va.pause(); vb.pause();
-        setIsPlaying(false);
-        return;
-      }
+
       // Drift correction: adjust vb playback rate only, never seek
       const elapsed   = va.currentTime - startA;
       const bExpected = startB + elapsed;
@@ -262,13 +328,25 @@ export default function ComparisonScreen({ onBack }: Props) {
     redrawCanvas(paths, null);
   }, [paths, redrawCanvas]);
 
+  const resizeDisplayCanvas = useCallback(() => {
+    const canvas = displayCanvasRef.current;
+    const area = compareAreaRef.current;
+    if (!canvas || !area) return;
+    canvas.width = area.clientWidth;
+    canvas.height = area.clientHeight;
+  }, []);
+
   useEffect(() => {
     if (phase === 'compare') {
-      setTimeout(resizeCanvas, 100);
+      setTimeout(() => { resizeCanvas(); resizeDisplayCanvas(); }, 100);
       window.addEventListener('resize', resizeCanvas);
-      return () => window.removeEventListener('resize', resizeCanvas);
+      window.addEventListener('resize', resizeDisplayCanvas);
+      return () => {
+        window.removeEventListener('resize', resizeCanvas);
+        window.removeEventListener('resize', resizeDisplayCanvas);
+      };
     }
-  }, [phase, resizeCanvas]);
+  }, [phase, resizeCanvas, resizeDisplayCanvas]);
 
   const getCanvasPoint = (e: React.MouseEvent | React.TouchEvent): { x: number; y: number } => {
     const canvas = canvasRef.current;
@@ -458,18 +536,14 @@ export default function ComparisonScreen({ onBack }: Props) {
 
       {/* Video area */}
       <div ref={compareAreaRef} style={s.compareArea}>
-        {/* Video A */}
-        <div style={s.videoWrapper}>
-          <video ref={videoARef} src={slotA.url!} style={s.video} playsInline />
-          <div style={s.videoLabel}>A — Aluno</div>
-        </div>
-        {/* Video B */}
-        <div style={s.videoWrapper}>
-          <video ref={videoBRef} src={slotB.url!} style={s.video} playsInline />
-          <div style={s.videoLabel}>B — Referência</div>
-        </div>
+        {/* Hidden video sources — canvas draws their frames, bypassing iOS two-video restriction */}
+        <video ref={videoARef} src={slotA.url!} style={s.hiddenVideo} playsInline />
+        <video ref={videoBRef} src={slotB.url!} style={s.hiddenVideo} playsInline />
 
-        {/* Draw canvas */}
+        {/* Display canvas — renders both videos in RAF loop */}
+        <canvas ref={displayCanvasRef} style={s.displayCanvas} />
+
+        {/* Draw tools overlay canvas */}
         <canvas
           ref={canvasRef}
           style={{
@@ -766,33 +840,22 @@ const s: Record<string, React.CSSProperties> = {
   compareArea: {
     flex: 1,
     position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
     overflow: 'hidden',
   },
-  videoWrapper: {
-    flex: 1,
-    position: 'relative',
-    overflow: 'hidden',
-    display: 'flex',
+  hiddenVideo: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+    pointerEvents: 'none',
   },
-  video: {
+  displayCanvas: {
+    position: 'absolute',
+    inset: 0,
     width: '100%',
     height: '100%',
-    objectFit: 'contain',
     background: '#000',
-  },
-  videoLabel: {
-    position: 'absolute',
-    top: 8,
-    left: 10,
-    background: 'rgba(0,0,0,0.6)',
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 700,
-    padding: '3px 10px',
-    borderRadius: 12,
-    backdropFilter: 'blur(4px)',
+    zIndex: 1,
   },
   drawCanvas: {
     position: 'absolute',
