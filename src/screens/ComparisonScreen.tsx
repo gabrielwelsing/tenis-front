@@ -96,11 +96,9 @@ export default function ComparisonScreen({ onBack }: Props) {
   // Trim phase — mark start/end on each video
   // ---------------------------------------------------------------------------
 
-  const markTime = (slot: 'A' | 'B', type: 'start' | 'end') => {
-    const ref = slot === 'A' ? videoARef : videoBRef;
-    const t = ref.current?.currentTime ?? 0;
+  const setSlotTime = (slot: 'A' | 'B', type: 'startTime' | 'endTime', t: number) => {
     const setter = slot === 'A' ? setSlotA : setSlotB;
-    setter(prev => ({ ...prev, [type === 'start' ? 'startTime' : 'endTime']: t }));
+    setter(prev => ({ ...prev, [type]: t }));
   };
 
   // ---------------------------------------------------------------------------
@@ -394,8 +392,8 @@ export default function ComparisonScreen({ onBack }: Props) {
             url={slotA.url!}
             startTime={slotA.startTime}
             endTime={slotA.endTime}
-            onMarkStart={() => markTime('A', 'start')}
-            onMarkEnd={() => markTime('A', 'end')}
+            onSetStart={(t) => setSlotTime('A', 'startTime', t)}
+            onSetEnd={(t) => setSlotTime('A', 'endTime', t)}
           />
           <TrimSlot
             label="B — Referência"
@@ -403,8 +401,8 @@ export default function ComparisonScreen({ onBack }: Props) {
             url={slotB.url!}
             startTime={slotB.startTime}
             endTime={slotB.endTime}
-            onMarkStart={() => markTime('B', 'start')}
-            onMarkEnd={() => markTime('B', 'end')}
+            onSetStart={(t) => setSlotTime('B', 'startTime', t)}
+            onSetEnd={(t) => setSlotTime('B', 'endTime', t)}
           />
         </div>
 
@@ -565,32 +563,79 @@ function TrimSlot({
   url,
   startTime,
   endTime,
-  onMarkStart,
-  onMarkEnd,
+  onSetStart,
+  onSetEnd,
 }: {
   label: string;
   videoRef: React.RefObject<HTMLVideoElement>;
   url: string;
   startTime: number | null;
   endTime: number | null;
-  onMarkStart: () => void;
-  onMarkEnd: () => void;
+  onSetStart: (t: number) => void;
+  onSetEnd: (t: number) => void;
 }) {
-  const duration = startTime !== null && endTime !== null ? endTime - startTime : null;
+  const [duration, setDuration] = React.useState(0);
+
+  const handleLoaded = () => {
+    const d = videoRef.current?.duration ?? 0;
+    if (!d || isNaN(d)) return;
+    setDuration(d);
+    if (startTime === null) onSetStart(0);
+    if (endTime === null) onSetEnd(d);
+  };
+
+  const start = startTime ?? 0;
+  const end = endTime ?? duration;
+  const clip = end - start;
+
   return (
     <div style={sp.trimBox}>
       <p style={sp.slotLabel}>{label}</p>
-      <video ref={videoRef} src={url} style={sp.trimVideo} controls playsInline />
-      <div style={sp.markRow}>
-        <button style={sp.markBtn} onClick={onMarkStart}>Marcar Início</button>
-        <button style={sp.markBtn} onClick={onMarkEnd}>Marcar Fim</button>
-      </div>
-      <p style={sp.timeInfo}>
-        {startTime !== null ? `Início: ${fmtTime(startTime)}` : 'Início: —'}
-        {' → '}
-        {endTime !== null ? `Fim: ${fmtTime(endTime)}` : 'Fim: —'}
-        {duration !== null && duration > 0 ? ` (${duration.toFixed(1)}s)` : ''}
-      </p>
+      <video
+        ref={videoRef}
+        src={url}
+        style={sp.trimVideo}
+        controls
+        playsInline
+        onLoadedMetadata={handleLoaded}
+        onLoadedData={handleLoaded}
+      />
+
+      {duration > 0 && (
+        <>
+          <p style={sp.trimLabel}>Início: {fmtTime(start)}</p>
+          <input
+            type="range"
+            min={0}
+            max={duration}
+            step={0.1}
+            value={start}
+            style={sp.slider}
+            onChange={e => {
+              const t = Math.min(Number(e.target.value), end - 0.5);
+              onSetStart(t);
+              if (videoRef.current) videoRef.current.currentTime = t;
+            }}
+          />
+          <p style={sp.trimLabel}>Fim: {fmtTime(end)}</p>
+          <input
+            type="range"
+            min={0}
+            max={duration}
+            step={0.1}
+            value={end}
+            style={sp.slider}
+            onChange={e => {
+              const t = Math.max(Number(e.target.value), start + 0.5);
+              onSetEnd(t);
+              if (videoRef.current) videoRef.current.currentTime = t;
+            }}
+          />
+          <p style={sp.timeInfo}>
+            {fmtTime(start)} → {fmtTime(end)}{clip > 0 ? ` (${clip.toFixed(1)}s)` : ''}
+          </p>
+        </>
+      )}
     </div>
   );
 }
@@ -856,20 +901,16 @@ const sp: Record<string, React.CSSProperties> = {
     background: '#000',
     objectFit: 'contain',
   },
-  markRow: {
-    display: 'flex',
-    gap: 10,
+  trimLabel: {
+    color: '#cce0ff',
+    fontSize: 13,
+    margin: 0,
+    fontWeight: 600,
   },
-  markBtn: {
-    flex: 1,
-    padding: '12px 0',
-    borderRadius: 10,
-    background: 'rgba(21,101,192,0.6)',
-    border: '1px solid #1565c0',
-    color: '#fff',
-    fontSize: 14,
-    cursor: 'pointer',
-    minHeight: 44,
+  slider: {
+    width: '100%',
+    accentColor: '#1565c0',
+    height: 32,
   },
   timeInfo: {
     color: '#b3e5fc',

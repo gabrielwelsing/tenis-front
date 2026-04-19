@@ -199,15 +199,21 @@ export function drawPoseFrame(
 ): void {
   ctx.clearRect(0, 0, w, h);
 
-  // Draw skeleton using DrawingUtils
+  // Draw skeleton — connectors via DrawingUtils, dots drawn manually (small & solid)
   const drawingUtils = new DrawingUtils(ctx);
-  drawingUtils.drawLandmarks(frame.landmarks, {
-    color: 'rgba(255,255,255,0.6)',
-    radius: 3,
-  });
   drawingUtils.drawConnectors(frame.landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-    color: 'rgba(255,255,255,0.3)',
+    color: 'rgba(255,255,255,0.35)',
     lineWidth: 1.5,
+  });
+
+  // Small solid dots for each visible landmark
+  ctx.globalAlpha = 1;
+  frame.landmarks.forEach((lm) => {
+    if ((lm.visibility ?? 0) < VISIBILITY_THRESHOLD) return;
+    ctx.beginPath();
+    ctx.arc(lm.x * w, lm.y * h, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fill();
   });
 
   // Draw angle badges

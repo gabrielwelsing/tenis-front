@@ -3,8 +3,6 @@
 // =============================================================================
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,7 +58,7 @@ export default function InstagramScreen({ onBack }: Props) {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const ffmpegRef = useRef<FFmpeg | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   // Drag state
   const dragStartRef = useRef<{ px: number; py: number; bx: number; by: number } | null>(null);
@@ -177,98 +175,126 @@ export default function InstagramScreen({ onBack }: Props) {
   // FFmpeg processing
   // ---------------------------------------------------------------------------
 
+  // Compute intrinsic crop coords from the overlay box position
+  const computeCrop = () => {
+    const container = videoContainerRef.current;
+    const v = videoRef.current;
+    if (!container || !v) return null;
+
+    const dispW = container.clientWidth;
+    const dispH = container.clientHeight;
+    const intrW = v.videoWidth || dispW;
+    const intrH = v.videoHeight || dispH;
+
+    // letterbox/pillarbox offsets (objectFit: contain)
+    const vidAspect = intrW / intrH;
+    const conAspect = dispW / dispH;
+    let vidDispW: number, vidDispH: number, vidOffX: number, vidOffY: number;
+    if (vidAspect > conAspect) {
+      vidDispW = dispW; vidDispH = dispW / vidAspect;
+      vidOffX = 0; vidOffY = (dispH - vidDispH) / 2;
+    } else {
+      vidDispH = dispH; vidDispW = dispH * vidAspect;
+      vidOffX = (dispW - vidDispW) / 2; vidOffY = 0;
+    }
+
+    const boxW = Math.min(dispH * (9 / 16), dispW);
+    const boxH = boxW * (16 / 9);
+    const boxLeft = clamp(cropBox.x * dispW - boxW / 2, 0, dispW - boxW);
+    const boxTop  = clamp(cropBox.y * dispH - boxH / 2, 0, dispH - boxH);
+
+    const scaleX = intrW / vidDispW;
+    const scaleY = intrH / vidDispH;
+
+    const cropX = Math.max(0, Math.round((boxLeft - vidOffX) * scaleX));
+    const cropY = Math.max(0, Math.round((boxTop  - vidOffY) * scaleY));
+    const cropW = Math.min(Math.round(boxW * scaleX), intrW - cropX);
+    const cropH = Math.min(Math.round(boxH * scaleY), intrH - cropY);
+
+    return { cropX, cropY, cropW, cropH, intrW, intrH };
+  };
+
   const handleProcess = async () => {
-    if (!videoFile || tooLong) return;
+    if (tooLong || trimDuration < 1) return;
     setPhase('processing');
     setProgress(0);
-    setProgressMsg('Carregando FFmpeg...');
+    setProgressMsg('Preparando...');
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
     try {
-      let ffmpeg = ffmpegRef.current;
-      if (!ffmpeg) {
-        ffmpeg = new FFmpeg();
-        ffmpegRef.current = ffmpeg;
-      }
+      const v = videoRef.current!;
+      const crop = computeCrop();
+      if (!crop) throw new Error('Sem dados de vídeo');
+      const { cropX, cropY, cropW, cropH } = crop;
 
-      if (!ffmpeg.loaded) {
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-        await ffmpeg.load({
-          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-        });
-      }
+      // Output canvas — 720×1280 (good quality, manageable on mobile)
+      const OUT_W = 720, OUT_H = 1280;
+      const canvas = document.createElement('canvas');
+      canvas.width = OUT_W; canvas.height = OUT_H;
+      const ctx = canvas.getContext('2d')!;
 
-      ffmpeg.on('progress', ({ progress: p }) => {
-        setProgress(Math.round(p * 100));
-        setProgressMsg(`Processando... ${Math.round(p * 100)}%`);
-      });
+      // Pick best supported MIME type
+      const mimeType = (
+        ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+          .find(m => MediaRecorder.isTypeSupported(m))
+      ) ?? 'video/webm';
 
-      ffmpeg.on('log', ({ message }) => {
-        if (message.includes('frame=') || message.includes('time=')) {
-          setProgressMsg(`Convertendo...`);
-        }
-      });
-
-      setProgressMsg('Lendo arquivo...');
-      const inputData = await fetchFile(videoFile);
-      await ffmpeg.writeFile('input.mp4', inputData);
-
-      // Compute FFmpeg crop values from normalized crop box
-      const container = videoContainerRef.current;
-      const v = videoRef.current;
-      let cropX = 0, cropY = 0, cropW = 0, cropH = 0;
-
-      if (container && v) {
-        const dispW = container.clientWidth;
-        const dispH = container.clientHeight;
-        const intrinsicW = v.videoWidth || dispW;
-        const intrinsicH = v.videoHeight || dispH;
-        const scaleX = intrinsicW / dispW;
-        const scaleY = intrinsicH / dispH;
-
-        const boxW_px = Math.min(dispH * (9 / 16), dispW);
-        const boxH_px = boxW_px * (16 / 9);
-        const boxLeft = clamp(cropBox.x * dispW - boxW_px / 2, 0, dispW - boxW_px);
-        const boxTop = clamp(cropBox.y * dispH - boxH_px / 2, 0, dispH - boxH_px);
-
-        cropX = Math.round(boxLeft * scaleX);
-        cropY = Math.round(boxTop * scaleY);
-        cropW = Math.round(boxW_px * scaleX);
-        cropH = Math.round(boxH_px * scaleY);
-        // Clamp to intrinsic
-        cropW = Math.min(cropW, intrinsicW - cropX);
-        cropH = Math.min(cropH, intrinsicH - cropY);
-      } else {
-        cropW = 1080; cropH = 1920; cropX = 0; cropY = 0;
-      }
+      const canvasStream = canvas.captureStream(30);
+      const mr = new MediaRecorder(canvasStream, { mimeType });
+      const chunks: BlobPart[] = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
 
       const duration = trimEnd - trimStart;
 
-      setProgressMsg('Processando vídeo...');
-      await ffmpeg.exec([
-        '-ss', String(trimStart.toFixed(3)),
-        '-i', 'input.mp4',
-        '-t', String(duration.toFixed(3)),
-        '-vf', `crop=${cropW}:${cropH}:${cropX}:${cropY},scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2`,
-        '-c:v', 'libx264',
-        '-preset', 'fast',
-        '-crf', '23',
-        '-c:a', 'aac',
-        'output.mp4',
-      ]);
+      // Seek to start
+      await new Promise<void>((res) => {
+        v.currentTime = trimStart;
+        v.onseeked = () => res();
+      });
 
-      setProgressMsg('Finalizando...');
-      const outputData = await ffmpeg.readFile('output.mp4');
-      const rawData = outputData as Uint8Array;
-      const copyBuf = new ArrayBuffer(rawData.byteLength);
-      new Uint8Array(copyBuf).set(rawData);
-      const blob = new Blob([copyBuf], { type: 'video/mp4' });
-      const url = URL.createObjectURL(blob);
-      setOutputUrl(url);
+      await new Promise<void>((resolve, reject) => {
+        mr.onstop = () => {
+          const blob = new Blob(chunks, { type: mimeType });
+          setOutputUrl(URL.createObjectURL(blob));
+          resolve();
+        };
+        mr.onerror = () => reject(new Error('MediaRecorder falhou'));
+
+        // Draw first frame before starting recorder
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, OUT_W, OUT_H);
+        ctx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, OUT_W, OUT_H);
+        mr.start(200);
+
+        v.playbackRate = 1;
+        v.play().catch(reject);
+
+        const tick = () => {
+          if (v.paused || v.ended || v.currentTime >= trimEnd) {
+            v.pause();
+            ctx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, OUT_W, OUT_H);
+            if (mr.state === 'recording') mr.stop();
+            return;
+          }
+          const elapsed = v.currentTime - trimStart;
+          const pct = Math.round(clamp(elapsed / duration, 0, 1) * 100);
+          setProgress(pct);
+          setProgressMsg(`Processando... ${pct}%`);
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, OUT_W, OUT_H);
+          ctx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, OUT_W, OUT_H);
+          rafRef.current = requestAnimationFrame(tick);
+        };
+
+        rafRef.current = requestAnimationFrame(tick);
+      });
+
       setPhase('done');
     } catch (err) {
-      console.error('[FFmpeg]', err);
-      alert('Erro ao processar vídeo. Tente um arquivo menor.');
+      console.error('[Processing]', err);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      alert('Erro ao processar vídeo. Verifique se o formato é suportado pelo seu navegador.');
       setPhase('trim');
     }
   };
