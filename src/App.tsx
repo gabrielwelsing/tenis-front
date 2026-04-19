@@ -67,6 +67,20 @@ function LoginScreen({
         <h1 style={s.title}>Tenis Coach com Carlos</h1>
         <p style={s.sub}>Escolha como entrar</p>
 
+        <a
+          href="https://www.instagram.com/jogartenisto/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={s.instaBtn}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="20" height="20" rx="6" stroke="white" strokeWidth="2"/>
+            <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="2"/>
+            <circle cx="17.5" cy="6.5" r="1.2" fill="white"/>
+          </svg>
+          @jogartenisto
+        </a>
+
         <button onClick={() => onGoAnalysis()} style={s.bioBtn}>
           🦴 Análise Biomecânica
           <span style={s.badge}>sem login</span>
@@ -214,8 +228,8 @@ const s: Record<string, React.CSSProperties> = {
   },
   bgImage: {
     position: 'fixed', inset: 0,
-    backgroundImage: 'url(/court-bg.png)',
-    backgroundPosition: 'top center',
+    backgroundImage: 'url(/carlao-atual.jpg)',
+    backgroundPosition: 'center center',
     backgroundSize: 'cover',
     backgroundRepeat: 'no-repeat',
   },
@@ -284,5 +298,14 @@ const s: Record<string, React.CSSProperties> = {
   hint: {
     color: 'rgba(160,200,255,0.65)', fontSize: 11, textAlign: 'center',
     lineHeight: 1.6, whiteSpace: 'pre-line', marginTop: 4,
+  },
+  instaBtn: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    width: '100%', padding: '13px 20px', borderRadius: 14,
+    background: 'linear-gradient(135deg, #405de6 0%, #833ab4 30%, #c13584 55%, #e1306c 75%, #fd1d1d 88%, #f56040 100%)',
+    border: 'none', color: '#fff', fontSize: 14, fontWeight: 700,
+    cursor: 'pointer', textDecoration: 'none',
+    boxShadow: '0 4px 20px rgba(193,53,132,0.45)',
+    letterSpacing: 0.3,
   },
 };

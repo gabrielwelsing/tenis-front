@@ -100,6 +100,26 @@ export default function HomeScreen({ saveMode, username, onLogout, onNavigate }:
           <span style={s.footerText}>
             {saveMode === 'drive' ? '☁️ Salvando no Google Drive' : '📱 Salvando no celular'}
           </span>
+          <a
+            href="https://www.instagram.com/jogartenisto/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={s.instaLink}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="2" width="20" height="20" rx="6" stroke="url(#ig)" strokeWidth="2"/>
+              <circle cx="12" cy="12" r="4.5" stroke="url(#ig)" strokeWidth="2"/>
+              <circle cx="17.5" cy="6.5" r="1.2" fill="url(#ig)"/>
+              <defs>
+                <linearGradient id="ig" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#f56040"/>
+                  <stop offset="0.5" stopColor="#c13584"/>
+                  <stop offset="1" stopColor="#405de6"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            @jogartenisto
+          </a>
         </div>
       </div>
     </div>
@@ -118,8 +138,8 @@ const s: Record<string, React.CSSProperties> = {
   bgImage: {
     position: 'fixed',
     inset: 0,
-    backgroundImage: 'url(/court-bg.png)',
-    backgroundPosition: 'top center',
+    backgroundImage: 'url(/carlao-atual.jpg)',
+    backgroundPosition: 'center center',
     backgroundSize: 'cover',
     backgroundRepeat: 'no-repeat',
     opacity: 0.18,
@@ -250,11 +270,23 @@ const s: Record<string, React.CSSProperties> = {
   badgePink:   { background: 'rgba(0,0,0,0.25)', color: '#f8bbd0' },
   footer: {
     display: 'flex',
-    justifyContent: 'center',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 10,
     paddingTop: 8,
   },
   footerText: {
     color: 'rgba(255,255,255,0.35)',
     fontSize: 12,
+  },
+  instaLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 12,
+    textDecoration: 'none',
+    fontWeight: 600,
+    letterSpacing: 0.3,
   },
 };
