@@ -584,7 +584,7 @@ export default function InstagramScreen({ onBack }: Props) {
               opacity: tooLong || trimDuration < 1 ? 0.4 : 1,
             }}
           >
-            🎬 Processar para Instagram
+            🎬 Gerar Reel 9:16
           </button>
         </div>
       </div>
@@ -618,14 +618,14 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     margin: 0,
     flex: 1,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   backBtn: {
-    background: 'rgba(255,255,255,0.1)',
-    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.18)',
     color: '#cce0ff',
     padding: '10px 16px',
-    borderRadius: 16,
+    borderRadius: 14,
     cursor: 'pointer',
     fontSize: 14,
     fontWeight: 600,
@@ -642,16 +642,17 @@ const s: Record<string, React.CSSProperties> = {
     gap: 12,
     margin: 24,
     border: '2px dashed rgba(255,255,255,0.25)',
-    borderRadius: 20,
+    borderRadius: 24,
     cursor: 'pointer',
-    padding: 32,
+    padding: '40px 32px',
     background: 'rgba(255,255,255,0.04)',
   },
   dropText: {
-    fontSize: 20,
-    fontWeight: 700,
+    fontSize: 22,
+    fontWeight: 800,
     margin: 0,
     color: '#fff',
+    letterSpacing: -0.3,
   },
   dropHint: {
     color: '#888',
@@ -679,11 +680,11 @@ const s: Record<string, React.CSSProperties> = {
     gap: 6,
     alignItems: 'flex-start',
     background: 'rgba(255,255,255,0.06)',
-    borderRadius: 10,
-    padding: '8px 10px',
+    borderRadius: 12,
+    padding: '10px 12px',
   },
   instrIcon: { fontSize: 16, flexShrink: 0 },
-  instrText: { color: '#bbb', fontSize: 12, lineHeight: 1.4 },
+  instrText: { color: '#bbb', fontSize: 13, lineHeight: 1.5 },
 
   videoContainer: {
     flex: 1,
@@ -759,7 +760,7 @@ const s: Record<string, React.CSSProperties> = {
     color: '#cce0ff',
     fontSize: 13,
     margin: 0,
-    fontWeight: 600,
+    fontWeight: 700,
   },
   slider: {
     width: '100%',
@@ -790,11 +791,11 @@ const s: Record<string, React.CSSProperties> = {
   primaryBtn: {
     width: '100%',
     padding: '16px',
-    borderRadius: 14,
+    borderRadius: 16,
     border: 'none',
     color: '#fff',
     fontSize: 16,
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: 'pointer',
     minHeight: 52,
   },
@@ -803,9 +804,10 @@ const s: Record<string, React.CSSProperties> = {
     padding: '14px',
     borderRadius: 14,
     background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.2)',
-    color: '#ccc',
+    border: '1px solid rgba(255,255,255,0.18)',
+    color: '#cce0ff',
     fontSize: 14,
+    fontWeight: 600,
     cursor: 'pointer',
     minHeight: 44,
   },
@@ -822,8 +824,8 @@ const s: Record<string, React.CSSProperties> = {
   },
   progressMsg: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: 600,
+    fontSize: 20,
+    fontWeight: 800,
     margin: 0,
     textAlign: 'center',
   },
@@ -848,11 +850,11 @@ const s: Record<string, React.CSSProperties> = {
     margin: 0,
   },
   processingNote: {
-    color: '#666',
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 13,
     textAlign: 'center',
     maxWidth: 320,
-    lineHeight: 1.5,
+    lineHeight: 1.6,
   },
 
   // Done phase
@@ -860,14 +862,14 @@ const s: Record<string, React.CSSProperties> = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
+    gap: 20,
     padding: 16,
     overflowY: 'auto',
   },
   outputVideo: {
     width: '100%',
     maxHeight: 400,
-    borderRadius: 14,
+    borderRadius: 18,
     background: '#000',
     objectFit: 'contain',
   },
@@ -884,9 +886,9 @@ const s: Record<string, React.CSSProperties> = {
   },
   noteText: {
     color: '#f48fb1',
-    fontSize: 13,
+    fontSize: 14,
     margin: 0,
-    lineHeight: 1.5,
+    lineHeight: 1.6,
     textAlign: 'center',
   },
 };
