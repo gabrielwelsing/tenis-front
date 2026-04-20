@@ -9,6 +9,7 @@ export default defineConfig({
       '@services': resolve(__dirname, 'src/services'),
       '@components': resolve(__dirname, 'src/components'),
       '@screens': resolve(__dirname, 'src/screens'),
+      '@utils': resolve(__dirname, 'src/utils'),
     },
   },
   server: {

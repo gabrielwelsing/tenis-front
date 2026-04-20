@@ -11,6 +11,8 @@ import {
   handleSeek,
   type JointAngles,
 } from '@services/poseService';
+import { fetchGabarito, type GabaritoGolpe } from '@services/apiService';
+import { calcularPerformance, type PerformanceResult } from '@utils/calcularPerformance';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +52,13 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
 
+  // Análise comparativa
+  const [gabarito, setGabarito]               = useState<Record<string, GabaritoGolpe> | null>(null);
+  const [selectedGolpeId, setSelectedGolpeId] = useState('saque_trofeu');
+  const [analysisResult, setAnalysisResult]   = useState<PerformanceResult | null>(null);
+  const [snapshotUrl, setSnapshotUrl]         = useState<string | null>(null);
+  const [analysisOpen, setAnalysisOpen]       = useState(false);
+
   const ZOOM_LEVELS = [1, 1.5, 2, 3];
   const PAN_STEP = 60;
 
@@ -60,12 +69,16 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const panStartRef = useRef<{ px: number; py: number; sx: number; sy: number } | null>(null);
 
   // -------------------------------------------------------------------------
-  // Init MediaPipe on mount
+  // Init MediaPipe + fetch gabarito on mount
   // -------------------------------------------------------------------------
   useEffect(() => {
     initPoseLandmarker()
       .then(() => setLoadPhase('ready'))
       .catch(() => setLoadPhase('error'));
+
+    fetchGabarito()
+      .then(data => setGabarito(data))
+      .catch(() => { /* gabarito indisponível — botão continua visível mas desabilitado */ });
 
     return () => {
       disposePoseLandmarker();
@@ -266,12 +279,104 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   };
 
   // -------------------------------------------------------------------------
+  // Análise comparativa
+  // -------------------------------------------------------------------------
+
+  // Captura snapshot do frame atual (vídeo + esqueleto) como dataURL
+  const captureSnapshot = (): string | null => {
+    const video = videoRef.current;
+    const overlay = canvasRef.current;
+    if (!video || video.readyState < 2) return null;
+    const w = overlay?.width || video.videoWidth;
+    const h = overlay?.height || video.videoHeight;
+    if (!w || !h) return null;
+
+    const tmp = document.createElement('canvas');
+    tmp.width  = w;
+    tmp.height = h;
+    const ctx = tmp.getContext('2d');
+    if (!ctx) return null;
+
+    // Preenche preto e desenha vídeo com o mesmo letterboxing do objectFit:contain
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if (vw && vh) {
+      const va = vw / vh;
+      const ca = w / h;
+      let dx = 0, dy = 0, dw = w, dh = h;
+      if (va > ca) { dh = w / va; dy = (h - dh) / 2; }
+      else         { dw = h * va; dx = (w - dw) / 2; }
+      ctx.drawImage(video, dx, dy, dw, dh);
+    }
+    // Esqueleto por cima
+    if (overlay) ctx.drawImage(overlay, 0, 0, w, h);
+    return tmp.toDataURL('image/jpeg', 0.85);
+  };
+
+  const handleAnalyze = () => {
+    // Pausa o vídeo para garantir um frame estático
+    const video = videoRef.current;
+    if (video && !video.paused) video.pause();
+
+    if (!gabarito) return;
+    const golpe = gabarito[selectedGolpeId];
+    if (!golpe) return;
+
+    const snap = captureSnapshot();
+    setSnapshotUrl(snap);
+
+    const result = calcularPerformance(golpe, currentAngles ?? {
+      elbowLeft: null, elbowRight: null,
+      kneeLeft: null,  kneeRight: null,
+      hipLeft: null,   hipRight: null,
+    });
+    setAnalysisResult(result);
+    setAnalysisOpen(true);
+  };
+
+  // -------------------------------------------------------------------------
   // Render helpers
   // -------------------------------------------------------------------------
   const angles = currentAngles;
 
+  const canAnalyze = !!gabarito && !!videoUrl;
+
+  // Strip de análise comparativa (sempre visível)
+  const analysisStrip = (
+    <div style={s.analysisStrip}>
+      <p style={s.analysisHint}>
+        📍 Pause o vídeo no frame que deseja analisar, selecione o golpe e toque em Analisar
+      </p>
+      <div style={s.analysisRow}>
+        <select
+          value={selectedGolpeId}
+          onChange={e => setSelectedGolpeId(e.target.value)}
+          style={s.golpeSelect}
+          disabled={!gabarito}
+        >
+          {gabarito
+            ? Object.entries(gabarito).map(([id, g]) => (
+                <option key={id} value={id}>{g.label}</option>
+              ))
+            : <option>Carregando...</option>
+          }
+        </select>
+        <button
+          onClick={handleAnalyze}
+          style={{ ...s.analyzeBtn, opacity: canAnalyze ? 1 : 0.4 }}
+          disabled={!canAnalyze}
+        >
+          📊 Analisar
+        </button>
+      </div>
+    </div>
+  );
+
   const anglePanel = (
     <div style={s.anglePanel}>
+      {analysisStrip}
       <p style={s.anglePanelTitle}>Ângulos Articulares</p>
       <table style={s.angleTable}>
         <thead>
@@ -353,6 +458,15 @@ export default function BiomechanicsScreen({ onBack }: Props) {
         style={{ display: 'none' }}
         ref={fileInputRef}
       />
+
+      {/* Modal de análise comparativa */}
+      {analysisOpen && analysisResult && (
+        <AnalysisModal
+          result={analysisResult}
+          snapshotUrl={snapshotUrl}
+          onClose={() => setAnalysisOpen(false)}
+        />
+      )}
 
       {/* Body */}
       {isMobile ? (
@@ -829,6 +943,52 @@ const s: Record<string, React.CSSProperties> = {
     fontFeatureSettings: '"tnum"',
   },
 
+  // Analysis strip
+  analysisStrip: {
+    padding: '12px 0 16px',
+    borderBottom: '1px solid rgba(255,255,255,0.08)',
+    marginBottom: 16,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 10,
+  },
+  analysisHint: {
+    margin: 0,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    lineHeight: 1.5,
+  },
+  analysisRow: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'stretch',
+  },
+  golpeSelect: {
+    flex: 1,
+    padding: '10px 12px',
+    borderRadius: 12,
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: 'pointer',
+    appearance: 'auto' as const,
+  },
+  analyzeBtn: {
+    padding: '10px 16px',
+    borderRadius: 12,
+    background: 'linear-gradient(135deg, #4a148c, #7b1fa2)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+    flexShrink: 0,
+    minHeight: 44,
+  },
+
   // Desktop layout
   desktopBody: {
     flex: 1,
@@ -847,6 +1007,289 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'auto',
+  },
+};
+
+// ---------------------------------------------------------------------------
+// AnalysisModal — Painel de comparação biomecânica
+// ---------------------------------------------------------------------------
+
+function scoreBadgeStyle(pct: number | null): React.CSSProperties {
+  if (pct === null) return { background: 'rgba(255,255,255,0.15)', color: '#aaa' };
+  if (pct >= 90)   return { background: 'rgba(76,175,80,0.25)',  color: '#81c784', border: '1px solid rgba(76,175,80,0.4)' };
+  if (pct >= 75)   return { background: 'rgba(255,179,0,0.25)',  color: '#ffd54f', border: '1px solid rgba(255,179,0,0.4)' };
+  return             { background: 'rgba(244,67,54,0.25)',   color: '#ef9a9a', border: '1px solid rgba(244,67,54,0.4)' };
+}
+
+function scoreLabel(pct: number): string {
+  if (pct >= 90) return '🟢';
+  if (pct >= 75) return '🟡';
+  return '🔴';
+}
+
+function AnalysisModal({
+  result,
+  snapshotUrl,
+  onClose,
+}: {
+  result: PerformanceResult;
+  snapshotUrl: string | null;
+  onClose: () => void;
+}) {
+  const { golpe, joints, scorePonderado } = result;
+
+  return (
+    <div style={sm.overlay}>
+      <div style={sm.sheet}>
+        {/* Header */}
+        <div style={sm.header}>
+          <button onClick={onClose} style={sm.closeBtn}>← Fechar</button>
+          <div style={sm.headerCenter}>
+            <span style={sm.golpeLabel}>{golpe.label}</span>
+          </div>
+          <div style={{ ...sm.scoreChip, ...scoreBadgeStyle(scorePonderado) }}>
+            {scoreLabel(scorePonderado)} {scorePonderado}%
+          </div>
+        </div>
+
+        {/* Side-by-side images */}
+        <div style={sm.imageRow}>
+          <div style={sm.imageBox}>
+            <p style={sm.imageCaption}>SUA POSIÇÃO</p>
+            {snapshotUrl
+              ? <img src={snapshotUrl} alt="Snapshot" style={sm.img} />
+              : <div style={sm.imgPlaceholder}><span>Sem frame</span></div>
+            }
+          </div>
+          <div style={sm.imageBox}>
+            <p style={sm.imageCaption}>POSIÇÃO IDEAL</p>
+            <img
+              src={golpe.imageUrl}
+              alt={golpe.label}
+              style={sm.img}
+              crossOrigin="anonymous"
+            />
+            <p style={sm.imageCredit}>{golpe.imageCredit}</p>
+          </div>
+        </div>
+
+        {/* Comparison table */}
+        <div style={sm.tableWrapper}>
+          <table style={sm.table}>
+            <thead>
+              <tr>
+                <th style={sm.th}>Articulação</th>
+                <th style={{ ...sm.th, color: '#aef359' }}>Esq (Sua)</th>
+                <th style={sm.th}>Ideal</th>
+                <th style={sm.th}>% Acerto</th>
+                <th style={{ ...sm.th, color: '#4fc3f7' }}>Dir (Sua)</th>
+                <th style={sm.th}>Ideal</th>
+                <th style={sm.th}>% Acerto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {joints.map((j: import('@utils/calcularPerformance').JointResult) => (
+                <tr key={j.label}>
+                  <td style={sm.tdLabel}>{j.label}</td>
+                  <td style={sm.tdVal}>{j.esqVal !== null ? `${j.esqVal}°` : '—'}</td>
+                  <td style={sm.tdIdeal}>{j.ideal}°</td>
+                  <td>
+                    <span style={{ ...sm.pctBadge, ...scoreBadgeStyle(j.esqPct) }}>
+                      {j.esqPct !== null ? `${j.esqPct}%` : '—'}
+                    </span>
+                  </td>
+                  <td style={sm.tdVal}>{j.dirVal !== null ? `${j.dirVal}°` : '—'}</td>
+                  <td style={sm.tdIdeal}>{j.ideal}°</td>
+                  <td>
+                    <span style={{ ...sm.pctBadge, ...scoreBadgeStyle(j.dirPct) }}>
+                      {j.dirPct !== null ? `${j.dirPct}%` : '—'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Legend */}
+        <div style={sm.legend}>
+          <span style={{ color: '#81c784' }}>🟢 ≥ 90%</span>
+          <span style={{ color: '#ffd54f' }}>🟡 75–89%</span>
+          <span style={{ color: '#ef9a9a' }}>🔴 &lt; 75%</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const sm: Record<string, React.CSSProperties> = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.85)',
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  sheet: {
+    background: '#0f1221',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '24px 24px 0 0',
+    width: '100%',
+    maxWidth: 720,
+    maxHeight: '92dvh',
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '16px 16px 12px',
+    borderBottom: '1px solid rgba(255,255,255,0.1)',
+    flexShrink: 0,
+    position: 'sticky',
+    top: 0,
+    background: '#0f1221',
+    zIndex: 10,
+  },
+  closeBtn: {
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.18)',
+    color: '#cce0ff',
+    padding: '9px 14px',
+    borderRadius: 12,
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  headerCenter: {
+    flex: 1,
+    display: 'flex',
+    justifyContent: 'center',
+  },
+  golpeLabel: {
+    fontSize: 15,
+    fontWeight: 800,
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  scoreChip: {
+    padding: '6px 12px',
+    borderRadius: 20,
+    fontSize: 14,
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  imageRow: {
+    display: 'flex',
+    gap: 12,
+    padding: '14px 16px',
+    flexShrink: 0,
+  },
+  imageBox: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    alignItems: 'center',
+  },
+  imageCaption: {
+    margin: 0,
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: 1,
+    color: 'rgba(255,255,255,0.45)',
+    textTransform: 'uppercase' as const,
+  },
+  img: {
+    width: '100%',
+    aspectRatio: '4/3',
+    objectFit: 'cover',
+    borderRadius: 12,
+    background: '#000',
+  },
+  imgPlaceholder: {
+    width: '100%',
+    aspectRatio: '4/3',
+    background: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 13,
+  },
+  imageCredit: {
+    margin: 0,
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.25)',
+    textAlign: 'center' as const,
+    lineHeight: 1.4,
+  },
+  tableWrapper: {
+    overflowX: 'auto',
+    padding: '0 16px',
+    flexShrink: 0,
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    minWidth: 420,
+  },
+  th: {
+    padding: '8px 8px',
+    fontSize: 11,
+    fontWeight: 700,
+    color: 'rgba(255,255,255,0.45)',
+    textAlign: 'center' as const,
+    borderBottom: '1px solid rgba(255,255,255,0.1)',
+    whiteSpace: 'nowrap' as const,
+  },
+  tdLabel: {
+    padding: '10px 8px',
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#e0e0e0',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    whiteSpace: 'nowrap' as const,
+  },
+  tdVal: {
+    padding: '10px 8px',
+    fontSize: 15,
+    fontWeight: 700,
+    textAlign: 'center' as const,
+    color: '#fff',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    fontVariantNumeric: 'tabular-nums',
+  },
+  tdIdeal: {
+    padding: '10px 8px',
+    fontSize: 13,
+    textAlign: 'center' as const,
+    color: 'rgba(255,255,255,0.45)',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+  },
+  pctBadge: {
+    display: 'inline-block',
+    padding: '4px 10px',
+    borderRadius: 20,
+    fontSize: 13,
+    fontWeight: 700,
+    textAlign: 'center' as const,
+  },
+  legend: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: 20,
+    padding: '12px 16px 0',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    flexShrink: 0,
   },
 };
 

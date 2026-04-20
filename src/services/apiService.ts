@@ -4,6 +4,34 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
+// ---------------------------------------------------------------------------
+// Gabarito biomecânico
+// ---------------------------------------------------------------------------
+
+export interface JointMeta {
+  label: string;
+  ideal: number;
+  tolerancia: number;
+  peso: number;
+}
+
+export interface GabaritoGolpe {
+  label: string;
+  imageUrl: string;
+  imageCredit: string;
+  metas: {
+    elbow: JointMeta;
+    knee:  JointMeta;
+    hip:   JointMeta;
+  };
+}
+
+export async function fetchGabarito(): Promise<Record<string, GabaritoGolpe>> {
+  const res = await fetch(`${BASE_URL}/gabarito`);
+  if (!res.ok) throw new Error(`Erro ao carregar gabarito: ${res.status}`);
+  return res.json() as Promise<Record<string, GabaritoGolpe>>;
+}
+
 export interface ClipRecord {
   id: string;
   timestamp: string;

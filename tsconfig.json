@@ -17,7 +17,8 @@
     "paths": {
       "@services/*": ["src/services/*"],
       "@components/*": ["src/components/*"],
-      "@screens/*": ["src/screens/*"]
+      "@screens/*": ["src/screens/*"],
+      "@utils/*": ["src/utils/*"]
     }
   },
   "include": ["src"]
