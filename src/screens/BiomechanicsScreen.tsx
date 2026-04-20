@@ -11,7 +11,12 @@ import {
   handleSeek,
   type JointAngles,
 } from '@services/poseService';
-import { fetchGabarito, type GabaritoGolpe } from '@services/apiService';
+import {
+  fetchGabarito,
+  NIVEL_LABELS,
+  type GabaritoEntry,
+  type NivelAluno,
+} from '@services/apiService';
 import { calcularPerformance, type PerformanceResult } from '@utils/calcularPerformance';
 
 // ---------------------------------------------------------------------------
@@ -53,11 +58,13 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const [panY, setPanY] = useState(0);
 
   // Análise comparativa
-  const [gabarito, setGabarito]               = useState<Record<string, GabaritoGolpe> | null>(null);
-  const [selectedGolpeId, setSelectedGolpeId] = useState('saque_trofeu');
-  const [analysisResult, setAnalysisResult]   = useState<PerformanceResult | null>(null);
-  const [snapshotUrl, setSnapshotUrl]         = useState<string | null>(null);
-  const [analysisOpen, setAnalysisOpen]       = useState(false);
+  const [gabarito, setGabarito]                   = useState<Record<string, GabaritoEntry> | null>(null);
+  const [selectedGolpeFaseId, setSelectedGolpeFaseId] = useState('saque_preparacao');
+  const [selectedAtletaId, setSelectedAtletaId]   = useState('federer');
+  const [selectedNivel, setSelectedNivel]         = useState<NivelAluno>('intermediario');
+  const [analysisResult, setAnalysisResult]       = useState<PerformanceResult | null>(null);
+  const [snapshotUrl, setSnapshotUrl]             = useState<string | null>(null);
+  const [analysisOpen, setAnalysisOpen]           = useState(false);
 
   const ZOOM_LEVELS = [1, 1.5, 2, 3];
   const PAN_STEP = 60;
@@ -67,6 +74,22 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const rafRef     = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const panStartRef = useRef<{ px: number; py: number; sx: number; sy: number } | null>(null);
+
+  // -------------------------------------------------------------------------
+  // Atletas disponíveis (todos — imagem é opcional, mostrada se disponível)
+  // -------------------------------------------------------------------------
+  const atletasDisponiveis = gabarito?.[selectedGolpeFaseId]?.atletas
+    ? Object.entries(gabarito[selectedGolpeFaseId].atletas)
+    : [];
+
+  // Se o atleta selecionado não está disponível para o novo golpe, resetar
+  useEffect(() => {
+    if (!gabarito) return;
+    const atletas = gabarito[selectedGolpeFaseId]?.atletas;
+    if (atletas && !atletas[selectedAtletaId]) {
+      setSelectedAtletaId(Object.keys(atletas)[0] ?? 'federer');
+    }
+  }, [selectedGolpeFaseId, gabarito, selectedAtletaId]);
 
   // -------------------------------------------------------------------------
   // Init MediaPipe + fetch gabarito on mount
@@ -155,36 +178,22 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   // -------------------------------------------------------------------------
   const handleLoadedMetadata = () => {
     syncCanvas();
-    // ResizeObserver to keep canvas in sync
     const v = videoRef.current;
     if (!v) return;
     const ro = new ResizeObserver(syncCanvas);
     ro.observe(v);
-    // store on element to clean up on next load
     (v as HTMLVideoElement & { _ro?: ResizeObserver })._ro?.disconnect();
     (v as HTMLVideoElement & { _ro?: ResizeObserver })._ro = ro;
   };
 
-  const handlePlay = () => {
-    setIsPlaying(true);
-    startLoop();
-  };
-
-  const handlePause = () => {
-    setIsPlaying(false);
-    stopLoop();
-  };
-
-  const handleEnded = () => {
-    setIsPlaying(false);
-    stopLoop();
-  };
+  const handlePlay  = () => { setIsPlaying(true);  startLoop(); };
+  const handlePause = () => { setIsPlaying(false); stopLoop();  };
+  const handleEnded = () => { setIsPlaying(false); stopLoop();  };
 
   const handleSeeked = async () => {
     const v = videoRef.current;
     if (!v) return;
     await handleSeek(v.currentTime * 1000);
-    // Draw one frame when paused & seeked
     if (v.paused) {
       const c = canvasRef.current;
       const ctx = c?.getContext('2d');
@@ -203,11 +212,8 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) {
-      v.play().catch(() => null);
-    } else {
-      v.pause();
-    }
+    if (v.paused) v.play().catch(() => null);
+    else          v.pause();
   };
 
   const stepFrame = (direction: -1 | 1) => {
@@ -256,10 +262,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   // -------------------------------------------------------------------------
   // Drag & drop (PC)
   // -------------------------------------------------------------------------
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDraggingOver(true);
-  };
+  const handleDragOver  = (e: React.DragEvent) => { e.preventDefault(); setIsDraggingOver(true); };
   const handleDragLeave = () => setIsDraggingOver(false);
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -281,8 +284,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   // -------------------------------------------------------------------------
   // Análise comparativa
   // -------------------------------------------------------------------------
-
-  // Captura snapshot do frame atual (vídeo + esqueleto) como dataURL
   const captureSnapshot = (): string | null => {
     const video = videoRef.current;
     const overlay = canvasRef.current;
@@ -297,7 +298,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
     const ctx = tmp.getContext('2d');
     if (!ctx) return null;
 
-    // Preenche preto e desenha vídeo com o mesmo letterboxing do objectFit:contain
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
     const vw = video.videoWidth;
@@ -310,28 +310,32 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       else         { dw = h * va; dx = (w - dw) / 2; }
       ctx.drawImage(video, dx, dy, dw, dh);
     }
-    // Esqueleto por cima
     if (overlay) ctx.drawImage(overlay, 0, 0, w, h);
     return tmp.toDataURL('image/jpeg', 0.85);
   };
 
   const handleAnalyze = () => {
-    // Pausa o vídeo para garantir um frame estático
     const video = videoRef.current;
     if (video && !video.paused) video.pause();
-
     if (!gabarito) return;
-    const golpe = gabarito[selectedGolpeId];
-    if (!golpe) return;
+
+    const golpeEntry = gabarito[selectedGolpeFaseId];
+    if (!golpeEntry) return;
+    const atletaEntry = golpeEntry.atletas[selectedAtletaId];
+    if (!atletaEntry) return;
+    const config = atletaEntry.niveis[selectedNivel];
+    if (!config) return;
 
     const snap = captureSnapshot();
     setSnapshotUrl(snap);
 
-    const result = calcularPerformance(golpe, currentAngles ?? {
-      elbowLeft: null, elbowRight: null,
-      kneeLeft: null,  kneeRight: null,
-      hipLeft: null,   hipRight: null,
-    });
+    const result = calcularPerformance(
+      config,
+      golpeEntry.label,
+      atletaEntry.label,
+      NIVEL_LABELS[selectedNivel],
+      currentAngles ?? { elbowLeft: null, elbowRight: null, kneeLeft: null, kneeRight: null, hipLeft: null, hipRight: null },
+    );
     setAnalysisResult(result);
     setAnalysisOpen(true);
   };
@@ -340,20 +344,20 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   // Render helpers
   // -------------------------------------------------------------------------
   const angles = currentAngles;
-
   const canAnalyze = !!gabarito && !!videoUrl;
 
   // Strip de análise comparativa (sempre visível)
   const analysisStrip = (
     <div style={s.analysisStrip}>
       <p style={s.analysisHint}>
-        📍 Pause o vídeo no frame que deseja analisar, selecione o golpe e toque em Analisar
+        📍 Pause no frame desejado, selecione golpe, atleta e nível, depois toque em Analisar
       </p>
-      <div style={s.analysisRow}>
+      <div style={s.selectsCol}>
+        {/* Golpe + Fase */}
         <select
-          value={selectedGolpeId}
-          onChange={e => setSelectedGolpeId(e.target.value)}
-          style={s.golpeSelect}
+          value={selectedGolpeFaseId}
+          onChange={e => setSelectedGolpeFaseId(e.target.value)}
+          style={s.select}
           disabled={!gabarito}
         >
           {gabarito
@@ -363,14 +367,43 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             : <option>Carregando...</option>
           }
         </select>
-        <button
-          onClick={handleAnalyze}
-          style={{ ...s.analyzeBtn, opacity: canAnalyze ? 1 : 0.4 }}
-          disabled={!canAnalyze}
+
+        {/* Atleta */}
+        <select
+          value={selectedAtletaId}
+          onChange={e => setSelectedAtletaId(e.target.value)}
+          style={s.select}
+          disabled={!gabarito || atletasDisponiveis.length === 0}
         >
-          📊 Analisar
-        </button>
+          {atletasDisponiveis.map(([id, a]) => (
+            <option key={id} value={id}>{a.label}</option>
+          ))}
+        </select>
+
+        {/* Nível */}
+        <div style={s.nivelRow}>
+          {(['iniciante', 'intermediario', 'avancado'] as NivelAluno[]).map(n => (
+            <button
+              key={n}
+              onClick={() => setSelectedNivel(n)}
+              style={{
+                ...s.nivelBtn,
+                ...(selectedNivel === n ? s.nivelBtnActive : {}),
+              }}
+            >
+              {NIVEL_LABELS[n]}
+            </button>
+          ))}
+        </div>
       </div>
+
+      <button
+        onClick={handleAnalyze}
+        style={{ ...s.analyzeBtn, opacity: canAnalyze ? 1 : 0.4 }}
+        disabled={!canAnalyze}
+      >
+        📊 Analisar
+      </button>
     </div>
   );
 
@@ -408,7 +441,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   );
 
   // -------------------------------------------------------------------------
-  // Loading state
+  // Loading / error states
   // -------------------------------------------------------------------------
   if (loadPhase === 'loading-model') {
     return (
@@ -422,9 +455,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
     );
   }
 
-  // -------------------------------------------------------------------------
-  // Error state
-  // -------------------------------------------------------------------------
   if (loadPhase === 'error') {
     return (
       <div style={s.page}>
@@ -450,7 +480,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
         <span style={s.headerSpacer} />
       </div>
 
-      {/* Hidden file input */}
       <input
         type="file"
         accept="video/*"
@@ -470,14 +499,8 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
       {/* Body */}
       {isMobile ? (
-        // ── Mobile layout ──────────────────────────────────────────────────
         <div style={s.mobileBody}>
-          {/* Video area */}
-          <div
-            style={s.videoWrapper}
-            onMouseDown={handlePanStart}
-            onTouchStart={handlePanStart}
-          >
+          <div style={s.videoWrapper} onMouseDown={handlePanStart} onTouchStart={handlePanStart}>
             <div style={{ ...s.zoomInner, transform: `translate(${panX}px,${panY}px) scale(${zoom})`, cursor: zoom > 1 ? 'grab' : 'default' }}>
               {videoUrl ? (
                 <>
@@ -502,15 +525,10 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             </div>
           </div>
 
-          {/* Pick file button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            style={s.pickBtn}
-          >
+          <button onClick={() => fileInputRef.current?.click()} style={s.pickBtn}>
             📁 Escolher Vídeo
           </button>
 
-          {/* Controls */}
           {videoUrl && (
             <>
               <div style={s.controls}>
@@ -528,7 +546,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
                 >－</button>
                 {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
               </div>
-              {/* Directional pan buttons (visible when zoomed) */}
               {zoom > 1 && (
                 <div style={s.panControls}>
                   <button onClick={() => setPanY(p => p + PAN_STEP)} style={s.panBtn}>↑</button>
@@ -543,15 +560,11 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             </>
           )}
 
-          {/* Angle panel */}
           {anglePanel}
         </div>
       ) : (
-        // ── Desktop layout ─────────────────────────────────────────────────
         <div style={s.desktopBody}>
-          {/* Left: video */}
           <div style={s.desktopLeft}>
-            {/* Drag & drop zone or video */}
             {videoUrl ? (
               <div style={s.videoWrapper} onMouseDown={handlePanStart} onTouchStart={handlePanStart}>
                 <div style={{ ...s.zoomInner, transform: `translate(${panX}px,${panY}px) scale(${zoom})`, cursor: zoom > 1 ? 'grab' : 'default' }}>
@@ -589,7 +602,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
               </div>
             )}
 
-            {/* Controls */}
             <div style={s.controls}>
               {videoUrl && <button onClick={() => fileInputRef.current?.click()} style={{ ...s.ctrlBtn, fontSize: 12 }}>📁</button>}
               <button onClick={() => stepFrame(-1)} style={s.ctrlBtn}>◀</button>
@@ -603,7 +615,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             </div>
           </div>
 
-          {/* Right: angles */}
           <div style={s.desktopRight}>
             {anglePanel}
           </div>
@@ -627,7 +638,6 @@ const s: Record<string, React.CSSProperties> = {
     fontFamily: 'system-ui, sans-serif',
   },
 
-  // Header
   header: {
     display: 'flex',
     alignItems: 'center',
@@ -655,12 +665,8 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: '#fff',
   },
-  headerSpacer: {
-    width: 80,
-    flexShrink: 0,
-  },
+  headerSpacer: { width: 80, flexShrink: 0 },
 
-  // Centered states (loading / error)
   centeredBox: {
     flex: 1,
     display: 'flex',
@@ -702,7 +708,6 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
 
-  // Mobile body
   mobileBody: {
     flex: 1,
     display: 'flex',
@@ -711,7 +716,6 @@ const s: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
   },
 
-  // Video wrapper
   videoWrapper: {
     position: 'relative',
     width: '100%',
@@ -741,8 +745,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   canvas: {
     position: 'absolute',
-    top: 0,
-    left: 0,
+    top: 0, left: 0,
     width: '100%',
     height: '100%',
     pointerEvents: 'none',
@@ -756,12 +759,8 @@ const s: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     background: 'rgba(255,255,255,0.03)',
   },
-  emptyText: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 15,
-  },
+  emptyText: { color: 'rgba(255,255,255,0.35)', fontSize: 15 },
 
-  // Pick file button
   pickBtn: {
     margin: '10px 16px',
     padding: '14px 20px',
@@ -775,7 +774,6 @@ const s: Record<string, React.CSSProperties> = {
     width: 'calc(100% - 32px)',
   },
 
-  // Drop zone (PC)
   dropZone: {
     flex: 1,
     display: 'flex',
@@ -789,13 +787,8 @@ const s: Record<string, React.CSSProperties> = {
     margin: 16,
     transition: 'border-color 0.15s, background 0.15s',
   },
-  dropText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 16,
-    margin: 0,
-  },
+  dropText: { color: 'rgba(255,255,255,0.6)', fontSize: 16, margin: 0 },
 
-  // Controls bar
   controls: {
     display: 'flex',
     alignItems: 'center',
@@ -867,11 +860,7 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(0,0,0,0.3)',
     flexShrink: 0,
   },
-  panRow: {
-    display: 'flex',
-    gap: 4,
-    alignItems: 'center',
-  },
+  panRow: { display: 'flex', gap: 4, alignItems: 'center' },
   panBtn: {
     width: 44,
     height: 44,
@@ -899,7 +888,6 @@ const s: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
   },
 
-  // Angle panel
   anglePanel: {
     padding: '16px',
     background: 'rgba(0,0,0,0.25)',
@@ -914,10 +902,7 @@ const s: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  angleTable: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
+  angleTable: { width: '100%', borderCollapse: 'collapse' },
   th: {
     padding: '6px 10px',
     fontSize: 12,
@@ -954,29 +939,50 @@ const s: Record<string, React.CSSProperties> = {
   },
   analysisHint: {
     margin: 0,
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.65)',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.55)',
     lineHeight: 1.5,
   },
-  analysisRow: {
+  selectsCol: {
     display: 'flex',
+    flexDirection: 'column' as const,
     gap: 8,
-    alignItems: 'stretch',
   },
-  golpeSelect: {
-    flex: 1,
-    padding: '12px 14px',
-    borderRadius: 14,
+  select: {
+    width: '100%',
+    padding: '11px 14px',
+    borderRadius: 12,
     background: 'rgba(255,255,255,0.07)',
-    border: '1px solid rgba(255,255,255,0.2)',
+    border: '1px solid rgba(255,255,255,0.18)',
     color: '#fff',
     fontSize: 14,
     fontWeight: 600,
     cursor: 'pointer',
     appearance: 'auto' as const,
   },
+  nivelRow: {
+    display: 'flex',
+    gap: 6,
+  },
+  nivelBtn: {
+    flex: 1,
+    padding: '10px 8px',
+    borderRadius: 10,
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.15)',
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background 0.15s, color 0.15s',
+  },
+  nivelBtnActive: {
+    background: 'rgba(174,243,89,0.18)',
+    border: '1.5px solid #aef359',
+    color: '#aef359',
+  },
   analyzeBtn: {
-    padding: '12px 20px',
+    padding: '14px 20px',
     borderRadius: 14,
     background: 'linear-gradient(135deg, #4a148c, #7b1fa2)',
     border: 'none',
@@ -985,16 +991,11 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
-    flexShrink: 0,
-    minHeight: 44,
+    width: '100%',
+    minHeight: 48,
   },
 
-  // Desktop layout
-  desktopBody: {
-    flex: 1,
-    display: 'flex',
-    overflow: 'hidden',
-  },
+  desktopBody: { flex: 1, display: 'flex', overflow: 'hidden' },
   desktopLeft: {
     flex: '0 0 65%',
     display: 'flex',
@@ -1016,9 +1017,9 @@ const s: Record<string, React.CSSProperties> = {
 
 function scoreBadgeStyle(pct: number | null): React.CSSProperties {
   if (pct === null) return { background: 'rgba(255,255,255,0.15)', color: '#aaa' };
-  if (pct >= 90)   return { background: 'rgba(76,175,80,0.25)',  color: '#81c784', border: '1px solid rgba(76,175,80,0.4)' };
-  if (pct >= 75)   return { background: 'rgba(255,179,0,0.25)',  color: '#ffd54f', border: '1px solid rgba(255,179,0,0.4)' };
-  return             { background: 'rgba(244,67,54,0.25)',   color: '#ef9a9a', border: '1px solid rgba(244,67,54,0.4)' };
+  if (pct >= 90)   return { background: 'rgba(76,175,80,0.25)',  color: '#81c784', border: '1px solid rgba(76,175,80,0.4)'  };
+  if (pct >= 75)   return { background: 'rgba(255,179,0,0.25)',  color: '#ffd54f', border: '1px solid rgba(255,179,0,0.4)'  };
+  return             { background: 'rgba(244,67,54,0.25)',   color: '#ef9a9a', border: '1px solid rgba(244,67,54,0.4)'  };
 }
 
 function scoreLabel(pct: number): string {
@@ -1036,12 +1037,11 @@ function AnalysisModal({
   snapshotUrl: string | null;
   onClose: () => void;
 }) {
-  const { golpe, joints, scorePonderado } = result;
+  const { golpeLabel, atletaLabel, nivelLabel, imageUrl, imageCredit, joints, scorePonderado } = result;
   const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
 
   return (
     <div style={sm.overlay}>
-      {/* Lightbox — imagem ampliada ao tocar */}
       {lightboxUrl && (
         <div style={sm.lightboxOverlay} onClick={() => setLightboxUrl(null)}>
           <img src={lightboxUrl} alt="Ampliado" style={sm.lightboxImg} />
@@ -1054,32 +1054,47 @@ function AnalysisModal({
         <div style={sm.header}>
           <button onClick={onClose} style={sm.closeBtn}>← Fechar</button>
           <div style={sm.headerCenter}>
-            <span style={sm.golpeLabel}>{golpe.label}</span>
+            <div style={sm.headerTitles}>
+              <span style={sm.golpeLabel}>{golpeLabel}</span>
+              <span style={sm.atletaMeta}>{atletaLabel} · {nivelLabel}</span>
+            </div>
           </div>
           <div style={{ ...sm.scoreChip, ...scoreBadgeStyle(scorePonderado) }}>
             {scoreLabel(scorePonderado)} {scorePonderado}%
           </div>
         </div>
 
-        {/* Side-by-side images — toque para ampliar */}
+        {/* Side-by-side images */}
         <div style={sm.imageRow}>
           <div style={sm.imageBox}>
-            <p style={sm.imageCaption}>SUA POSIÇÃO <span style={sm.zoomHint}>🔍 toque para ampliar</span></p>
+            <p style={sm.imageCaption}>
+              SUA POSIÇÃO <span style={sm.zoomHint}>🔍 toque para ampliar</span>
+            </p>
             {snapshotUrl
               ? <img src={snapshotUrl} alt="Snapshot" style={sm.img} onClick={() => setLightboxUrl(snapshotUrl)} />
               : <div style={sm.imgPlaceholder}><span>Sem frame</span></div>
             }
           </div>
           <div style={sm.imageBox}>
-            <p style={sm.imageCaption}>POSIÇÃO IDEAL <span style={sm.zoomHint}>🔍</span></p>
-            <img
-              src={golpe.imageUrl}
-              alt={golpe.label}
-              style={sm.img}
-              crossOrigin="anonymous"
-              onClick={() => setLightboxUrl(golpe.imageUrl)}
-            />
-            <p style={sm.imageCredit}>{golpe.imageCredit}</p>
+            <p style={sm.imageCaption}>
+              POSIÇÃO IDEAL {imageUrl && <span style={sm.zoomHint}>🔍</span>}
+            </p>
+            {imageUrl ? (
+              <>
+                <img
+                  src={imageUrl}
+                  alt={golpeLabel}
+                  style={sm.img}
+                  crossOrigin="anonymous"
+                  onClick={() => setLightboxUrl(imageUrl)}
+                />
+                <p style={sm.imageCredit}>{imageCredit}</p>
+              </>
+            ) : (
+              <div style={sm.imgPlaceholder}>
+                <span>Imagem em breve</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1161,11 +1176,7 @@ const sm: Record<string, React.CSSProperties> = {
     objectFit: 'contain',
     borderRadius: 12,
   },
-  lightboxHint: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 13,
-    flexShrink: 0,
-  },
+  lightboxHint: { color: 'rgba(255,255,255,0.4)', fontSize: 13, flexShrink: 0 },
   zoomHint: {
     fontSize: 9,
     color: 'rgba(255,255,255,0.3)',
@@ -1207,17 +1218,15 @@ const sm: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     flexShrink: 0,
   },
-  headerCenter: {
-    flex: 1,
+  headerCenter: { flex: 1, display: 'flex', justifyContent: 'center' },
+  headerTitles: {
     display: 'flex',
-    justifyContent: 'center',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 3,
   },
-  golpeLabel: {
-    fontSize: 17,
-    fontWeight: 800,
-    color: '#fff',
-    letterSpacing: -0.3,
-  },
+  golpeLabel: { fontSize: 16, fontWeight: 800, color: '#fff', letterSpacing: -0.3 },
+  atletaMeta: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 500 },
   scoreChip: {
     padding: '8px 16px',
     borderRadius: 20,
@@ -1225,12 +1234,7 @@ const sm: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     flexShrink: 0,
   },
-  imageRow: {
-    display: 'flex',
-    gap: 12,
-    padding: '14px 16px',
-    flexShrink: 0,
-  },
+  imageRow: { display: 'flex', gap: 12, padding: '14px 16px', flexShrink: 0 },
   imageBox: {
     flex: 1,
     display: 'flex',
@@ -1264,6 +1268,7 @@ const sm: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     color: 'rgba(255,255,255,0.3)',
     fontSize: 13,
+    border: '1px dashed rgba(255,255,255,0.12)',
   },
   imageCredit: {
     margin: 0,
@@ -1272,16 +1277,8 @@ const sm: Record<string, React.CSSProperties> = {
     textAlign: 'center' as const,
     lineHeight: 1.4,
   },
-  tableWrapper: {
-    overflowX: 'auto',
-    padding: '0 16px',
-    flexShrink: 0,
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    minWidth: 420,
-  },
+  tableWrapper: { overflowX: 'auto', padding: '0 16px', flexShrink: 0 },
+  table: { width: '100%', borderCollapse: 'collapse', minWidth: 420 },
   th: {
     padding: '10px 8px',
     fontSize: 12,

@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { JointAngles } from '@services/poseService';
-import type { GabaritoGolpe } from '@services/apiService';
+import type { ConfigNivel } from '@services/apiService';
 
 export interface JointResult {
   label:  string;
@@ -15,7 +15,11 @@ export interface JointResult {
 }
 
 export interface PerformanceResult {
-  golpe:          GabaritoGolpe;
+  golpeLabel:     string;
+  atletaLabel:    string;
+  nivelLabel:     string;
+  imageUrl:       string;
+  imageCredit:    string;
   joints:         JointResult[];
   scorePonderado: number; // 0-100, média ponderada pelo peso de cada articulação
 }
@@ -28,23 +32,25 @@ function calcPct(val: number | null, ideal: number, tolerancia: number): number 
 }
 
 export function calcularPerformance(
-  golpe: GabaritoGolpe,
+  config: ConfigNivel,
+  golpeLabel: string,
+  atletaLabel: string,
+  nivelLabel: string,
   angles: JointAngles,
 ): PerformanceResult {
   const metaList = [
-    { meta: golpe.metas.elbow, esqVal: angles.elbowLeft,  dirVal: angles.elbowRight },
-    { meta: golpe.metas.knee,  esqVal: angles.kneeLeft,   dirVal: angles.kneeRight  },
-    { meta: golpe.metas.hip,   esqVal: angles.hipLeft,    dirVal: angles.hipRight   },
+    { meta: config.metas.elbow, esqVal: angles.elbowLeft,  dirVal: angles.elbowRight },
+    { meta: config.metas.knee,  esqVal: angles.kneeLeft,   dirVal: angles.kneeRight  },
+    { meta: config.metas.hip,   esqVal: angles.hipLeft,    dirVal: angles.hipRight   },
   ];
 
-  let weightedSum  = 0;
-  let totalWeight  = 0;
+  let weightedSum = 0;
+  let totalWeight = 0;
 
   const joints: JointResult[] = metaList.map(({ meta, esqVal, dirVal }) => {
     const esqPct = calcPct(esqVal, meta.ideal, meta.tolerancia);
     const dirPct = calcPct(dirVal, meta.ideal, meta.tolerancia);
 
-    // Média dos lados disponíveis para a média ponderada geral
     const valids = [esqPct, dirPct].filter((p): p is number => p !== null);
     if (valids.length > 0) {
       const avg = valids.reduce((a, b) => a + b, 0) / valids.length;
@@ -57,5 +63,13 @@ export function calcularPerformance(
 
   const scorePonderado = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
 
-  return { golpe, joints, scorePonderado };
+  return {
+    golpeLabel,
+    atletaLabel,
+    nivelLabel,
+    imageUrl:    config.imageUrl,
+    imageCredit: config.imageCredit,
+    joints,
+    scorePonderado,
+  };
 }

@@ -5,8 +5,16 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 // ---------------------------------------------------------------------------
-// Gabarito biomecânico
+// Gabarito biomecânico — tipos multidimensionais
 // ---------------------------------------------------------------------------
+
+export type NivelAluno = 'iniciante' | 'intermediario' | 'avancado';
+
+export const NIVEL_LABELS: Record<NivelAluno, string> = {
+  iniciante:     'Iniciante',
+  intermediario: 'Intermediário',
+  avancado:      'Avançado',
+};
 
 export interface JointMeta {
   label: string;
@@ -15,8 +23,7 @@ export interface JointMeta {
   peso: number;
 }
 
-export interface GabaritoGolpe {
-  label: string;
+export interface ConfigNivel {
   imageUrl: string;
   imageCredit: string;
   metas: {
@@ -26,11 +33,27 @@ export interface GabaritoGolpe {
   };
 }
 
-export async function fetchGabarito(): Promise<Record<string, GabaritoGolpe>> {
+export interface AtletaEntry {
+  label: string;
+  niveis: Record<NivelAluno, ConfigNivel>;
+}
+
+export interface GabaritoEntry {
+  label: string;
+  grupo: string;
+  fase:  string;
+  atletas: Record<string, AtletaEntry>;
+}
+
+export async function fetchGabarito(): Promise<Record<string, GabaritoEntry>> {
   const res = await fetch(`${BASE_URL}/gabarito`);
   if (!res.ok) throw new Error(`Erro ao carregar gabarito: ${res.status}`);
-  return res.json() as Promise<Record<string, GabaritoGolpe>>;
+  return res.json() as Promise<Record<string, GabaritoEntry>>;
 }
+
+// ---------------------------------------------------------------------------
+// Clips
+// ---------------------------------------------------------------------------
 
 export interface ClipRecord {
   id: string;
