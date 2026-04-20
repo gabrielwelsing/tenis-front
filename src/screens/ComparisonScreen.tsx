@@ -536,9 +536,9 @@ export default function ComparisonScreen({ onBack }: Props) {
 
       {/* Video area */}
       <div ref={compareAreaRef} style={s.compareArea}>
-        {/* Hidden video sources — canvas draws their frames, bypassing iOS two-video restriction */}
-        <video ref={videoARef} src={slotA.url!} style={s.hiddenVideo} playsInline />
-        <video ref={videoBRef} src={slotB.url!} style={s.hiddenVideo} playsInline />
+        {/* Hidden video sources — full-size so iOS allocates decode buffer; muted so both can play simultaneously */}
+        <video ref={videoARef} src={slotA.url!} style={s.hiddenVideo} playsInline muted />
+        <video ref={videoBRef} src={slotB.url!} style={s.hiddenVideo} playsInline muted />
 
         {/* Display canvas — renders both videos in RAF loop */}
         <canvas ref={displayCanvasRef} style={s.displayCanvas} />
@@ -844,10 +844,12 @@ const s: Record<string, React.CSSProperties> = {
   },
   hiddenVideo: {
     position: 'absolute',
-    width: 1,
-    height: 1,
+    inset: 0,
+    width: '100%',
+    height: '100%',
     opacity: 0,
     pointerEvents: 'none',
+    zIndex: 0,
   },
   displayCanvas: {
     position: 'absolute',

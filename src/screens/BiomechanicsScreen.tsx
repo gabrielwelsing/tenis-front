@@ -1037,9 +1037,18 @@ function AnalysisModal({
   onClose: () => void;
 }) {
   const { golpe, joints, scorePonderado } = result;
+  const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
 
   return (
     <div style={sm.overlay}>
+      {/* Lightbox — imagem ampliada ao tocar */}
+      {lightboxUrl && (
+        <div style={sm.lightboxOverlay} onClick={() => setLightboxUrl(null)}>
+          <img src={lightboxUrl} alt="Ampliado" style={sm.lightboxImg} />
+          <span style={sm.lightboxHint}>Toque para fechar</span>
+        </div>
+      )}
+
       <div style={sm.sheet}>
         {/* Header */}
         <div style={sm.header}>
@@ -1052,22 +1061,23 @@ function AnalysisModal({
           </div>
         </div>
 
-        {/* Side-by-side images */}
+        {/* Side-by-side images — toque para ampliar */}
         <div style={sm.imageRow}>
           <div style={sm.imageBox}>
-            <p style={sm.imageCaption}>SUA POSIÇÃO</p>
+            <p style={sm.imageCaption}>SUA POSIÇÃO <span style={sm.zoomHint}>🔍 toque para ampliar</span></p>
             {snapshotUrl
-              ? <img src={snapshotUrl} alt="Snapshot" style={sm.img} />
+              ? <img src={snapshotUrl} alt="Snapshot" style={sm.img} onClick={() => setLightboxUrl(snapshotUrl)} />
               : <div style={sm.imgPlaceholder}><span>Sem frame</span></div>
             }
           </div>
           <div style={sm.imageBox}>
-            <p style={sm.imageCaption}>POSIÇÃO IDEAL</p>
+            <p style={sm.imageCaption}>POSIÇÃO IDEAL <span style={sm.zoomHint}>🔍</span></p>
             <img
               src={golpe.imageUrl}
               alt={golpe.label}
               style={sm.img}
               crossOrigin="anonymous"
+              onClick={() => setLightboxUrl(golpe.imageUrl)}
             />
             <p style={sm.imageCredit}>{golpe.imageCredit}</p>
           </div>
@@ -1131,6 +1141,36 @@ const sm: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'flex-end',
     justifyContent: 'center',
+  },
+  lightboxOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.95)',
+    zIndex: 400,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    cursor: 'zoom-out',
+    padding: 16,
+  },
+  lightboxImg: {
+    maxWidth: '100%',
+    maxHeight: '85dvh',
+    objectFit: 'contain',
+    borderRadius: 12,
+  },
+  lightboxHint: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+    flexShrink: 0,
+  },
+  zoomHint: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.3)',
+    marginLeft: 4,
+    fontWeight: 400,
   },
   sheet: {
     background: '#0f1221',
@@ -1212,6 +1252,7 @@ const sm: Record<string, React.CSSProperties> = {
     objectFit: 'cover',
     borderRadius: 12,
     background: '#000',
+    cursor: 'zoom-in',
   },
   imgPlaceholder: {
     width: '100%',

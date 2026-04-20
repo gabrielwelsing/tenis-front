@@ -289,6 +289,9 @@ export default function InstagramScreen({ onBack }: Props) {
         ctx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, OUT_W, OUT_H);
         mr.start(200);
 
+        // muted = true permite autoplay no iOS mesmo após await (contexto de gesture perdido)
+        // O áudio vem pelo AudioContext independentemente do atributo muted do elemento
+        v.muted = true;
         v.playbackRate = 1;
         v.play().catch(reject);
 
@@ -312,10 +315,13 @@ export default function InstagramScreen({ onBack }: Props) {
         rafRef.current = requestAnimationFrame(tick);
       });
 
+      // Restaura muted para que o vídeo original toque com áudio novamente
+      if (videoRef.current) videoRef.current.muted = false;
       setPhase('done');
     } catch (err) {
       console.error('[Processing]', err);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (videoRef.current) videoRef.current.muted = false;
       alert('Erro ao processar vídeo. Verifique se o formato é suportado pelo seu navegador.');
       setPhase('trim');
     }
