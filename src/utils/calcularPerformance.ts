@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { JointAngles } from '@services/poseService';
-import type { ConfigNivel } from '@services/apiService';
+import type { GabaritoEntry, NivelAluno, NIVEL_LABELS } from '@services/apiService';
 
 export interface JointResult {
   label:  string;
@@ -16,15 +16,13 @@ export interface JointResult {
 
 export interface PerformanceResult {
   golpeLabel:     string;
-  atletaLabel:    string;
   nivelLabel:     string;
   imageUrl:       string;
   imageCredit:    string;
   joints:         JointResult[];
-  scorePonderado: number; // 0-100, média ponderada pelo peso de cada articulação
+  scorePonderado: number;
 }
 
-// Percentual de acerto: 100% = no ideal, 0% = desvio >= tolerancia
 function calcPct(val: number | null, ideal: number, tolerancia: number): number | null {
   if (val === null) return null;
   const diff = Math.abs(val - ideal);
@@ -32,12 +30,13 @@ function calcPct(val: number | null, ideal: number, tolerancia: number): number 
 }
 
 export function calcularPerformance(
-  config: ConfigNivel,
+  entry: GabaritoEntry,
+  nivel: NivelAluno,
   golpeLabel: string,
-  atletaLabel: string,
   nivelLabel: string,
   angles: JointAngles,
 ): PerformanceResult {
+  const config = entry.niveis[nivel];
   const metaList = [
     { meta: config.metas.elbow, esqVal: angles.elbowLeft,  dirVal: angles.elbowRight },
     { meta: config.metas.knee,  esqVal: angles.kneeLeft,   dirVal: angles.kneeRight  },
@@ -65,10 +64,9 @@ export function calcularPerformance(
 
   return {
     golpeLabel,
-    atletaLabel,
     nivelLabel,
-    imageUrl:    config.imageUrl,
-    imageCredit: config.imageCredit,
+    imageUrl:    entry.imageUrl,
+    imageCredit: entry.imageCredit,
     joints,
     scorePonderado,
   };

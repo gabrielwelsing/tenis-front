@@ -58,13 +58,12 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const [panY, setPanY] = useState(0);
 
   // Análise comparativa
-  const [gabarito, setGabarito]                   = useState<Record<string, GabaritoEntry> | null>(null);
+  const [gabarito, setGabarito]                       = useState<Record<string, GabaritoEntry> | null>(null);
   const [selectedGolpeFaseId, setSelectedGolpeFaseId] = useState('saque_preparacao');
-  const [selectedAtletaId, setSelectedAtletaId]   = useState('federer');
-  const [selectedNivel, setSelectedNivel]         = useState<NivelAluno>('intermediario');
-  const [analysisResult, setAnalysisResult]       = useState<PerformanceResult | null>(null);
-  const [snapshotUrl, setSnapshotUrl]             = useState<string | null>(null);
-  const [analysisOpen, setAnalysisOpen]           = useState(false);
+  const [selectedNivel, setSelectedNivel]             = useState<NivelAluno>('intermediario');
+  const [analysisResult, setAnalysisResult]           = useState<PerformanceResult | null>(null);
+  const [snapshotUrl, setSnapshotUrl]                 = useState<string | null>(null);
+  const [analysisOpen, setAnalysisOpen]               = useState(false);
 
   const ZOOM_LEVELS = [1, 1.5, 2, 3];
   const PAN_STEP = 60;
@@ -74,22 +73,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const rafRef     = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const panStartRef = useRef<{ px: number; py: number; sx: number; sy: number } | null>(null);
-
-  // -------------------------------------------------------------------------
-  // Atletas disponíveis (todos — imagem é opcional, mostrada se disponível)
-  // -------------------------------------------------------------------------
-  const atletasDisponiveis = gabarito?.[selectedGolpeFaseId]?.atletas
-    ? Object.entries(gabarito[selectedGolpeFaseId].atletas)
-    : [];
-
-  // Se o atleta selecionado não está disponível para o novo golpe, resetar
-  useEffect(() => {
-    if (!gabarito) return;
-    const atletas = gabarito[selectedGolpeFaseId]?.atletas;
-    if (atletas && !atletas[selectedAtletaId]) {
-      setSelectedAtletaId(Object.keys(atletas)[0] ?? 'federer');
-    }
-  }, [selectedGolpeFaseId, gabarito, selectedAtletaId]);
 
   // -------------------------------------------------------------------------
   // Init MediaPipe + fetch gabarito on mount
@@ -319,20 +302,16 @@ export default function BiomechanicsScreen({ onBack }: Props) {
     if (video && !video.paused) video.pause();
     if (!gabarito) return;
 
-    const golpeEntry = gabarito[selectedGolpeFaseId];
-    if (!golpeEntry) return;
-    const atletaEntry = golpeEntry.atletas[selectedAtletaId];
-    if (!atletaEntry) return;
-    const config = atletaEntry.niveis[selectedNivel];
-    if (!config) return;
+    const entry = gabarito[selectedGolpeFaseId];
+    if (!entry) return;
 
     const snap = captureSnapshot();
     setSnapshotUrl(snap);
 
     const result = calcularPerformance(
-      config,
-      golpeEntry.label,
-      atletaEntry.label,
+      entry,
+      selectedNivel,
+      entry.label,
       NIVEL_LABELS[selectedNivel],
       currentAngles ?? { elbowLeft: null, elbowRight: null, kneeLeft: null, kneeRight: null, hipLeft: null, hipRight: null },
     );
@@ -366,18 +345,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
               ))
             : <option>Carregando...</option>
           }
-        </select>
-
-        {/* Atleta */}
-        <select
-          value={selectedAtletaId}
-          onChange={e => setSelectedAtletaId(e.target.value)}
-          style={s.select}
-          disabled={!gabarito || atletasDisponiveis.length === 0}
-        >
-          {atletasDisponiveis.map(([id, a]) => (
-            <option key={id} value={id}>{a.label}</option>
-          ))}
         </select>
 
         {/* Nível */}
@@ -1037,7 +1004,7 @@ function AnalysisModal({
   snapshotUrl: string | null;
   onClose: () => void;
 }) {
-  const { golpeLabel, atletaLabel, nivelLabel, imageUrl, imageCredit, joints, scorePonderado } = result;
+  const { golpeLabel, nivelLabel, imageUrl, imageCredit, joints, scorePonderado } = result;
   const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
 
   return (
@@ -1056,7 +1023,7 @@ function AnalysisModal({
           <div style={sm.headerCenter}>
             <div style={sm.headerTitles}>
               <span style={sm.golpeLabel}>{golpeLabel}</span>
-              <span style={sm.atletaMeta}>{atletaLabel} · {nivelLabel}</span>
+              <span style={sm.atletaMeta}>{nivelLabel}</span>
             </div>
           </div>
           <div style={{ ...sm.scoreChip, ...scoreBadgeStyle(scorePonderado) }}>

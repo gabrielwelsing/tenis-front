@@ -5,7 +5,7 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 // ---------------------------------------------------------------------------
-// Gabarito biomecânico — tipos multidimensionais
+// Gabarito biomecânico
 // ---------------------------------------------------------------------------
 
 export type NivelAluno = 'iniciante' | 'intermediario' | 'avancado';
@@ -23,9 +23,7 @@ export interface JointMeta {
   peso: number;
 }
 
-export interface ConfigNivel {
-  imageUrl: string;
-  imageCredit: string;
+export interface NivelConfig {
   metas: {
     elbow: JointMeta;
     knee:  JointMeta;
@@ -33,16 +31,13 @@ export interface ConfigNivel {
   };
 }
 
-export interface AtletaEntry {
-  label: string;
-  niveis: Record<NivelAluno, ConfigNivel>;
-}
-
 export interface GabaritoEntry {
-  label: string;
-  grupo: string;
-  fase:  string;
-  atletas: Record<string, AtletaEntry>;
+  label:       string;
+  grupo:       string;
+  fase:        string;
+  imageUrl:    string;
+  imageCredit: string;
+  niveis:      Record<NivelAluno, NivelConfig>;
 }
 
 export async function fetchGabarito(): Promise<Record<string, GabaritoEntry>> {
@@ -80,7 +75,6 @@ export async function saveVideo(params: {
   if (!res.ok) throw new Error(`Erro ao salvar vídeo: ${res.status}`);
 }
 
-// videoId: ID do vídeo mais recente — vincula o áudio diretamente (sem adivinhação)
 export async function saveAudio(params: {
   timestamp: number;
   audioDurationMs: number;
