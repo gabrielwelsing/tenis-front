@@ -248,17 +248,16 @@ export default function MuralScreen({ onBack }: Props) {
                 )}
               </div>
 
-              {/* Horários — grid garante renderização correta no iOS */}
+              {/* Horários — empilhados para evitar bug iOS com type=time em flex/grid */}
               <FieldGroup label="Janela de horários">
-                <div style={s.timeGrid}>
-                  <div style={s.timeCol}>
-                    <span style={s.subLabel}>Das</span>
+                <div style={s.timeStack}>
+                  <div style={s.timeRow}>
+                    <span style={s.timeLabel}>Das</span>
                     <input type="time" value={horarioInicio}
                       onChange={e => setHorarioInicio(e.target.value)} style={s.timeInput} />
                   </div>
-                  <div style={s.timeSep}>→</div>
-                  <div style={s.timeCol}>
-                    <span style={s.subLabel}>Às</span>
+                  <div style={s.timeRow}>
+                    <span style={s.timeLabel}>Às</span>
                     <input type="time" value={horarioFim}
                       onChange={e => setHorarioFim(e.target.value)} style={s.timeInput} />
                   </div>
@@ -331,26 +330,22 @@ function JogoCard({ jogo }: { jogo: Jogo }) {
   const url = buildWhatsAppUrl(jogo);
 
   return (
-    <div style={sc.card}>
-      {/* Barra lateral colorida */}
-      <div style={{ ...sc.accent, background: cor }} />
-
+    // box-shadow inset evita o bug do iOS Safari com overflow:hidden em flex
+    <div style={{ ...sc.card, boxShadow: `inset 5px 0 0 0 ${cor}` }}>
       <div style={sc.content}>
         {/* Cabeçalho */}
         <div style={sc.cardHeader}>
-          <span style={{ ...sc.classeBadge, color: cor, borderColor: `${cor}55`, background: `${cor}18` }}>
+          <span style={{ ...sc.classeBadge, color: cor, borderColor: `${cor}60`, background: `${cor}1a` }}>
             {jogo.classe}
           </span>
           <span style={sc.tempo}>{tempoRelativo(jogo.publicadoEm)}</span>
         </div>
 
-        {/* Infos */}
-        <div style={sc.infoGrid}>
+        {/* Infos em lista simples — evita grid com overflow */}
+        <div style={sc.infoList}>
           <InfoItem icon="📅" text={fmtDataRange(jogo)} />
           <InfoItem icon="🕐" text={`${jogo.horarioInicio.replace(':', 'h')} – ${jogo.horarioFim.replace(':', 'h')}`} />
-          <div style={{ gridColumn: '1 / -1' }}>
-            <InfoItem icon="📍" text={jogo.local} />
-          </div>
+          <InfoItem icon="📍" text={jogo.local} />
         </div>
 
         {/* WhatsApp */}
@@ -534,29 +529,27 @@ const s: Record<string, React.CSSProperties> = {
     marginTop: 2,
   },
 
-  // Grid para horários — mais confiável que flex no iOS Safari
-  timeGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr auto 1fr',
-    alignItems: 'end',
-    gap: '0 10px',
-  },
-  timeCol: {
+  // Horários empilhados (Das / Às) — evita bug de renderização no iOS Safari
+  timeStack: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 6,
-    minWidth: 0,
+    gap: 8,
   },
-  timeSep: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 16,
-    fontWeight: 600,
-    paddingBottom: 12,
-    textAlign: 'center',
+  timeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+  },
+  timeLabel: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: 'rgba(255,255,255,0.5)',
+    width: 28,
+    flexShrink: 0,
   },
   timeInput: {
-    width: '100%',
-    padding: '13px 10px',
+    flex: 1,
+    padding: '12px 14px',
     borderRadius: 12,
     background: 'rgba(255,255,255,0.07)',
     border: '1px solid rgba(255,255,255,0.13)',
@@ -617,19 +610,12 @@ const s: Record<string, React.CSSProperties> = {
 // ---------------------------------------------------------------------------
 const sc: Record<string, React.CSSProperties> = {
   card: {
-    display: 'flex',
     background: 'rgba(255,255,255,0.05)',
     border: '1px solid rgba(255,255,255,0.09)',
     borderRadius: 18,
-    overflow: 'hidden',
-  },
-  accent: {
-    width: 5,
-    flexShrink: 0,
-    borderRadius: '0 0 0 0',
+    // box-shadow inset substitui o elemento filho accent — sem bugs de overflow no iOS
   },
   content: {
-    flex: 1,
     padding: '14px 16px',
     display: 'flex',
     flexDirection: 'column',
@@ -653,10 +639,10 @@ const sc: Record<string, React.CSSProperties> = {
     color: 'rgba(255,255,255,0.3)',
     fontWeight: 500,
   },
-  infoGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '8px 12px',
+  infoList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 7,
   },
   waBtn: {
     display: 'flex',
