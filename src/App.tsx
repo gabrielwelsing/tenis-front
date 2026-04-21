@@ -1,10 +1,10 @@
 // =============================================================================
-// APP — Login por e-mail (validação regex, sem banco de dados)
+// APP — Login por e-mail + senha (adm/123 mantido como acesso especial)
 // =============================================================================
 
 import React, { useState } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { admLogout, setCurrentUser } from '@services/localSaveService';
+import { admLogin, admLogout, setCurrentUser } from '@services/localSaveService';
 import CameraScreen       from '@screens/CameraScreen';
 import HistoryScreen      from '@screens/HistoryScreen';
 import BiomechanicsScreen from '@screens/BiomechanicsScreen';
@@ -43,20 +43,35 @@ function LoginScreen({
   onLogin: (mode: SaveMode, username?: string) => void;
 }) {
   const [email, setEmail] = useState('');
+  const [pass,  setPass]  = useState('');
+  const [info,  setInfo]  = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = () => {
-    setError('');
-    if (!email.trim()) { setError('Digite seu e-mail para continuar.'); return; }
-    if (!EMAIL_REGEX.test(email.trim())) {
+    setError(''); setInfo('');
+    const raw = email.trim().toLowerCase();
+    if (!raw)       { setError('Preencha o e-mail.'); return; }
+    if (!pass)      { setError('Preencha a senha.');  return; }
+
+    // Acesso especial: "adm" bypass da validação de e-mail
+    const isAdm = raw === 'adm';
+    if (!isAdm && !EMAIL_REGEX.test(raw)) {
       setError('E-mail inválido. Ex: nome@email.com');
       return;
     }
-    // Qualquer e-mail válido libera o acesso (MVP — sem banco de dados de usuários)
-    // TODO: substituir por autenticação real (JWT/OAuth) quando necessário
-    const username = email.trim().split('@')[0].toLowerCase();
-    setCurrentUser(username);
-    onLogin('local', username);
+
+    // admLogin usa o e-mail (ou "adm") como chave no localStorage
+    const result = admLogin(raw, pass);
+    const displayName = isAdm ? 'adm' : raw.split('@')[0];
+
+    if (result === 'created') {
+      setInfo(`Perfil criado! Bem-vindo(a).`);
+      setTimeout(() => onLogin('local', displayName), 700);
+    } else if (result === 'ok') {
+      onLogin('local', displayName);
+    } else {
+      setError('Senha incorreta.');
+    }
   };
 
   return (
@@ -65,7 +80,6 @@ function LoginScreen({
       <div style={s.bgOverlay} />
       <div style={s.bgSides} />
 
-      {/* Instagram — canto superior direito */}
       <a
         href="https://www.instagram.com/jogartenisto/"
         target="_blank"
@@ -77,8 +91,8 @@ function LoginScreen({
       </a>
 
       <div style={s.card}>
-        <h1 style={s.title}>Tenis Coach com Carlos</h1>
-        <p style={s.sub}>Entre com seu e-mail para continuar</p>
+        <h1 style={s.title}>App Tenis Coach com Carlos</h1>
+        <p style={s.sub}>Entre com seu perfil</p>
 
         <div style={s.admForm}>
           <input
@@ -88,18 +102,26 @@ function LoginScreen({
             inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             autoCapitalize="none"
             autoCorrect="off"
           />
+          <input
+            style={s.input}
+            placeholder="Senha"
+            type="password"
+            value={pass}
+            onChange={(e) => setPass(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+          />
           {error && <p style={s.error}>{error}</p>}
+          {info  && <p style={s.infoMsg}>{info}</p>}
           <button onClick={handleLogin} style={s.admBtn}>
             Entrar
           </button>
         </div>
 
         <p style={s.hint}>
-          Nenhuma senha necessária — apenas um e-mail válido.
+          Primeira vez? Cadastre com seu e-mail e crie uma senha.
         </p>
       </div>
     </div>
