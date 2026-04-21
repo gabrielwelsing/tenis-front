@@ -84,6 +84,18 @@ export default function HomeScreen({ saveMode, username, onLogout, onNavigate }:
             <div style={{ ...s.badge, ...s.badgePink }}>processamento local</div>
           </button>
 
+          {/* Card 5 — Mural de Treinos */}
+          <button style={{ ...s.card, ...s.cardGreen }} onClick={() => onNavigate('mural')}>
+            <div style={s.cardIcon}>🎾</div>
+            <div style={s.cardBody}>
+              <div style={s.cardTitle}>Mural de Treinos</div>
+              <div style={s.cardSub}>
+                Encontre um parceiro para treinar em Teófilo Otoni
+              </div>
+            </div>
+            <div style={{ ...s.badge, ...s.badgeGreen }}>novo</div>
+          </button>
+
           {/* Card Histórico */}
           <button style={{ ...s.card, ...s.cardGray }} onClick={() => onNavigate('history')}>
             <div style={s.cardIcon}>📂</div>
@@ -268,10 +280,15 @@ const s: Record<string, React.CSSProperties> = {
     letterSpacing: 0.3,
     whiteSpace: 'nowrap',
   },
+  cardGreen: {
+    background: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)',
+    boxShadow: '0 4px 24px rgba(46,125,50,0.35)',
+  },
   badgeRed:    { background: 'rgba(255,255,255,0.22)', color: '#fff' },
   badgeTeal:   { background: 'rgba(0,0,0,0.25)', color: '#b2ebf2' },
   badgePurple: { background: 'rgba(0,0,0,0.25)', color: '#e1bee7' },
   badgePink:   { background: 'rgba(0,0,0,0.25)', color: '#f8bbd0' },
+  badgeGreen:  { background: 'rgba(0,0,0,0.25)', color: '#c8e6c9' },
   footer: {
     display: 'flex',
     flexDirection: 'column',

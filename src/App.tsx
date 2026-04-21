@@ -1,21 +1,25 @@
 // =============================================================================
-// APP — Login local (ADM + senha)
+// APP — Login por e-mail (validação regex, sem banco de dados)
 // =============================================================================
 
 import React, { useState } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { admLogin, admLogout, setCurrentUser } from '@services/localSaveService';
+import { admLogout, setCurrentUser } from '@services/localSaveService';
 import CameraScreen       from '@screens/CameraScreen';
 import HistoryScreen      from '@screens/HistoryScreen';
 import BiomechanicsScreen from '@screens/BiomechanicsScreen';
 import HomeScreen         from '@screens/HomeScreen';
 import ComparisonScreen   from '@screens/ComparisonScreen';
 import InstagramScreen    from '@screens/InstagramScreen';
+import MuralScreen        from '@screens/MuralScreen';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 
 export type SaveMode = 'drive' | 'local';
-export type Screen = 'camera' | 'history' | 'biomechanics' | 'home' | 'comparison' | 'instagram';
+export type Screen = 'camera' | 'history' | 'biomechanics' | 'home' | 'comparison' | 'instagram' | 'mural';
+
+// Regex padrão para validação de e-mail (RFC 5322 simplificado)
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // ---------------------------------------------------------------------------
 // Ícone Instagram (SVG inline)
@@ -38,25 +42,21 @@ function LoginScreen({
 }: {
   onLogin: (mode: SaveMode, username?: string) => void;
 }) {
-  const [user,  setUser]  = useState('');
-  const [pass,  setPass]  = useState('');
-  const [info,  setInfo]  = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
 
-  const handleAdmLogin = () => {
-    setError(''); setInfo('');
-    if (!user.trim() || !pass) { setError('Preencha usuário e senha.'); return; }
-
-    const result = admLogin(user.trim(), pass);
-
-    if (result === 'created') {
-      setInfo(`Perfil "${user.trim()}" criado!`);
-      setTimeout(() => onLogin('local', user.trim().toLowerCase()), 800);
-    } else if (result === 'ok') {
-      onLogin('local', user.trim().toLowerCase());
-    } else {
-      setError('Senha incorreta.');
+  const handleLogin = () => {
+    setError('');
+    if (!email.trim()) { setError('Digite seu e-mail para continuar.'); return; }
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setError('E-mail inválido. Ex: nome@email.com');
+      return;
     }
+    // Qualquer e-mail válido libera o acesso (MVP — sem banco de dados de usuários)
+    // TODO: substituir por autenticação real (JWT/OAuth) quando necessário
+    const username = email.trim().split('@')[0].toLowerCase();
+    setCurrentUser(username);
+    onLogin('local', username);
   };
 
   return (
@@ -78,35 +78,28 @@ function LoginScreen({
 
       <div style={s.card}>
         <h1 style={s.title}>Tenis Coach com Carlos</h1>
-        <p style={s.sub}>Entre com seu perfil</p>
+        <p style={s.sub}>Entre com seu e-mail para continuar</p>
 
         <div style={s.admForm}>
           <input
             style={s.input}
-            placeholder="Nome (ex: Carlos)"
-            value={user}
-            onChange={(e) => setUser(e.target.value)}
+            placeholder="seu@email.com"
+            type="email"
+            inputMode="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             autoCapitalize="none"
             autoCorrect="off"
           />
-          <input
-            style={s.input}
-            placeholder="Senha"
-            type="password"
-            value={pass}
-            onChange={(e) => setPass(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdmLogin()}
-          />
           {error && <p style={s.error}>{error}</p>}
-          {info  && <p style={s.infoMsg}>{info}</p>}
-          <button onClick={handleAdmLogin} style={s.admBtn}>
+          <button onClick={handleLogin} style={s.admBtn}>
             Entrar
           </button>
         </div>
 
         <p style={s.hint}>
-          Primeira vez? Digite seu nome e crie uma senha.{'\n'}
-          Próximas vezes, use o mesmo nome e senha.
+          Nenhuma senha necessária — apenas um e-mail válido.
         </p>
       </div>
     </div>
@@ -170,6 +163,8 @@ function App() {
       return <ComparisonScreen onBack={() => setScreen('home')} />;
     case 'instagram':
       return <InstagramScreen onBack={() => setScreen('home')} />;
+    case 'mural':
+      return <MuralScreen onBack={() => setScreen('home')} emailUsuario={username} />;
     default:
       return (
         <HomeScreen
