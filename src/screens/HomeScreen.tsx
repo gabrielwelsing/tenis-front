@@ -28,7 +28,7 @@ export default function HomeScreen({ saveMode, username, onLogout, onNavigate }:
         <div style={s.header}>
           <div>
             <h2 style={s.greeting}>Olá, {displayName}</h2>
-            <p style={s.appName}>App Tenis Coach com Carlos</p>
+            <p style={s.appName}>Tenis Coach Com Carlos</p>
           </div>
           <button onClick={onLogout} style={s.sairBtn}>Sair</button>
         </div>
