@@ -137,6 +137,7 @@ export default function MuralScreen({ onBack }: Props) {
   const [jogos, setJogos]               = useState<Jogo[]>(MOCK_JOGOS);
 
   // Form state
+  const [formAberto, setFormAberto]     = useState(true); // inicia expandido
   const [classe, setClasse]             = useState('Iniciante');
   const [janelaData, setJanelaData]     = useState(false); // false = dia único
   const [dataInicio, setDataInicio]     = useState('');
@@ -195,13 +196,16 @@ export default function MuralScreen({ onBack }: Props) {
           <section style={s.section}>
             <div style={s.sectionHead}>
               <span style={s.sectionIcon}>📢</span>
-              <div>
+              <div style={{ flex: 1 }}>
                 <h2 style={s.sectionTitle}>Publicar Disponibilidade</h2>
                 <p style={s.sectionSub}>Encontre um parceiro para treinar</p>
               </div>
+              <button onClick={() => setFormAberto(v => !v)} style={s.minimizeBtn}>
+                {formAberto ? '▲ Minimizar' : '▼ Abrir'}
+              </button>
             </div>
 
-            <div style={s.formCard}>
+            {formAberto && <div style={s.formCard}>
 
               {/* Classe */}
               <FieldGroup label="Sua Classe">
@@ -244,18 +248,19 @@ export default function MuralScreen({ onBack }: Props) {
                 )}
               </div>
 
-              {/* Horários */}
+              {/* Horários — grid garante renderização correta no iOS */}
               <FieldGroup label="Janela de horários">
-                <div style={s.row}>
-                  <div style={s.col}>
+                <div style={s.timeGrid}>
+                  <div style={s.timeCol}>
                     <span style={s.subLabel}>Das</span>
                     <input type="time" value={horarioInicio}
-                      onChange={e => setHorarioInicio(e.target.value)} style={s.input} />
+                      onChange={e => setHorarioInicio(e.target.value)} style={s.timeInput} />
                   </div>
-                  <div style={s.col}>
+                  <div style={s.timeSep}>→</div>
+                  <div style={s.timeCol}>
                     <span style={s.subLabel}>Às</span>
                     <input type="time" value={horarioFim}
-                      onChange={e => setHorarioFim(e.target.value)} style={s.input} />
+                      onChange={e => setHorarioFim(e.target.value)} style={s.timeInput} />
                   </div>
                 </div>
               </FieldGroup>
@@ -282,7 +287,7 @@ export default function MuralScreen({ onBack }: Props) {
               <button onClick={handlePublicar} style={s.publishBtn}>
                 📢 Publicar Disponibilidade
               </button>
-            </div>
+            </div>}
           </section>
 
           {/* ── Seção B: Feed ───────────────────────────────────── */}
@@ -512,6 +517,54 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
+  },
+
+  minimizeBtn: {
+    flexShrink: 0,
+    padding: '8px 14px',
+    borderRadius: 10,
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.15)',
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+
+  // Grid para horários — mais confiável que flex no iOS Safari
+  timeGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr auto 1fr',
+    alignItems: 'end',
+    gap: '0 10px',
+  },
+  timeCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    minWidth: 0,
+  },
+  timeSep: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 16,
+    fontWeight: 600,
+    paddingBottom: 12,
+    textAlign: 'center',
+  },
+  timeInput: {
+    width: '100%',
+    padding: '13px 10px',
+    borderRadius: 12,
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.13)',
+    color: '#fff',
+    fontSize: 15,
+    boxSizing: 'border-box',
+    colorScheme: 'dark',
+    minWidth: 0,
   },
 
   modeToggle: {
