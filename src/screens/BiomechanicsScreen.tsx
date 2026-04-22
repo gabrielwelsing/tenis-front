@@ -71,6 +71,9 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const [bestScore, setBestScore]       = useState<number | null>(null);
   const scanCancelRef = useRef(false);
 
+  // Gabarito load state
+  const [gabaritoError, setGabaritoError] = useState(false);
+
   const ZOOM_LEVELS = [1, 1.5, 2, 3];
   const PAN_STEP = 60;
 
@@ -89,8 +92,8 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       .catch(() => setLoadPhase('error'));
 
     fetchGabarito()
-      .then(data => setGabarito(data))
-      .catch(() => { /* gabarito indisponível — botão continua visível mas desabilitado */ });
+      .then(data => { setGabarito(data); setGabaritoError(false); })
+      .catch(() => setGabaritoError(true));
 
     return () => {
       disposePoseLandmarker();
@@ -400,6 +403,13 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const angles = currentAngles;
   const canAnalyze = !!gabarito && !!videoUrl;
 
+  const retryGabarito = useCallback(() => {
+    setGabaritoError(false);
+    fetchGabarito()
+      .then(data => { setGabarito(data); setGabaritoError(false); })
+      .catch(() => setGabaritoError(true));
+  }, []);
+
   // Strip de análise comparativa (sempre visível)
   const analysisStrip = (
     <div style={s.analysisStrip}>
@@ -408,19 +418,25 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       </p>
       <div style={s.selectsCol}>
         {/* Golpe + Fase */}
-        <select
-          value={selectedGolpeFaseId}
-          onChange={e => setSelectedGolpeFaseId(e.target.value)}
-          style={s.select}
-          disabled={!gabarito}
-        >
-          {gabarito
-            ? Object.entries(gabarito).map(([id, g]) => (
-                <option key={id} value={id}>{g.label}</option>
-              ))
-            : <option>Carregando...</option>
-          }
-        </select>
+        {gabaritoError ? (
+          <button onClick={retryGabarito} style={s.retryGabaritoBtn}>
+            ⚠️ Erro ao carregar golpes — toque para tentar novamente
+          </button>
+        ) : (
+          <select
+            value={selectedGolpeFaseId}
+            onChange={e => setSelectedGolpeFaseId(e.target.value)}
+            style={s.select}
+            disabled={!gabarito}
+          >
+            {gabarito
+              ? Object.entries(gabarito).map(([id, g]) => (
+                  <option key={id} value={id}>{g.label}</option>
+                ))
+              : <option>Carregando golpes...</option>
+            }
+          </select>
+        )}
 
         {/* Nível */}
         <div style={s.nivelRow}>
@@ -651,7 +667,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             )}
 
             <div style={s.controls}>
-              {videoUrl && <button onClick={() => fileInputRef.current?.click()} style={{ ...s.ctrlBtn, fontSize: 12 }}>📁</button>}
               <button onClick={() => stepFrame(-1)} style={s.ctrlBtn}>◀</button>
               <button onClick={togglePlay} style={s.ctrlBtnMain} disabled={!videoUrl}>{isPlaying ? '⏸' : '▶'}</button>
               <button onClick={() => stepFrame(1)} style={s.ctrlBtn}>▶▶</button>
@@ -1054,6 +1069,18 @@ const s: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap' as const,
     width: '100%',
     minHeight: 48,
+  },
+  retryGabaritoBtn: {
+    width: '100%',
+    padding: '13px 14px',
+    borderRadius: 12,
+    background: 'rgba(255,100,100,0.12)',
+    border: '1px solid rgba(255,100,100,0.4)',
+    color: '#ff8a80',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    textAlign: 'left' as const,
   },
 
   trophyBtn: {
