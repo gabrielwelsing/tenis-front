@@ -1010,7 +1010,7 @@ const s: Record<string, React.CSSProperties> = {
   headerSpacer: { width: 70, flexShrink: 0 },
 
   scrollBody: {
-    flex: 1, overflowY: 'auto',
+    flex: 1, overflowY: 'auto', overflowX: 'hidden',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
   inner: {
