@@ -1031,16 +1031,16 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(255,255,255,0.04)',
     border: '1px solid rgba(255,255,255,0.09)',
     borderRadius: 22, padding: '20px 16px 24px',
-    overflow: 'hidden', boxSizing: 'border-box',
   },
 
   fieldLabel: { fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.8, textTransform: 'uppercase' },
   subLabel:   { fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.38)', letterSpacing: 0.4 },
 
   input: {
-    width: '100%', padding: '13px 14px', borderRadius: 12,
+    width: '100%', maxWidth: '100%', padding: '13px 14px', borderRadius: 12,
     background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)',
     color: '#fff', fontSize: 15, boxSizing: 'border-box', colorScheme: 'dark',
+    display: 'block',
   },
   select: {
     width: '100%', padding: '13px 14px', borderRadius: 12,
@@ -1048,8 +1048,8 @@ const s: Record<string, React.CSSProperties> = {
     color: '#fff', fontSize: 15, appearance: 'auto', boxSizing: 'border-box', colorScheme: 'dark',
   },
 
-  row: { display: 'flex', gap: 10 },
-  col: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 },
+  row: { display: 'flex', gap: 10, overflow: 'hidden' },
+  col: { flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 6 },
 
   minimizeBtn: {
     flexShrink: 0, padding: '8px 14px', borderRadius: 10,
