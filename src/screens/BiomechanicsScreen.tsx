@@ -65,6 +65,12 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const [snapshotUrl, setSnapshotUrl]                 = useState<string | null>(null);
   const [analysisOpen, setAnalysisOpen]               = useState(false);
 
+  // Melhor pose
+  const [findingBest, setFindingBest]   = useState(false);
+  const [bestProgress, setBestProgress] = useState(0);
+  const [bestScore, setBestScore]       = useState<number | null>(null);
+  const scanCancelRef = useRef(false);
+
   const ZOOM_LEVELS = [1, 1.5, 2, 3];
   const PAN_STEP = 60;
 
@@ -143,11 +149,13 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   // File handling
   // -------------------------------------------------------------------------
   const loadVideoFile = (file: File) => {
+    scanCancelRef.current = true; // cancela scan em andamento
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     const url = URL.createObjectURL(file);
     setVideoUrl(url);
     setIsPlaying(false);
     setCurrentAngles(null);
+    setBestScore(null);
     cancelAnimationFrame(rafRef.current);
   };
 
@@ -320,6 +328,73 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   };
 
   // -------------------------------------------------------------------------
+  // Busca do melhor frame (maior score) — varre o vídeo a cada 1s
+  // -------------------------------------------------------------------------
+  const handleFindBestPose = useCallback(async () => {
+    const v = videoRef.current;
+    if (!v || !gabarito || findingBest) return;
+    const entry = gabarito[selectedGolpeFaseId];
+    if (!entry) return;
+
+    v.pause();
+    setFindingBest(true);
+    setBestProgress(0);
+    setBestScore(null);
+    scanCancelRef.current = false;
+
+    const duration = v.duration || 0;
+    if (duration < 0.1) { setFindingBest(false); return; }
+
+    const seekTo = (t: number): Promise<void> =>
+      new Promise(resolve => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; v.removeEventListener('seeked', finish); resolve(); } };
+        v.addEventListener('seeked', finish);
+        v.currentTime = Math.min(t, duration - 0.05);
+        setTimeout(finish, 600); // fallback se o evento não disparar
+      });
+
+    const STEP = 1.0;
+    const total = Math.max(1, Math.ceil(duration / STEP));
+    let bestSc = -1;
+    let bestT = 0;
+
+    for (let i = 0; i < total; i++) {
+      if (scanCancelRef.current) break;
+      await seekTo(i * STEP);
+      if (scanCancelRef.current) break;
+      await handleSeek(v.currentTime * 1000);
+      const frame = detectFrame(v, v.currentTime * 1000);
+      if (frame) {
+        const result = calcularPerformance(
+          entry, selectedNivel, '', '',
+          frame.angles,
+        );
+        if (result.scorePonderado > bestSc) {
+          bestSc = result.scorePonderado;
+          bestT  = v.currentTime;
+        }
+      }
+      setBestProgress(Math.round(((i + 1) / total) * 100));
+    }
+
+    if (!scanCancelRef.current) {
+      await seekTo(bestT);
+      await handleSeek(v.currentTime * 1000);
+      const bestFrame = detectFrame(v, v.currentTime * 1000);
+      if (bestFrame) {
+        const c = canvasRef.current;
+        const ctx = c?.getContext('2d');
+        if (c && ctx) drawPoseFrame(ctx, bestFrame, c.width, c.height, v);
+        setCurrentAngles(bestFrame.angles);
+      }
+      setBestScore(bestSc >= 0 ? bestSc : null);
+    }
+
+    setFindingBest(false);
+  }, [gabarito, selectedGolpeFaseId, selectedNivel, findingBest]);
+
+  // -------------------------------------------------------------------------
   // Render helpers
   // -------------------------------------------------------------------------
   const angles = currentAngles;
@@ -466,6 +541,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
       {/* Body */}
       {isMobile ? (
+        <>
         <div style={s.mobileBody}>
           <div style={s.videoWrapper} onMouseDown={handlePanStart} onTouchStart={handlePanStart}>
             <div style={{ ...s.zoomInner, transform: `translate(${panX}px,${panY}px) scale(${zoom})`, cursor: zoom > 1 ? 'grab' : 'default' }}>
@@ -512,6 +588,18 @@ export default function BiomechanicsScreen({ onBack }: Props) {
                   style={s.zoomBtn} disabled={zoom === 1}
                 >－</button>
                 {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
+                {/* Trophy — melhor pose */}
+                <button
+                  onClick={findingBest ? () => { scanCancelRef.current = true; } : handleFindBestPose}
+                  style={{ ...s.trophyBtn, opacity: canAnalyze || findingBest ? 1 : 0.35 }}
+                  disabled={!canAnalyze && !findingBest}
+                  title={findingBest ? 'Cancelar busca' : 'Encontrar melhor posição (🏆)'}
+                >
+                  {findingBest ? `${bestProgress}%` : '🏆'}
+                </button>
+                {bestScore !== null && !findingBest && (
+                  <span style={s.trophyScore}>{bestScore}%</span>
+                )}
               </div>
               {zoom > 1 && (
                 <div style={s.panControls}>
@@ -527,8 +615,9 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             </>
           )}
 
-          {anglePanel}
         </div>
+        {anglePanel}
+        </>
       ) : (
         <div style={s.desktopBody}>
           <div style={s.desktopLeft}>
@@ -579,6 +668,18 @@ export default function BiomechanicsScreen({ onBack }: Props) {
               <button onClick={() => changeZoom(ZOOM_LEVELS[Math.max(ZOOM_LEVELS.indexOf(zoom) - 1, 0)])} style={s.zoomBtn} disabled={zoom === 1}>－</button>
               {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
               {zoom > 1 && <button onClick={() => { setPanX(0); setPanY(0); }} style={s.panCenterBtn}>⊙</button>}
+              {/* Trophy — melhor pose */}
+              <button
+                onClick={findingBest ? () => { scanCancelRef.current = true; } : handleFindBestPose}
+                style={{ ...s.trophyBtn, opacity: canAnalyze || findingBest ? 1 : 0.35 }}
+                disabled={!canAnalyze && !findingBest}
+                title={findingBest ? 'Cancelar' : 'Melhor posição'}
+              >
+                {findingBest ? `${bestProgress}%` : '🏆'}
+              </button>
+              {bestScore !== null && !findingBest && (
+                <span style={s.trophyScore}>{bestScore}%</span>
+              )}
             </div>
           </div>
 
@@ -597,7 +698,9 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
 const s: Record<string, React.CSSProperties> = {
   page: {
-    minHeight: '100dvh',
+    position: 'fixed',
+    inset: 0,
+    overflow: 'hidden',
     background: '#0d0d1a',
     color: '#fff',
     display: 'flex',
@@ -676,7 +779,7 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   mobileBody: {
-    flex: 1,
+    flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
     gap: 0,
@@ -760,6 +863,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    flexWrap: 'wrap',
     gap: 10,
     padding: '10px 16px',
     background: 'rgba(0,0,0,0.3)',
@@ -860,6 +964,7 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(0,0,0,0.25)',
     flex: 1,
     overflow: 'auto',
+    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
   anglePanelTitle: {
     fontSize: 14,
@@ -962,7 +1067,26 @@ const s: Record<string, React.CSSProperties> = {
     minHeight: 48,
   },
 
-  desktopBody: { flex: 1, display: 'flex', overflow: 'hidden' },
+  trophyBtn: {
+    padding: '10px 13px',
+    borderRadius: 10,
+    background: 'rgba(255,215,0,0.15)',
+    border: '1.5px solid rgba(255,215,0,0.5)',
+    color: '#ffd700',
+    fontSize: 18,
+    fontWeight: 800,
+    cursor: 'pointer',
+    minWidth: 48,
+    lineHeight: 1,
+  },
+  trophyScore: {
+    color: '#ffd700',
+    fontSize: 13,
+    fontWeight: 800,
+    minWidth: 36,
+    textAlign: 'center' as const,
+  },
+  desktopBody: { flex: 1, display: 'flex', minHeight: 0 },
   desktopLeft: {
     flex: '0 0 65%',
     display: 'flex',
@@ -975,6 +1099,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'auto',
+    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
 };
 
@@ -1158,6 +1283,7 @@ const sm: Record<string, React.CSSProperties> = {
     maxWidth: 720,
     maxHeight: '92dvh',
     overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
     display: 'flex',
     flexDirection: 'column',
     paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))',

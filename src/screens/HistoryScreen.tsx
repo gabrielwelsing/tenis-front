@@ -71,6 +71,8 @@ export default function HistoryScreen({ onBack, saveMode }: { onBack: () => void
         <h1 style={s.title}>Lances Gravados</h1>
       </div>
 
+      <div style={s.scrollBody}>
+
       {loading && (
         <div style={s.center}>
           <div style={s.spinner} />
@@ -138,6 +140,8 @@ export default function HistoryScreen({ onBack, saveMode }: { onBack: () => void
           })}
         </div>
       )}
+
+      </div>
     </div>
   );
 }
@@ -152,7 +156,8 @@ if (!document.getElementById('tenis-spinner-style')) {
 
 const s: Record<string, React.CSSProperties> = {
   container: {
-    minHeight: '100dvh', background: '#0d0d1a', color: '#fff',
+    position: 'fixed', inset: 0, overflow: 'hidden',
+    background: '#0d0d1a', color: '#fff',
     fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column',
   },
   header: {
@@ -167,6 +172,13 @@ const s: Record<string, React.CSSProperties> = {
   },
   title: { fontSize: 22, fontWeight: 700, margin: 0 },
 
+  scrollBody: {
+    flex: 1,
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+    display: 'flex',
+    flexDirection: 'column',
+  },
   center: {
     flex: 1, display: 'flex', flexDirection: 'column',
     alignItems: 'center', justifyContent: 'center',

@@ -743,7 +743,9 @@ function TrimSlot({
 
 const s: Record<string, React.CSSProperties> = {
   page: {
-    minHeight: '100dvh',
+    position: 'fixed',
+    inset: 0,
+    overflow: 'hidden',
     background: '#0d0d1a',
     display: 'flex',
     flexDirection: 'column',
@@ -792,6 +794,7 @@ const s: Record<string, React.CSSProperties> = {
     padding: '0 16px',
     flex: 1,
     overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
   trimRow: {
     display: 'flex',
@@ -800,6 +803,7 @@ const s: Record<string, React.CSSProperties> = {
     padding: '0 16px',
     flex: 1,
     overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
   setupFooter: {
     padding: '16px',

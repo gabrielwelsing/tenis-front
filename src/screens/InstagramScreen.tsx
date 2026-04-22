@@ -598,7 +598,9 @@ export default function InstagramScreen({ onBack }: Props) {
 
 const s: Record<string, React.CSSProperties> = {
   page: {
-    minHeight: '100dvh',
+    position: 'fixed',
+    inset: 0,
+    overflow: 'hidden',
     background: '#0d0d1a',
     display: 'flex',
     flexDirection: 'column',
@@ -666,7 +668,7 @@ const s: Record<string, React.CSSProperties> = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
+    minHeight: 0,
   },
   instrRow: {
     display: 'flex',
@@ -865,6 +867,7 @@ const s: Record<string, React.CSSProperties> = {
     gap: 20,
     padding: 16,
     overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
   outputVideo: {
     width: '100%',
