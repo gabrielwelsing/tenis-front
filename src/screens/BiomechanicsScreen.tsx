@@ -359,50 +359,88 @@ export default function BiomechanicsScreen({ onBack }: Props) {
     const duration = v.duration || 0;
     if (duration < 0.1) { setFindingBest(false); return; }
 
+    // Aguarda o vídeo estar em estado seekable
+    const waitReady = (): Promise<void> =>
+      new Promise(resolve => {
+        if (v.readyState >= 2) { resolve(); return; }
+        const fn = () => { v.removeEventListener('canplay', fn); resolve(); };
+        v.addEventListener('canplay', fn);
+        setTimeout(resolve, 500);
+      });
+
+    // Seek confiável: aguarda 'seeked' + garante que o frame está pintado
     const seekTo = (t: number): Promise<void> =>
       new Promise(resolve => {
         let done = false;
-        const finish = () => { if (!done) { done = true; v.removeEventListener('seeked', finish); resolve(); } };
+        const finish = () => {
+          if (!done) {
+            done = true;
+            v.removeEventListener('seeked', finish);
+            // Pequeno rAF para garantir que o frame está renderizado antes da detecção
+            requestAnimationFrame(() => resolve());
+          }
+        };
         v.addEventListener('seeked', finish);
-        v.currentTime = Math.min(t, duration - 0.05);
-        setTimeout(finish, 600); // fallback se o evento não disparar
+        v.currentTime = Math.min(Math.max(t, 0), duration - 0.05);
+        setTimeout(finish, 400);
       });
 
-    const STEP = 1.0;
-    const total = Math.max(1, Math.ceil(duration / STEP));
+    await waitReady();
+
+    const STEP = 0.5; // varre a cada 500ms — 2× mais preciso que antes
+    const times: number[] = [];
+    for (let t = 0; t < duration; t += STEP) times.push(t);
+    if (times.length === 0) times.push(0);
+
+    const total = times.length;
     let bestSc = -1;
-    let bestT = 0;
+    let bestT  = 0;
+    let framesDetected = 0;
+
+    // Garante partida do início para timestamp monotônico
+    await seekTo(0);
+    await handleSeek(0);
 
     for (let i = 0; i < total; i++) {
       if (scanCancelRef.current) break;
-      await seekTo(i * STEP);
+
+      await seekTo(times[i]);
       if (scanCancelRef.current) break;
-      await handleSeek(v.currentTime * 1000);
-      const frame = detectFrame(v, v.currentTime * 1000);
+
+      const tsMs = Math.round(v.currentTime * 1000);
+      await handleSeek(tsMs);
+      const frame = detectFrame(v, tsMs);
+
       if (frame) {
-        const result = calcularPerformance(
-          entry, selectedNivel, '', '',
-          frame.angles,
-        );
+        framesDetected++;
+        const result = calcularPerformance(entry, selectedNivel, '', '', frame.angles);
         if (result.scorePonderado > bestSc) {
           bestSc = result.scorePonderado;
           bestT  = v.currentTime;
         }
       }
+
       setBestProgress(Math.round(((i + 1) / total) * 100));
     }
 
     if (!scanCancelRef.current) {
-      await seekTo(bestT);
-      await handleSeek(v.currentTime * 1000);
-      const bestFrame = detectFrame(v, v.currentTime * 1000);
-      if (bestFrame) {
-        const c = canvasRef.current;
-        const ctx = c?.getContext('2d');
-        if (c && ctx) drawPoseFrame(ctx, bestFrame, c.width, c.height, v);
-        setCurrentAngles(bestFrame.angles);
+      if (framesDetected === 0) {
+        // Nenhuma pose detectada — permanece no frame atual
+        setBestScore(null);
+      } else {
+        // Volta ao melhor frame e exibe overlay + ângulos
+        await seekTo(bestT);
+        await handleSeek(Math.round(bestT * 1000));
+        const tsMs = Math.round(v.currentTime * 1000);
+        const bestFrame = detectFrame(v, tsMs);
+        if (bestFrame) {
+          const c = canvasRef.current;
+          const ctx = c?.getContext('2d');
+          if (c && ctx) drawPoseFrame(ctx, bestFrame, c.width, c.height, v);
+          setCurrentAngles(bestFrame.angles);
+        }
+        setBestScore(bestSc);
       }
-      setBestScore(bestSc >= 0 ? bestSc : null);
     }
 
     setFindingBest(false);
