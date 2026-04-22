@@ -519,7 +519,14 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       <div style={s.header}>
         <button onClick={onBack} style={s.backBtn}>← Voltar</button>
         <span style={s.headerTitle}>Análise Biomecânica</span>
-        <span style={s.headerSpacer} />
+        <button
+          onClick={findingBest ? () => { scanCancelRef.current = true; } : handleFindBestPose}
+          style={{ ...s.trophyHeaderBtn, opacity: videoUrl && (canAnalyze || findingBest) ? 1 : 0.3 }}
+          disabled={!videoUrl || (!canAnalyze && !findingBest)}
+          title={findingBest ? `Cancelar (${bestProgress}%)` : 'Encontrar melhor posição'}
+        >
+          {findingBest ? `${bestProgress}%` : bestScore !== null ? `🏆 ${bestScore}%` : '🏆'}
+        </button>
       </div>
 
       <input
@@ -539,10 +546,9 @@ export default function BiomechanicsScreen({ onBack }: Props) {
         />
       )}
 
-      {/* Body */}
+      {/* Body — mobile: todos os elementos filhos diretos do page (fixed), garantindo scroll do anglePanel */}
       {isMobile ? (
         <>
-        <div style={s.mobileBody}>
           <div style={s.videoWrapper} onMouseDown={handlePanStart} onTouchStart={handlePanStart}>
             <div style={{ ...s.zoomInner, transform: `translate(${panX}px,${panY}px) scale(${zoom})`, cursor: zoom > 1 ? 'grab' : 'default' }}>
               {videoUrl ? (
@@ -573,50 +579,36 @@ export default function BiomechanicsScreen({ onBack }: Props) {
           </button>
 
           {videoUrl && (
-            <>
-              <div style={s.controls}>
-                <button onClick={() => stepFrame(-1)} style={s.ctrlBtn}>◀</button>
-                <button onClick={togglePlay} style={s.ctrlBtnMain}>{isPlaying ? '⏸' : '▶'}</button>
-                <button onClick={() => stepFrame(1)} style={s.ctrlBtn}>▶▶</button>
-                <button onClick={toggleRate} style={s.rateBtn}>{playbackRate === 1 ? '1x' : '0.5x'}</button>
-                <button
-                  onClick={() => changeZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.indexOf(zoom) + 1, ZOOM_LEVELS.length - 1)])}
-                  style={s.zoomBtn} disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-                >＋</button>
-                <button
-                  onClick={() => changeZoom(ZOOM_LEVELS[Math.max(ZOOM_LEVELS.indexOf(zoom) - 1, 0)])}
-                  style={s.zoomBtn} disabled={zoom === 1}
-                >－</button>
-                {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
-                {/* Trophy — melhor pose */}
-                <button
-                  onClick={findingBest ? () => { scanCancelRef.current = true; } : handleFindBestPose}
-                  style={{ ...s.trophyBtn, opacity: canAnalyze || findingBest ? 1 : 0.35 }}
-                  disabled={!canAnalyze && !findingBest}
-                  title={findingBest ? 'Cancelar busca' : 'Encontrar melhor posição (🏆)'}
-                >
-                  {findingBest ? `${bestProgress}%` : '🏆'}
-                </button>
-                {bestScore !== null && !findingBest && (
-                  <span style={s.trophyScore}>{bestScore}%</span>
-                )}
-              </div>
-              {zoom > 1 && (
-                <div style={s.panControls}>
-                  <button onClick={() => setPanY(p => p + PAN_STEP)} style={s.panBtn}>↑</button>
-                  <div style={s.panRow}>
-                    <button onClick={() => setPanX(p => p + PAN_STEP)} style={s.panBtn}>←</button>
-                    <button onClick={() => { setPanX(0); setPanY(0); }} style={s.panCenterBtn}>⊙</button>
-                    <button onClick={() => setPanX(p => p - PAN_STEP)} style={s.panBtn}>→</button>
-                  </div>
-                  <button onClick={() => setPanY(p => p - PAN_STEP)} style={s.panBtn}>↓</button>
-                </div>
-              )}
-            </>
+            <div style={s.controls}>
+              <button onClick={() => stepFrame(-1)} style={s.ctrlBtn}>◀</button>
+              <button onClick={togglePlay} style={s.ctrlBtnMain}>{isPlaying ? '⏸' : '▶'}</button>
+              <button onClick={() => stepFrame(1)} style={s.ctrlBtn}>▶▶</button>
+              <button onClick={toggleRate} style={s.rateBtn}>{playbackRate === 1 ? '1x' : '0.5x'}</button>
+              <button
+                onClick={() => changeZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.indexOf(zoom) + 1, ZOOM_LEVELS.length - 1)])}
+                style={s.zoomBtn} disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+              >＋</button>
+              <button
+                onClick={() => changeZoom(ZOOM_LEVELS[Math.max(ZOOM_LEVELS.indexOf(zoom) - 1, 0)])}
+                style={s.zoomBtn} disabled={zoom === 1}
+              >－</button>
+              {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
+            </div>
           )}
 
-        </div>
-        {anglePanel}
+          {videoUrl && zoom > 1 && (
+            <div style={s.panControls}>
+              <button onClick={() => setPanY(p => p + PAN_STEP)} style={s.panBtn}>↑</button>
+              <div style={s.panRow}>
+                <button onClick={() => setPanX(p => p + PAN_STEP)} style={s.panBtn}>←</button>
+                <button onClick={() => { setPanX(0); setPanY(0); }} style={s.panCenterBtn}>⊙</button>
+                <button onClick={() => setPanX(p => p - PAN_STEP)} style={s.panBtn}>→</button>
+              </div>
+              <button onClick={() => setPanY(p => p - PAN_STEP)} style={s.panBtn}>↓</button>
+            </div>
+          )}
+
+          {anglePanel}
         </>
       ) : (
         <div style={s.desktopBody}>
@@ -668,18 +660,6 @@ export default function BiomechanicsScreen({ onBack }: Props) {
               <button onClick={() => changeZoom(ZOOM_LEVELS[Math.max(ZOOM_LEVELS.indexOf(zoom) - 1, 0)])} style={s.zoomBtn} disabled={zoom === 1}>－</button>
               {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
               {zoom > 1 && <button onClick={() => { setPanX(0); setPanY(0); }} style={s.panCenterBtn}>⊙</button>}
-              {/* Trophy — melhor pose */}
-              <button
-                onClick={findingBest ? () => { scanCancelRef.current = true; } : handleFindBestPose}
-                style={{ ...s.trophyBtn, opacity: canAnalyze || findingBest ? 1 : 0.35 }}
-                disabled={!canAnalyze && !findingBest}
-                title={findingBest ? 'Cancelar' : 'Melhor posição'}
-              >
-                {findingBest ? `${bestProgress}%` : '🏆'}
-              </button>
-              {bestScore !== null && !findingBest && (
-                <span style={s.trophyScore}>{bestScore}%</span>
-              )}
             </div>
           </div>
 
@@ -735,7 +715,20 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: '#fff',
   },
-  headerSpacer: { width: 80, flexShrink: 0 },
+  trophyHeaderBtn: {
+    background: 'rgba(255,215,0,0.12)',
+    border: '1.5px solid rgba(255,215,0,0.5)',
+    color: '#ffd700',
+    padding: '7px 12px',
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: 'pointer',
+    flexShrink: 0,
+    minWidth: 44,
+    minHeight: 36,
+    whiteSpace: 'nowrap',
+  },
 
   centeredBox: {
     flex: 1,
@@ -778,21 +771,13 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
 
-  mobileBody: {
-    flexShrink: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 0,
-    overflow: 'hidden',
-  },
-
   videoWrapper: {
     position: 'relative',
     width: '100%',
     background: '#000',
     flexShrink: 0,
-    minHeight: 220,
-    maxHeight: '55vh',
+    minHeight: 180,
+    maxHeight: '48dvh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -832,16 +817,17 @@ const s: Record<string, React.CSSProperties> = {
   emptyText: { color: 'rgba(255,255,255,0.35)', fontSize: 15 },
 
   pickBtn: {
-    margin: '10px 16px',
-    padding: '14px 20px',
+    margin: '8px 16px',
+    padding: '12px 20px',
     borderRadius: 14,
     background: 'rgba(79,195,247,0.12)',
     border: '1.5px solid #4fc3f7',
     color: '#4fc3f7',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 700,
     cursor: 'pointer',
     width: 'calc(100% - 32px)',
+    flexShrink: 0,
   },
 
   dropZone: {
@@ -863,56 +849,59 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
-    padding: '10px 16px',
+    gap: 8,
+    padding: '8px 12px',
     background: 'rgba(0,0,0,0.3)',
     borderTop: '1px solid rgba(255,255,255,0.08)',
     borderBottom: '1px solid rgba(255,255,255,0.08)',
     flexShrink: 0,
   },
   ctrlBtn: {
-    padding: '12px 18px',
+    padding: '10px 14px',
     borderRadius: 10,
     background: 'rgba(255,255,255,0.08)',
     border: '1px solid rgba(255,255,255,0.15)',
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     cursor: 'pointer',
-    minWidth: 48,
+    minWidth: 44,
+    minHeight: 44,
   },
   ctrlBtnMain: {
-    padding: '14px 24px',
-    borderRadius: 14,
+    padding: '10px 18px',
+    borderRadius: 12,
     background: '#4fc3f7',
     border: 'none',
     color: '#000',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 700,
     cursor: 'pointer',
-    minWidth: 64,
+    minWidth: 56,
+    minHeight: 44,
   },
   rateBtn: {
-    padding: '12px 16px',
+    padding: '10px 12px',
     borderRadius: 10,
     background: 'rgba(174,243,89,0.15)',
     border: '1.5px solid #aef359',
     color: '#aef359',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 700,
     cursor: 'pointer',
-    minWidth: 52,
+    minWidth: 46,
+    minHeight: 44,
   },
   zoomBtn: {
-    padding: '10px 14px',
+    padding: '8px 12px',
     borderRadius: 10,
     background: 'rgba(255,255,255,0.08)',
     border: '1px solid rgba(255,255,255,0.2)',
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 700,
     cursor: 'pointer',
-    minWidth: 44,
+    minWidth: 40,
+    minHeight: 44,
     lineHeight: 1,
   },
   zoomLabel: {
