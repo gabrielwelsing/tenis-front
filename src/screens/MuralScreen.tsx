@@ -1031,6 +1031,7 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(255,255,255,0.04)',
     border: '1px solid rgba(255,255,255,0.09)',
     borderRadius: 22, padding: '20px 16px 24px',
+    overflow: 'hidden', boxSizing: 'border-box',
   },
 
   fieldLabel: { fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.8, textTransform: 'uppercase' },
@@ -1048,7 +1049,7 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   row: { display: 'flex', gap: 10 },
-  col: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6 },
+  col: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 },
 
   minimizeBtn: {
     flexShrink: 0, padding: '8px 14px', borderRadius: 10,
