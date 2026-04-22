@@ -91,9 +91,20 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       .then(() => setLoadPhase('ready'))
       .catch(() => setLoadPhase('error'));
 
-    fetchGabarito()
-      .then(data => { setGabarito(data); setGabaritoError(false); })
-      .catch(() => setGabaritoError(true));
+    const loadGabarito = async (attempt = 1) => {
+      try {
+        const data = await fetchGabarito();
+        setGabarito(data);
+        setGabaritoError(false);
+      } catch {
+        if (attempt < 5) {
+          setTimeout(() => loadGabarito(attempt + 1), attempt * 2000);
+        } else {
+          setGabaritoError(true);
+        }
+      }
+    };
+    loadGabarito();
 
     return () => {
       disposePoseLandmarker();
@@ -405,9 +416,17 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
   const retryGabarito = useCallback(() => {
     setGabaritoError(false);
-    fetchGabarito()
-      .then(data => { setGabarito(data); setGabaritoError(false); })
-      .catch(() => setGabaritoError(true));
+    const load = async (attempt = 1) => {
+      try {
+        const data = await fetchGabarito();
+        setGabarito(data);
+        setGabaritoError(false);
+      } catch {
+        if (attempt < 5) setTimeout(() => load(attempt + 1), attempt * 2000);
+        else setGabaritoError(true);
+      }
+    };
+    load();
   }, []);
 
   // Strip de análise comparativa (sempre visível)
