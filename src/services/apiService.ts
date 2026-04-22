@@ -2,7 +2,7 @@
 // API SERVICE — Comunicação com o tenis-back
 // =============================================================================
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://tenis-back-production-9f72.up.railway.app';
 
 // ---------------------------------------------------------------------------
 // Gabarito biomecânico
