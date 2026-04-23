@@ -10,6 +10,7 @@ import {
   disposePoseLandmarker,
   handleSeek,
   type JointAngles,
+  type PoseFrame,
 } from '@services/poseService';
 import {
   fetchGabarito,
@@ -393,9 +394,10 @@ export default function BiomechanicsScreen({ onBack }: Props) {
     if (times.length === 0) times.push(0);
 
     const total = times.length;
-    let bestSc = -1;
-    let bestT  = 0;
+    let bestSc         = -1;
+    let bestT          = 0;
     let framesDetected = 0;
+    let bestFrameData: PoseFrame | null = null;
 
     // Garante partida do início para timestamp monotônico
     await seekTo(0);
@@ -415,8 +417,9 @@ export default function BiomechanicsScreen({ onBack }: Props) {
         framesDetected++;
         const result = calcularPerformance(entry, selectedNivel, '', '', frame.angles);
         if (result.scorePonderado > bestSc) {
-          bestSc = result.scorePonderado;
-          bestT  = v.currentTime;
+          bestSc        = result.scorePonderado;
+          bestT         = v.currentTime;
+          bestFrameData = frame; // guarda o frame — sem re-detecção ao final
         }
       }
 
@@ -424,21 +427,16 @@ export default function BiomechanicsScreen({ onBack }: Props) {
     }
 
     if (!scanCancelRef.current) {
-      if (framesDetected === 0) {
+      if (framesDetected === 0 || !bestFrameData) {
         // Nenhuma pose detectada — permanece no frame atual
         setBestScore(null);
       } else {
-        // Volta ao melhor frame e exibe overlay + ângulos
+        // Navega ao melhor instante e exibe o overlay já calculado
         await seekTo(bestT);
-        await handleSeek(Math.round(bestT * 1000));
-        const tsMs = Math.round(v.currentTime * 1000);
-        const bestFrame = detectFrame(v, tsMs);
-        if (bestFrame) {
-          const c = canvasRef.current;
-          const ctx = c?.getContext('2d');
-          if (c && ctx) drawPoseFrame(ctx, bestFrame, c.width, c.height, v);
-          setCurrentAngles(bestFrame.angles);
-        }
+        const c   = canvasRef.current;
+        const ctx = c?.getContext('2d');
+        if (c && ctx) drawPoseFrame(ctx, bestFrameData, c.width, c.height, v);
+        setCurrentAngles(bestFrameData.angles);
         setBestScore(bestSc);
       }
     }
