@@ -388,7 +388,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
     await waitReady();
 
-    const STEP = 0.2; // varre a cada 200ms — precisão suficiente para golpes rápidos
+    const STEP = 0.1; // varre a cada 100ms — captura golpes rápidos com precisão
     const times: number[] = [];
     for (let t = 0; t < duration; t += STEP) times.push(t);
     if (times.length === 0) times.push(0);
