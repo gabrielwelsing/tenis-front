@@ -290,7 +290,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   // -------------------------------------------------------------------------
   // Análise comparativa
   // -------------------------------------------------------------------------
-  const captureSnapshot = (): string | null => {
+  const captureSnapshot = useCallback((): string | null => {
     const video = videoRef.current;
     const overlay = canvasRef.current;
     if (!video || video.readyState < 2) return null;
@@ -318,7 +318,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
     }
     if (overlay) ctx.drawImage(overlay, 0, 0, w, h);
     return tmp.toDataURL('image/jpeg', 0.85);
-  };
+  }, []);
 
   const handleAnalyze = () => {
     const video = videoRef.current;
@@ -438,11 +438,24 @@ export default function BiomechanicsScreen({ onBack }: Props) {
         if (c && ctx) drawPoseFrame(ctx, bestFrameData, c.width, c.height, v);
         setCurrentAngles(bestFrameData.angles);
         setBestScore(bestSc);
+
+        // Sincroniza analysisResult com o melhor frame para que nota, %
+        // e ângulos no modal sejam idênticos aos exibidos no overlay do canvas
+        const bestResult = calcularPerformance(
+          entry,
+          selectedNivel,
+          entry.label,
+          NIVEL_LABELS[selectedNivel],
+          bestFrameData.angles,
+        );
+        setAnalysisResult(bestResult);
+        const snap = captureSnapshot();
+        if (snap) setSnapshotUrl(snap);
       }
     }
 
     setFindingBest(false);
-  }, [gabarito, selectedGolpeFaseId, selectedNivel, findingBest]);
+  }, [gabarito, selectedGolpeFaseId, selectedNivel, findingBest, captureSnapshot]);
 
   // -------------------------------------------------------------------------
   // Render helpers
