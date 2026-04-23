@@ -626,6 +626,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
         <AnalysisModal
           result={analysisResult}
           snapshotUrl={snapshotUrl}
+          golpeFaseId={selectedGolpeFaseId}
           onClose={() => setAnalysisOpen(false)}
         />
       )}
@@ -1096,7 +1097,7 @@ const s: Record<string, React.CSSProperties> = {
     width: '100%',
     padding: '11px 14px',
     borderRadius: 12,
-    background: 'rgba(255,255,255,0.07)',
+    background: '#1e2235',
     border: '1px solid rgba(255,255,255,0.18)',
     color: '#fff',
     fontSize: 14,
@@ -1191,6 +1192,15 @@ const s: Record<string, React.CSSProperties> = {
 // AnalysisModal — Painel de comparação biomecânica
 // ---------------------------------------------------------------------------
 
+const LOCAL_GABARITO_IMAGES: Record<string, string> = {
+  saque_preparacao:    '/gabarito/saque_preparacao.png',
+  saque_contato:       '/gabarito/saque_contato.png',
+  forehand_preparacao: '/gabarito/forehand_preparacao.png',
+  forehand_contato:    '/gabarito/forehand_contato.png',
+  backhand_preparacao: '/gabarito/backhand_preparacao.png',
+  backhand_contato:    '/gabarito/backhand_contato.png',
+};
+
 function scoreBadgeStyle(pct: number | null): React.CSSProperties {
   if (pct === null) return { background: 'rgba(255,255,255,0.15)', color: '#aaa' };
   if (pct >= 90)   return { background: 'rgba(76,175,80,0.25)',  color: '#81c784', border: '1px solid rgba(76,175,80,0.4)'  };
@@ -1207,13 +1217,18 @@ function scoreLabel(pct: number): string {
 function AnalysisModal({
   result,
   snapshotUrl,
+  golpeFaseId,
   onClose,
 }: {
   result: PerformanceResult;
   snapshotUrl: string | null;
+  golpeFaseId: string;
   onClose: () => void;
 }) {
   const { golpeLabel, nivelLabel, imageUrl, imageCredit, joints, scorePonderado } = result;
+  const localImg = LOCAL_GABARITO_IMAGES[golpeFaseId];
+  const displayImageUrl = localImg ?? imageUrl;
+  const displayCredit   = localImg ? '' : imageCredit;
   const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
 
   return (
@@ -1253,18 +1268,17 @@ function AnalysisModal({
           </div>
           <div style={sm.imageBox}>
             <p style={sm.imageCaption}>
-              POSIÇÃO IDEAL {imageUrl && <span style={sm.zoomHint}>🔍</span>}
+              POSIÇÃO IDEAL {displayImageUrl && <span style={sm.zoomHint}>🔍</span>}
             </p>
-            {imageUrl ? (
+            {displayImageUrl ? (
               <>
                 <img
-                  src={imageUrl}
+                  src={displayImageUrl}
                   alt={golpeLabel}
                   style={sm.img}
-                  crossOrigin="anonymous"
-                  onClick={() => setLightboxUrl(imageUrl)}
+                  onClick={() => setLightboxUrl(displayImageUrl)}
                 />
-                <p style={sm.imageCredit}>{imageCredit}</p>
+                {displayCredit && <p style={sm.imageCredit}>{displayCredit}</p>}
               </>
             ) : (
               <div style={sm.imgPlaceholder}>
