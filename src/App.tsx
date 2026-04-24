@@ -218,9 +218,10 @@ const s: Record<string, React.CSSProperties> = {
   bgImage: {
     position: 'fixed', inset: 0,
     backgroundImage: 'url(/carlao-atual.jpg)',
-    backgroundPosition: 'center center',
-    backgroundSize: 'cover',
+    backgroundPosition: 'center top',
+    backgroundSize: window.innerWidth >= 768 && navigator.maxTouchPoints === 0 ? 'auto 100%' : 'cover',
     backgroundRepeat: 'no-repeat',
+    backgroundColor: '#0d0d1a',
   },
   bgOverlay: {
     position: 'fixed', inset: 0,
