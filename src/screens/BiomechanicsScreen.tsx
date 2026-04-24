@@ -18,7 +18,7 @@ import {
   type GabaritoEntry,
   type NivelAluno,
 } from '@services/apiService';
-import { calcularPerformance, type PerformanceResult } from '@utils/calcularPerformance';
+import { calcularPerformance, type PerformanceResult, type Mao } from '@utils/calcularPerformance';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +74,14 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
   // Gabarito load state
   const [gabaritoError, setGabaritoError] = useState(false);
+
+  // Lateralidade
+  const [mao, setMao] = useState<Mao>(() => (localStorage.getItem('mao') as Mao | null) ?? 'destro');
+
+  // Seek bar
+  const [videoDuration,    setVideoDuration]    = useState(0);
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+  const seekingRef = useRef(false);
 
   const ZOOM_LEVELS = [1, 1.5, 2, 3];
   const PAN_STEP = 60;
@@ -186,11 +194,28 @@ export default function BiomechanicsScreen({ onBack }: Props) {
     syncCanvas();
     const v = videoRef.current;
     if (!v) return;
+    setVideoDuration(v.duration || 0);
+    setVideoCurrentTime(v.currentTime || 0);
     const ro = new ResizeObserver(syncCanvas);
     ro.observe(v);
     (v as HTMLVideoElement & { _ro?: ResizeObserver })._ro?.disconnect();
     (v as HTMLVideoElement & { _ro?: ResizeObserver })._ro = ro;
   };
+
+  const handleTimeUpdate = () => {
+    if (!seekingRef.current) setVideoCurrentTime(videoRef.current?.currentTime ?? 0);
+  };
+
+  const handleSeekBar = async (t: number) => {
+    const v = videoRef.current;
+    if (!v) return;
+    seekingRef.current = true;
+    setVideoCurrentTime(t);
+    await handleSeek(Math.round(t * 1000));
+    v.currentTime = t;
+  };
+
+  const handleSeekBarCommit = () => { seekingRef.current = false; };
 
   const handlePlay  = () => { setIsPlaying(true);  startLoop(); };
   const handlePause = () => { setIsPlaying(false); stopLoop();  };
@@ -337,6 +362,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       entry.label,
       NIVEL_LABELS[selectedNivel],
       currentAngles ?? { elbowLeft: null, elbowRight: null, kneeLeft: null, kneeRight: null, hipLeft: null, hipRight: null },
+      mao,
     );
     setAnalysisResult(result);
     setAnalysisOpen(true);
@@ -415,7 +441,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
       if (frame) {
         framesDetected++;
-        const result = calcularPerformance(entry, selectedNivel, '', '', frame.angles);
+        const result = calcularPerformance(entry, selectedNivel, '', '', frame.angles, mao);
         if (result.scorePonderado > bestSc) {
           bestSc        = result.scorePonderado;
           bestT         = v.currentTime;
@@ -447,6 +473,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
           entry.label,
           NIVEL_LABELS[selectedNivel],
           bestFrameData.angles,
+          mao,
         );
         setAnalysisResult(bestResult);
         const snap = captureSnapshot();
@@ -512,12 +539,22 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             <button
               key={n}
               onClick={() => setSelectedNivel(n)}
-              style={{
-                ...s.nivelBtn,
-                ...(selectedNivel === n ? s.nivelBtnActive : {}),
-              }}
+              style={{ ...s.nivelBtn, ...(selectedNivel === n ? s.nivelBtnActive : {}) }}
             >
               {NIVEL_LABELS[n]}
+            </button>
+          ))}
+        </div>
+
+        {/* Lateralidade */}
+        <div style={s.nivelRow}>
+          {(['destro', 'canhoto'] as Mao[]).map(m => (
+            <button
+              key={m}
+              onClick={() => { setMao(m); localStorage.setItem('mao', m); }}
+              style={{ ...s.nivelBtn, ...(mao === m ? s.nivelBtnActive : {}) }}
+            >
+              {m === 'destro' ? '🖐 Destro' : '🤚 Canhoto'}
             </button>
           ))}
         </div>
@@ -644,6 +681,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
                     style={s.video}
                     playsInline
                     onLoadedMetadata={handleLoadedMetadata}
+                    onTimeUpdate={handleTimeUpdate}
                     onPlay={handlePlay}
                     onPause={handlePause}
                     onEnded={handleEnded}
@@ -681,6 +719,20 @@ export default function BiomechanicsScreen({ onBack }: Props) {
             </div>
           )}
 
+          {videoUrl && videoDuration > 0 && (
+            <input
+              type="range"
+              min={0}
+              max={videoDuration}
+              step={0.033}
+              value={videoCurrentTime}
+              style={s.seekBar}
+              onChange={e => handleSeekBar(Number(e.target.value))}
+              onMouseUp={handleSeekBarCommit}
+              onTouchEnd={handleSeekBarCommit}
+            />
+          )}
+
           {videoUrl && zoom > 1 && (
             <div style={s.panControls}>
               <button onClick={() => setPanY(p => p + PAN_STEP)} style={s.panBtn}>↑</button>
@@ -707,6 +759,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
                     style={s.video}
                     playsInline
                     onLoadedMetadata={handleLoadedMetadata}
+                    onTimeUpdate={handleTimeUpdate}
                     onPlay={handlePlay}
                     onPause={handlePause}
                     onEnded={handleEnded}
@@ -745,6 +798,20 @@ export default function BiomechanicsScreen({ onBack }: Props) {
               {zoom > 1 && <span style={s.zoomLabel}>{zoom}x</span>}
               {zoom > 1 && <button onClick={() => { setPanX(0); setPanY(0); }} style={s.panCenterBtn}>⊙</button>}
             </div>
+
+            {videoUrl && videoDuration > 0 && (
+              <input
+                type="range"
+                min={0}
+                max={videoDuration}
+                step={0.033}
+                value={videoCurrentTime}
+                style={s.seekBar}
+                onChange={e => handleSeekBar(Number(e.target.value))}
+                onMouseUp={handleSeekBarCommit}
+                onTouchEnd={handleSeekBarCommit}
+              />
+            )}
           </div>
 
           <div style={s.desktopRight}>
@@ -1125,6 +1192,13 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(174,243,89,0.18)',
     border: '1.5px solid #aef359',
     color: '#aef359',
+  },
+  seekBar: {
+    width: '100%',
+    height: 4,
+    accentColor: '#4fc3f7',
+    cursor: 'pointer',
+    margin: '4px 0 0',
   },
   analyzeBtn: {
     padding: '14px 20px',
