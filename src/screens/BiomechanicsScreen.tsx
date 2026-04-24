@@ -364,6 +364,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       NIVEL_LABELS[selectedNivel],
       currentAngles ?? { elbowLeft: null, elbowRight: null, kneeLeft: null, kneeRight: null, hipLeft: null, hipRight: null },
       mao,
+      selectedGolpeFaseId,
     );
     setAnalysisResult(result);
     setAnalysisOpen(true);
@@ -442,7 +443,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
 
       if (frame && validatePosture(frame.landmarks, selectedGolpeFaseId, mao)) {
         framesDetected++;
-        const result = calcularPerformance(entry, selectedNivel, '', '', frame.angles, mao);
+        const result = calcularPerformance(entry, selectedNivel, '', '', frame.angles, mao, selectedGolpeFaseId);
         if (result.scorePonderado > bestSc) {
           bestSc        = result.scorePonderado;
           bestT         = v.currentTime;
@@ -475,6 +476,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
           NIVEL_LABELS[selectedNivel],
           bestFrameData.angles,
           mao,
+          selectedGolpeFaseId,
         );
         setAnalysisResult(bestResult);
         const snap = captureSnapshot();
