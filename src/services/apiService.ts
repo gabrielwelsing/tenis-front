@@ -94,3 +94,47 @@ export async function getClips(): Promise<ClipRecord[]> {
   if (!res.ok) throw new Error(`Erro ao carregar clips: ${res.status}`);
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Mural de Treinos
+// ---------------------------------------------------------------------------
+
+export interface JogoRecord {
+  id:              string;
+  cidade:          string;
+  classe:          string;
+  dataInicio:      string;
+  dataFim?:        string | null;
+  horarioInicio:   string;
+  horarioFim:      string;
+  local:           string;
+  whatsapp:        string;
+  publicadoEm:     number;
+  emailPublicador?: string | null;
+}
+
+export async function getJogos(cidade?: string): Promise<JogoRecord[]> {
+  const qs  = cidade ? `?cidade=${encodeURIComponent(cidade)}` : '';
+  const res = await fetch(`${BASE_URL}/jogos${qs}`);
+  if (!res.ok) throw new Error(`Erro ao carregar mural: ${res.status}`);
+  return res.json();
+}
+
+export async function postJogo(jogo: JogoRecord): Promise<JogoRecord> {
+  const res = await fetch(`${BASE_URL}/jogos`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(jogo),
+  });
+  if (!res.ok) throw new Error(`Erro ao publicar: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteJogo(id: string, emailPublicador: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/jogos/${id}`, {
+    method:  'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ emailPublicador }),
+  });
+  if (!res.ok) throw new Error(`Erro ao remover: ${res.status}`);
+}

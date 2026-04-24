@@ -34,7 +34,7 @@ export default function HomeScreen({ saveMode, username, onLogout, onNavigate }:
               <h2 style={s.greeting}>
                 Olá, <span style={s.greetingName}>{displayName}</span> 👋
               </h2>
-              <p style={s.appName}>Tenis Coach Com Carlos</p>
+              <p style={s.appName}>Tenis Coach com Carlão</p>
             </div>
             <button onClick={onLogout} style={s.sairBtn}>Sair</button>
           </div>

@@ -91,7 +91,7 @@ function LoginScreen({
       </a>
 
       <div style={s.card}>
-        <h1 style={s.title}>Tenis Coach Com Carlos</h1>
+        <h1 style={s.title}>Tenis Coach com Carlão</h1>
         <p style={s.sub}>Entre com seu perfil</p>
 
         <div style={s.admForm}>

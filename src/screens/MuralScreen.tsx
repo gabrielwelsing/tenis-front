@@ -4,7 +4,8 @@
 //       o backend estiver pronto (POST /jogos, GET /jogos, POST /furos)
 // =============================================================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { getJogos, postJogo, deleteJogo, type JogoRecord } from '@services/apiService';
 
 interface Props {
   onBack: () => void;
@@ -384,7 +385,8 @@ function RuleItem({ n, label, consequence, color }: { n: number; label: string; 
 // ---------------------------------------------------------------------------
 
 export default function MuralScreen({ onBack, emailUsuario }: Props) {
-  const [jogos, setJogos] = useState<Jogo[]>(MOCK_JOGOS);
+  const [jogos, setJogos]         = useState<Jogo[]>([]);
+  const [loadingJogos, setLoadingJogos] = useState(true);
 
   // Cidade
   const [cidade, setCidade]           = useState<string>(() => localStorage.getItem(LS_CIDADE) || '');
@@ -414,6 +416,16 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
 
   const hoje = new Date().toISOString().split('T')[0];
 
+  // Carrega jogos do backend sempre que a cidade muda
+  useEffect(() => {
+    if (!cidade) return;
+    setLoadingJogos(true);
+    getJogos(cidade)
+      .then(data => setJogos(data as Jogo[]))
+      .catch(() => setJogos([]))
+      .finally(() => setLoadingJogos(false));
+  }, [cidade]);
+
   const handleConfirmCity = useCallback((c: string) => {
     localStorage.setItem(LS_CIDADE, c);
     setCidade(c);
@@ -424,7 +436,7 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
     setShowCity(true);
   };
 
-  const handlePublicar = () => {
+  const handlePublicar = async () => {
     setErro('');
     if (!dataInicio) { setErro('Escolha a data de início.'); return; }
     if (janelaData && !dataFim) { setErro('Escolha a data final.'); return; }
@@ -435,20 +447,25 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
     const digits = whatsapp.replace(/\D/g, '');
     if (digits.length < 10) { setErro('WhatsApp inválido. Ex: (33) 99999-0000.'); return; }
 
-    const novo: Jogo = {
-      id: `local-${Date.now()}`,
-      cidade,
-      classe, dataInicio,
-      dataFim: janelaData ? dataFim : undefined,
+    const novo: JogoRecord = {
+      id: `j-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      cidade, classe, dataInicio,
+      dataFim: janelaData ? dataFim : null,
       horarioInicio, horarioFim,
       local, whatsapp: digits,
       publicadoEm: Date.now(),
       emailPublicador: emailUsuario,
     };
-    setJogos(prev => [novo, ...prev]);
-    setSucesso(true);
-    setDataInicio(''); setDataFim(''); setHorarioInicio(''); setHorarioFim(''); setWhatsapp('');
-    setTimeout(() => setSucesso(false), 3000);
+
+    try {
+      const salvo = await postJogo(novo);
+      setJogos(prev => [salvo as Jogo, ...prev]);
+      setSucesso(true);
+      setDataInicio(''); setDataFim(''); setHorarioInicio(''); setHorarioFim(''); setWhatsapp('');
+      setTimeout(() => setSucesso(false), 3000);
+    } catch {
+      setErro('Erro ao publicar. Tente novamente.');
+    }
   };
 
   const handleReportarFuro = useCallback((jogo: Jogo) => {
@@ -614,7 +631,11 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
               />
             )}
 
-            {jogosExibidos.length === 0 ? (
+            {loadingJogos ? (
+              <div style={s.emptyFeed}>
+                <p style={s.emptyText}>Carregando mural...</p>
+              </div>
+            ) : jogosExibidos.length === 0 ? (
               <div style={s.emptyFeed}>
                 <span style={{ fontSize: 40 }}>🎾</span>
                 <p style={s.emptyText}>

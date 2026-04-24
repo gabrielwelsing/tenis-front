@@ -482,7 +482,7 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const analysisStrip = (
     <div style={s.analysisStrip}>
       <p style={s.analysisHint}>
-        📍 Pause no frame desejado, selecione golpe, atleta e nível, depois toque em Analisar
+        Pause no frame desejado, selecione o golpe e toque em Analisar
       </p>
       <div style={s.selectsCol}>
         {/* Golpe + Fase */}
