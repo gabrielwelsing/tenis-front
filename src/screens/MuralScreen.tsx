@@ -169,9 +169,9 @@ function buildWhatsAppUrl(jogo: Jogo): string {
     ? fmtData(jogo.dataInicio)
     : `${fmtData(jogo.dataInicio)} a ${fmtData(jogo.dataFim)}`;
   const msg = encodeURIComponent(
-    `Olá! Vi sua publicação no Mural de Treinos do Prof. Carlos. ` +
-    `Quero treinar com você! ${jogo.classe} no ${jogo.local} (${jogo.cidade}), ` +
-    `${dataStr} das ${jogo.horarioInicio.replace(':', 'h')} às ${jogo.horarioFim.replace(':', 'h')}. Bora?`
+    `Olá! Vi sua publicação no Mural de Treinos do Prof. Carlão. ` +
+    `Quero jogar uma partida com você! Sou ${jogo.classe} e tenho disponibilidade de estar no ` +
+    `${jogo.local} (${jogo.cidade}), ${dataStr} entre ${jogo.horarioInicio.replace(':', 'h')} às ${jogo.horarioFim.replace(':', 'h')}. Bora?`
   );
   return `https://wa.me/${numero}?text=${msg}`;
 }
