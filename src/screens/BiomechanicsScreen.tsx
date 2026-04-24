@@ -9,6 +9,7 @@ import {
   drawPoseFrame,
   disposePoseLandmarker,
   handleSeek,
+  validatePosture,
   type JointAngles,
   type PoseFrame,
 } from '@services/poseService';
@@ -439,13 +440,13 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       await handleSeek(tsMs);
       const frame = detectFrame(v, tsMs);
 
-      if (frame) {
+      if (frame && validatePosture(frame.landmarks, selectedGolpeFaseId, mao)) {
         framesDetected++;
         const result = calcularPerformance(entry, selectedNivel, '', '', frame.angles, mao);
         if (result.scorePonderado > bestSc) {
           bestSc        = result.scorePonderado;
           bestT         = v.currentTime;
-          bestFrameData = frame; // guarda o frame — sem re-detecção ao final
+          bestFrameData = frame;
         }
       }
 
@@ -1388,7 +1389,7 @@ function AnalysisModal({
                     </span>
                   </td>
                   <td style={sm.tdVal}>{j.dirVal !== null ? `${j.dirVal}°` : '—'}</td>
-                  <td style={sm.tdIdeal}>{j.ideal}°</td>
+                  <td style={sm.tdIdeal}>{(j.idealDir ?? j.ideal)}°</td>
                   <td>
                     <span style={{ ...sm.pctBadge, ...scoreBadgeStyle(j.dirPct) }}>
                       {j.dirPct !== null ? `${j.dirPct}%` : '—'}

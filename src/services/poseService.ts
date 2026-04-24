@@ -311,3 +311,72 @@ function drawBadge(
   ctx.fillStyle = '#000';
   ctx.fillText(text, bx + padX, by + bh - padY);
 }
+
+// ---------------------------------------------------------------------------
+// Posture validation — regras biomecânicas por golpe+fase
+// Coordenadas MediaPipe: y cresce de cima para baixo (0=topo, 1=base).
+// Portanto: y menor = mais alto na imagem = braço levantado.
+// ---------------------------------------------------------------------------
+
+const VIS_MIN = 0.4;
+const vis = (lm: NormalizedLandmark | undefined) => (lm?.visibility ?? 0) >= VIS_MIN;
+
+export function validatePosture(
+  landmarks: NormalizedLandmark[],
+  golpeFaseId: string,
+  mao: 'destro' | 'canhoto',
+): boolean {
+  const L = LANDMARK_INDICES;
+
+  // Pontos do lado da raquete e do arremesso
+  const rS  = landmarks[mao === 'destro' ? L.RIGHT_SHOULDER : L.LEFT_SHOULDER];
+  const rW  = landmarks[mao === 'destro' ? L.RIGHT_WRIST    : L.LEFT_WRIST];
+  const rH  = landmarks[mao === 'destro' ? L.RIGHT_HIP      : L.LEFT_HIP];
+  const tS  = landmarks[mao === 'destro' ? L.LEFT_SHOULDER  : L.RIGHT_SHOULDER];
+  const tW  = landmarks[mao === 'destro' ? L.LEFT_WRIST     : L.RIGHT_WRIST];
+
+  switch (golpeFaseId) {
+
+    case 'saque_contato':
+      // Braço da raquete totalmente estendido ACIMA do ombro (impacto no pico do salto)
+      if (!vis(rW) || !vis(rS)) return true;
+      return rW.y < rS.y - 0.05;
+
+    case 'saque_preparacao':
+      // Troféu: braço do arremesso acima do ombro (bola lançada) +
+      //         braço da raquete na altura do ombro ou acima
+      if (!vis(tW) || !vis(tS) || !vis(rW) || !vis(rS)) return true;
+      return tW.y < tS.y && rW.y < rS.y + 0.08;
+
+    case 'forehand_preparacao':
+    case 'backhand_preparacao':
+      // Preparação: pulso do lado da raquete entre quadril e ombro (braço preparado, não levantado)
+      if (!vis(rW) || !vis(rS) || !vis(rH)) return true;
+      return rW.y > rS.y - 0.05 && rW.y < rH.y + 0.15;
+
+    case 'forehand_contato':
+    case 'backhand_contato':
+      // Contato: pulso claramente acima do quadril (braço em movimento de swing)
+      if (!vis(rW) || !vis(rH)) return true;
+      return rW.y < rH.y - 0.03;
+
+    case 'slice_preparacao':
+      // Backswing elevado: pulso perto ou acima do ombro
+      if (!vis(rW) || !vis(rS)) return true;
+      return rW.y < rS.y + 0.12;
+
+    case 'slice_contato':
+      // Descida do slice: pulso entre quadril e levemente acima do ombro
+      if (!vis(rW) || !vis(rS) || !vis(rH)) return true;
+      return rW.y < rH.y - 0.03 && rW.y > rS.y - 0.12;
+
+    case 'volley_preparacao':
+    case 'volley_contato':
+      // Volley compacto: pulso entre ombro e quadril (altura do peito)
+      if (!vis(rW) || !vis(rS) || !vis(rH)) return true;
+      return rW.y < rH.y - 0.03 && rW.y > rS.y - 0.08;
+
+    default:
+      return true;
+  }
+}
