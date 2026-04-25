@@ -279,21 +279,55 @@ function drawBadge(
   const lm = landmarks[landmarkIdx];
   if (!lm || (lm.visibility ?? 0) < VISIBILITY_THRESHOLD) return;
 
-  const x = rect.x + lm.x * rect.w;
-  const y = rect.y + lm.y * rect.h;
+  const jx = rect.x + lm.x * rect.w;
+  const jy = rect.y + lm.y * rect.h;
   const text = `${angle}°`;
 
+  // Offset direction: afasta badge do centro da imagem horizontalmente
+  // Joelhos (25, 26) levemente para baixo; cotovelos e quadris levemente para cima
+  const isKnee = landmarkIdx === 25 || landmarkIdx === 26;
+  const pushX  = lm.x < 0.5 ? -48 : 48;
+  const pushY  = isKnee ? 12 : -18;
+
+  const bcx = jx + pushX;   // centro do badge
+  const bcy = jy + pushY;
+
+  // --- Linha guia pontilhada ---
+  const dx = bcx - jx, dy = bcy - jy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > 6) {
+    const nx = dx / dist, ny = dy / dist;
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(jx + nx * 5, jy + ny * 5);
+    ctx.lineTo(bcx, bcy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // --- Ponto de ancoragem na articulação ---
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(jx, jy, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // --- Pill ---
   ctx.font = 'bold 11px sans-serif';
   const metrics = ctx.measureText(text);
   const padX = 5, padY = 3;
   const bw = metrics.width + padX * 2;
   const bh = 16;
+  const bx = bcx - bw / 2;
+  const by = bcy - bh / 2;
 
-  // Offset badge so it doesn't overlap the joint dot
-  const bx = x + 6;
-  const by = y - bh / 2;
-
-  // Pill background
   ctx.fillStyle = color;
   ctx.globalAlpha = 0.88;
   ctx.beginPath();
@@ -306,7 +340,7 @@ function drawBadge(
   ctx.closePath();
   ctx.fill();
 
-  // Text
+  // --- Texto ---
   ctx.globalAlpha = 1;
   ctx.fillStyle = '#000';
   ctx.fillText(text, bx + padX, by + bh - padY);
