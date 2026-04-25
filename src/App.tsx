@@ -1,10 +1,11 @@
 // =============================================================================
-// APP — Login por e-mail + senha (adm/123 mantido como acesso especial)
+// APP — Autenticação via API (banco) + JWT no localStorage
 // =============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { admLogin, admLogout, setCurrentUser } from '@services/localSaveService';
+import { login, register, getMe, type UserRecord } from '@services/apiService';
+import { setCurrentUser } from '@services/localSaveService';
 import CameraScreen       from '@screens/CameraScreen';
 import HistoryScreen      from '@screens/HistoryScreen';
 import BiomechanicsScreen from '@screens/BiomechanicsScreen';
@@ -14,19 +15,19 @@ import InstagramScreen    from '@screens/InstagramScreen';
 import MuralScreen        from '@screens/MuralScreen';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
+const TOKEN_KEY = 'tenis_token';
 
 export type SaveMode = 'drive' | 'local';
-export type Screen = 'camera' | 'history' | 'biomechanics' | 'home' | 'comparison' | 'instagram' | 'mural';
+export type Screen   = 'camera' | 'history' | 'biomechanics' | 'home' | 'comparison' | 'instagram' | 'mural';
 
-// Regex padrão para validação de e-mail (RFC 5322 simplificado)
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // ---------------------------------------------------------------------------
-// Ícone Instagram (SVG inline)
+// Ícone Instagram
 // ---------------------------------------------------------------------------
 function InstaIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
       <rect x="2" y="2" width="20" height="20" rx="6" stroke="white" strokeWidth="2"/>
       <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="2"/>
       <circle cx="17.5" cy="6.5" r="1.2" fill="white"/>
@@ -35,42 +36,37 @@ function InstaIcon() {
 }
 
 // ---------------------------------------------------------------------------
-// Tela de Login
+// Tela de Login / Cadastro
 // ---------------------------------------------------------------------------
-function LoginScreen({
-  onLogin,
-}: {
-  onLogin: (mode: SaveMode, username?: string) => void;
-}) {
+function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) => void }) {
+  const [mode,  setMode]  = useState<'login' | 'register'>('login');
+  const [nome,  setNome]  = useState('');
   const [email, setEmail] = useState('');
   const [pass,  setPass]  = useState('');
-  const [info,  setInfo]  = useState('');
   const [error, setError] = useState('');
+  const [info,  setInfo]  = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleSubmit = async () => {
     setError(''); setInfo('');
-    const raw = email.trim().toLowerCase();
-    if (!raw)       { setError('Preencha o e-mail.'); return; }
-    if (!pass)      { setError('Preencha a senha.');  return; }
+    const rawEmail = email.trim().toLowerCase();
+    if (!rawEmail || !EMAIL_REGEX.test(rawEmail)) { setError('E-mail inválido.'); return; }
+    if (!pass)                                     { setError('Preencha a senha.'); return; }
+    if (mode === 'register' && !nome.trim())       { setError('Preencha seu nome.'); return; }
 
-    // Acesso especial: "adm" bypass da validação de e-mail
-    const isAdm = raw === 'adm';
-    if (!isAdm && !EMAIL_REGEX.test(raw)) {
-      setError('E-mail inválido. Ex: nome@email.com');
-      return;
-    }
+    setLoading(true);
+    try {
+      const res = mode === 'login'
+        ? await login(rawEmail, pass)
+        : await register(nome.trim(), rawEmail, pass);
 
-    // admLogin usa o e-mail (ou "adm") como chave no localStorage
-    const result = admLogin(raw, pass);
-    const displayName = isAdm ? 'adm' : raw.split('@')[0];
-
-    if (result === 'created') {
-      setInfo(`Perfil criado! Bem-vindo(a).`);
-      setTimeout(() => onLogin('local', displayName), 700);
-    } else if (result === 'ok') {
-      onLogin('local', displayName);
-    } else {
-      setError('Senha incorreta.');
+      localStorage.setItem(TOKEN_KEY, res.token);
+      if (mode === 'register') setInfo('Cadastro realizado! Bem-vindo(a).');
+      setTimeout(() => onLogin(res.user, res.token), 300);
+    } catch (e: any) {
+      setError(e.message ?? 'Erro. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,13 +76,7 @@ function LoginScreen({
       <div style={s.bgOverlay} />
       <div style={s.bgSides} />
 
-      <a
-        href="https://www.instagram.com/jogartenisto/"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={s.instaCorner}
-        title="@jogartenisto"
-      >
+      <a href="https://www.instagram.com/jogartenisto/" target="_blank" rel="noopener noreferrer" style={s.instaCorner}>
         <InstaIcon />
       </a>
 
@@ -94,14 +84,40 @@ function LoginScreen({
         <h1 style={s.title}>Tenis Coach com Carlão</h1>
         <p style={s.sub}>Entre com seu perfil</p>
 
+        {/* Toggle login/cadastro */}
+        <div style={s.modeToggle}>
+          <button
+            onClick={() => { setMode('login'); setError(''); }}
+            style={{ ...s.modeBtn, ...(mode === 'login' ? s.modeBtnActive : {}) }}
+          >
+            Entrar
+          </button>
+          <button
+            onClick={() => { setMode('register'); setError(''); }}
+            style={{ ...s.modeBtn, ...(mode === 'register' ? s.modeBtnActive : {}) }}
+          >
+            Cadastrar
+          </button>
+        </div>
+
         <div style={s.admForm}>
+          {mode === 'register' && (
+            <input
+              style={s.input}
+              placeholder="Seu nome"
+              type="text"
+              value={nome}
+              onChange={e => setNome(e.target.value)}
+              autoCapitalize="words"
+            />
+          )}
           <input
             style={s.input}
             placeholder="seu@email.com"
             type="email"
             inputMode="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             autoCapitalize="none"
             autoCorrect="off"
           />
@@ -110,19 +126,19 @@ function LoginScreen({
             placeholder="Senha"
             type="password"
             value={pass}
-            onChange={(e) => setPass(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+            onChange={e => setPass(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />
           {error && <p style={s.error}>{error}</p>}
           {info  && <p style={s.infoMsg}>{info}</p>}
-          <button onClick={handleLogin} style={s.admBtn}>
-            Entrar
+          <button onClick={handleSubmit} style={{ ...s.admBtn, opacity: loading ? 0.6 : 1 }} disabled={loading}>
+            {loading ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Criar conta'}
           </button>
         </div>
 
-        <p style={s.hint}>
-          Primeira vez? Cadastre com seu e-mail e crie uma senha.
-        </p>
+        {mode === 'login' && (
+          <p style={s.hint}>Primeira vez? Clique em "Cadastrar" para criar sua conta.</p>
+        )}
       </div>
     </div>
   );
@@ -132,53 +148,55 @@ function LoginScreen({
 // App principal
 // ---------------------------------------------------------------------------
 function App() {
-  const [saveMode, setSaveMode] = useState<SaveMode | null>(null);
-  const [username, setUsername] = useState<string>('');
+  const [user,     setUser]     = useState<UserRecord | null>(null);
+  const [token,    setToken]    = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
   const [screen,   setScreen]   = useState<Screen>('home');
 
-  const handleLogin = (mode: SaveMode, user?: string) => {
-    if (user) { setCurrentUser(user); setUsername(user); }
-    setSaveMode(mode);
+  // Valida token salvo ao abrir o app
+  useEffect(() => {
+    const saved = localStorage.getItem(TOKEN_KEY);
+    if (!saved) { setChecking(false); return; }
+    getMe(saved)
+      .then(u => { setUser(u); setToken(saved); setCurrentUser(u.email.split('@')[0]); })
+      .catch(() => localStorage.removeItem(TOKEN_KEY))
+      .finally(() => setChecking(false));
+  }, []);
+
+  const handleLogin = (u: UserRecord, t: string) => {
+    setUser(u);
+    setToken(t);
+    setCurrentUser(u.email.split('@')[0]);
     setScreen('home');
   };
 
   const handleLogout = () => {
-    admLogout();
-    setSaveMode(null);
-    setUsername('');
+    localStorage.removeItem(TOKEN_KEY);
+    setUser(null);
+    setToken(null);
     setScreen('home');
   };
 
-  if (!saveMode) {
-    return <LoginScreen onLogin={handleLogin} />;
+  if (checking) {
+    return (
+      <div style={{ background: '#0d0d1a', minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, border: '4px solid rgba(255,255,255,0.15)', borderTop: '4px solid #4fc3f7', borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
+      </div>
+    );
   }
+
+  if (!user) return <LoginScreen onLogin={handleLogin} />;
+
+  const username = user.nome || user.email.split('@')[0];
+  const saveMode: SaveMode = 'local';
 
   switch (screen) {
     case 'home':
-      return (
-        <HomeScreen
-          saveMode={saveMode}
-          username={username}
-          onLogout={handleLogout}
-          onNavigate={setScreen}
-        />
-      );
+      return <HomeScreen saveMode={saveMode} username={username} onLogout={handleLogout} onNavigate={setScreen} />;
     case 'camera':
-      return (
-        <CameraScreen
-          saveMode={saveMode}
-          username={username}
-          onGoHistory={() => setScreen('history')}
-          onLogout={() => setScreen('home')}
-        />
-      );
+      return <CameraScreen saveMode={saveMode} username={username} onGoHistory={() => setScreen('history')} onLogout={() => setScreen('home')} />;
     case 'history':
-      return (
-        <HistoryScreen
-          saveMode={saveMode}
-          onBack={() => setScreen('home')}
-        />
-      );
+      return <HistoryScreen saveMode={saveMode} onBack={() => setScreen('home')} />;
     case 'biomechanics':
       return <BiomechanicsScreen onBack={() => setScreen('home')} />;
     case 'comparison':
@@ -186,16 +204,9 @@ function App() {
     case 'instagram':
       return <InstagramScreen onBack={() => setScreen('home')} />;
     case 'mural':
-      return <MuralScreen onBack={() => setScreen('home')} emailUsuario={username} />;
+      return <MuralScreen onBack={() => setScreen('home')} emailUsuario={user.email} />;
     default:
-      return (
-        <HomeScreen
-          saveMode={saveMode}
-          username={username}
-          onLogout={handleLogout}
-          onNavigate={setScreen}
-        />
-      );
+      return <HomeScreen saveMode={saveMode} username={username} onLogout={handleLogout} onNavigate={setScreen} />;
   }
 }
 
@@ -231,14 +242,12 @@ const s: Record<string, React.CSSProperties> = {
     position: 'fixed', inset: 0,
     background: 'radial-gradient(ellipse at 0% 65%, rgba(0,0,0,0.3) 0%, transparent 50%), radial-gradient(ellipse at 100% 65%, rgba(0,0,0,0.3) 0%, transparent 50%)',
   },
-  // Instagram — ícone pequeno fixo no canto superior direito
   instaCorner: {
     position: 'fixed', top: 16, right: 16, zIndex: 50,
     width: 44, height: 44, borderRadius: 14,
     background: 'linear-gradient(135deg, #405de6 0%, #833ab4 30%, #c13584 55%, #e1306c 75%, #fd1d1d 88%, #f56040 100%)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 2px 12px rgba(193,53,132,0.5)',
-    textDecoration: 'none',
+    boxShadow: '0 2px 12px rgba(193,53,132,0.5)', textDecoration: 'none',
   },
   card: {
     position: 'relative', zIndex: 10,
@@ -247,16 +256,27 @@ const s: Record<string, React.CSSProperties> = {
   },
   title: {
     color: '#fff', fontSize: 28, fontWeight: 800, margin: 0,
-    textAlign: 'center', lineHeight: 1.2,
-    textShadow: '0 2px 12px rgba(0,0,0,0.9)',
+    textAlign: 'center', lineHeight: 1.2, textShadow: '0 2px 12px rgba(0,0,0,0.9)',
   },
   sub: { color: '#cce0ff', fontSize: 14, margin: 0, textShadow: '0 1px 6px rgba(0,0,0,0.8)' },
+  modeToggle: {
+    display: 'flex', width: '100%',
+    background: 'rgba(0,0,20,0.5)', borderRadius: 14, padding: 4, gap: 4,
+    backdropFilter: 'blur(6px)',
+  },
+  modeBtn: {
+    flex: 1, padding: '12px 0', borderRadius: 11, border: 'none',
+    background: 'transparent', color: 'rgba(255,255,255,0.5)',
+    fontSize: 15, fontWeight: 700, cursor: 'pointer',
+  },
+  modeBtnActive: {
+    background: '#2e7d32', color: '#fff',
+  },
   admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 12 },
   input: {
     width: '100%', padding: '14px 16px', borderRadius: 12,
     background: 'rgba(0,0,20,0.65)', border: '1px solid rgba(255,255,255,0.2)',
-    color: '#fff', fontSize: 15, boxSizing: 'border-box',
-    backdropFilter: 'blur(6px)',
+    color: '#fff', fontSize: 15, boxSizing: 'border-box', backdropFilter: 'blur(6px)',
   },
   admBtn: {
     width: '100%', padding: '16px 20px', borderRadius: 14,
@@ -268,6 +288,6 @@ const s: Record<string, React.CSSProperties> = {
   infoMsg: { color: '#44ff88', fontSize: 13, margin: 0, textAlign: 'center' },
   hint: {
     color: 'rgba(160,200,255,0.65)', fontSize: 11, textAlign: 'center',
-    lineHeight: 1.6, whiteSpace: 'pre-line', marginTop: 4,
+    lineHeight: 1.6, marginTop: 4,
   },
 };
