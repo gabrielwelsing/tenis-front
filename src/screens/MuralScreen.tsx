@@ -1,7 +1,5 @@
 // =============================================================================
 // MuralScreen — Mural de Treinos
-// TODO: substituir mock + localStorage por chamadas reais à API quando
-//       o backend estiver pronto (POST /jogos, GET /jogos, POST /furos)
 // =============================================================================
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -11,10 +9,6 @@ interface Props {
   onBack: () => void;
   emailUsuario: string;
 }
-
-// ---------------------------------------------------------------------------
-// Tipos
-// ---------------------------------------------------------------------------
 
 interface Jogo {
   id:              string;
@@ -32,12 +26,8 @@ interface Jogo {
 
 interface PenalidadeRecord {
   furos:     number;
-  banidoAte: number | null; // null = sem ban, -1 = permanente, timestamp = provisório
+  banidoAte: number | null;
 }
-
-// ---------------------------------------------------------------------------
-// Constantes
-// ---------------------------------------------------------------------------
 
 const CLASSES      = ['Iniciante', 'Classe 5', 'Classe 4', 'Classe 3', 'Classe 2', 'Classe 1'];
 const LOCAIS       = ['Arena Bar (Prof. Carlos)', 'Automóvel Clube (ACTO)', 'Quadra Pública', 'Condomínio', 'Outro'];
@@ -47,10 +37,6 @@ const MESES        = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out
 const LS_CIDADE           = 'muralCidade';
 const LS_PENALIDADES      = 'muralPenalidades';
 const LS_FUROS_REPORTADOS = 'muralFurosReportados';
-
-// ---------------------------------------------------------------------------
-// Sistema de penalidades (localStorage — enforcement full requer backend)
-// ---------------------------------------------------------------------------
 
 function getPenalidade(email: string): PenalidadeRecord {
   try {
@@ -71,9 +57,9 @@ function addFuro(email: string): void {
   const p = getPenalidade(email);
   p.furos++;
   const MES = 30 * 24 * 60 * 60 * 1000;
-  if (p.furos >= 7)      p.banidoAte = -1;                        // permanente
-  else if (p.furos >= 4) p.banidoAte = Date.now() + 2 * MES;     // 2 meses
-  else if (p.furos >= 3) p.banidoAte = Date.now() + MES;          // 1 mês
+  if (p.furos >= 7)      p.banidoAte = -1;
+  else if (p.furos >= 4) p.banidoAte = Date.now() + 2 * MES;
+  else if (p.furos >= 3) p.banidoAte = Date.now() + MES;
   else                   p.banidoAte = null;
   salvarPenalidade(email, p);
 }
@@ -99,14 +85,9 @@ function reportarFuro(whatsapp: string, emailAlvo?: string): void {
     const data = getFurosReportados();
     data[whatsapp] = (data[whatsapp] || 0) + 1;
     localStorage.setItem(LS_FUROS_REPORTADOS, JSON.stringify(data));
-    // Se soubermos o email do publicador, já aplica o furo na conta dele
     if (emailAlvo) addFuro(emailAlvo);
   } catch { /* ignore */ }
 }
-
-// ---------------------------------------------------------------------------
-// Helpers de data/hora
-// ---------------------------------------------------------------------------
 
 function maskPhone(v: string): string {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -159,10 +140,6 @@ function classeColor(classe: string): string {
   return map[classe] ?? '#fff';
 }
 
-// ---------------------------------------------------------------------------
-// Construtores de URL
-// ---------------------------------------------------------------------------
-
 function buildWhatsAppUrl(jogo: Jogo): string {
   const numero = `55${jogo.whatsapp.replace(/\D/g, '')}`;
   const dataStr = !jogo.dataFim || jogo.dataFim === jogo.dataInicio
@@ -182,44 +159,11 @@ function buildGCalUrl(jogo: Jogo): string {
   const title   = encodeURIComponent(`Treino de Tênis — ${jogo.classe} @ ${jogo.local}`);
   const details = encodeURIComponent(
     `Treino combinado pelo Mural de Treinos (Tenis Coach Com Carlos).\n` +
-    `Classe: ${jogo.classe}\n` +
-    `Local: ${jogo.local}, ${jogo.cidade}\n` +
-    `WhatsApp do parceiro: +55${jogo.whatsapp}`
+    `Classe: ${jogo.classe}\nLocal: ${jogo.local}, ${jogo.cidade}\nWhatsApp do parceiro: +55${jogo.whatsapp}`
   );
   const location = encodeURIComponent(`${jogo.local}, ${jogo.cidade}, MG`);
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dtStart}/${dtEnd}&details=${details}&location=${location}`;
 }
-
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const MOCK_JOGOS: Jogo[] = [
-  {
-    id: 'mock-1', cidade: 'Teófilo Otoni', classe: 'Classe 3',
-    dataInicio: '2026-04-24', dataFim: '2026-04-25',
-    horarioInicio: '16:00', horarioFim: '18:00',
-    local: 'Arena Bar (Prof. Carlos)', whatsapp: '33999990001',
-    publicadoEm: Date.now() - 1000 * 60 * 40,
-  },
-  {
-    id: 'mock-2', cidade: 'Teófilo Otoni', classe: 'Iniciante',
-    dataInicio: '2026-04-26', horarioInicio: '08:00', horarioFim: '10:00',
-    local: 'Automóvel Clube (ACTO)', whatsapp: '33999990002',
-    publicadoEm: Date.now() - 1000 * 60 * 90,
-  },
-  {
-    id: 'mock-3', cidade: 'Teófilo Otoni', classe: 'Classe 4',
-    dataInicio: '2026-04-25', dataFim: '2026-04-26',
-    horarioInicio: '07:00', horarioFim: '09:00',
-    local: 'Quadra Pública', whatsapp: '33999990003',
-    publicadoEm: Date.now() - 1000 * 60 * 180,
-  },
-];
-
-// ---------------------------------------------------------------------------
-// Geolocalização + reverse geocoding (Nominatim)
-// ---------------------------------------------------------------------------
 
 async function detectarCidade(): Promise<string> {
   if (!navigator.geolocation) throw new Error('Geolocalização não suportada neste navegador.');
@@ -233,11 +177,7 @@ async function detectarCidade(): Promise<string> {
             { headers: { 'User-Agent': 'TenisCoachComCarlos/1.0' } }
           );
           const json = await res.json();
-          const city =
-            json.address?.city       ||
-            json.address?.town       ||
-            json.address?.village    ||
-            json.address?.county     || '';
+          const city = json.address?.city || json.address?.town || json.address?.village || json.address?.county || '';
           if (city) resolve(city);
           else reject(new Error('Cidade não identificada.'));
         } catch {
@@ -251,10 +191,10 @@ async function detectarCidade(): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// CityPickerModal
+// CityPickerModal — agora com botão Voltar
 // ---------------------------------------------------------------------------
 
-function CityPickerModal({ onConfirm }: { onConfirm: (c: string) => void }) {
+function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void; onBack: () => void }) {
   const [input,   setInput]   = useState('');
   const [loading, setLoading] = useState(false);
   const [erro,    setErro]    = useState('');
@@ -278,6 +218,7 @@ function CityPickerModal({ onConfirm }: { onConfirm: (c: string) => void }) {
   return (
     <div style={cm.overlay}>
       <div style={cm.sheet}>
+        <button onClick={onBack} style={cm.backBtn}>← Voltar</button>
         <div style={cm.icon}>📍</div>
         <h2 style={cm.title}>Qual é a sua cidade?</h2>
         <p style={cm.sub}>O mural mostra apenas publicações da sua cidade.</p>
@@ -315,10 +256,6 @@ function CityPickerModal({ onConfirm }: { onConfirm: (c: string) => void }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// BanBanner
-// ---------------------------------------------------------------------------
-
 function BanBanner({ status }: { status: { mensagem: string; permanente: boolean } }) {
   return (
     <div style={bb.banner}>
@@ -326,17 +263,11 @@ function BanBanner({ status }: { status: { mensagem: string; permanente: boolean
       <div>
         <p style={bb.title}>{status.permanente ? 'Acesso suspenso permanentemente' : 'Publicação temporariamente suspensa'}</p>
         <p style={bb.msg}>{status.mensagem}</p>
-        {status.permanente && (
-          <p style={bb.sub}>Para contestar, entre em contato com o Prof. Carlos.</p>
-        )}
+        {status.permanente && <p style={bb.sub}>Para contestar, entre em contato com o Prof. Carlos.</p>}
       </div>
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// RegrasMural — seção colapsável com as regras de conduta
-// ---------------------------------------------------------------------------
 
 function RegrasMural({ furos }: { furos: number }) {
   const [aberto, setAberto] = useState(false);
@@ -349,21 +280,15 @@ function RegrasMural({ furos }: { furos: number }) {
           {' '}{aberto ? '▲' : '▼'}
         </span>
       </button>
-
       {aberto && (
         <div style={rg.body}>
-          <p style={rg.intro}>
-            O Mural funciona pela confiança mútua. Cancele com antecedência se não puder treinar.
-            Furos prejudicam a comunidade.
-          </p>
+          <p style={rg.intro}>O Mural funciona pela confiança mútua. Cancele com antecedência se não puder treinar. Furos prejudicam a comunidade.</p>
           <div style={rg.rules}>
             <RuleItem n={3} label="furos" consequence="suspensão de 1 mês" color="#ffb74d" />
             <RuleItem n={4} label="furos" consequence="suspensão de 2 meses" color="#ff8a65" />
             <RuleItem n={7} label="furos" consequence="banimento permanente" color="#ef5350" />
           </div>
-          <p style={rg.note}>
-            ⚠️ Penalidades são aplicadas pelo Prof. Carlos. Contestações via WhatsApp.
-          </p>
+          <p style={rg.note}>⚠️ Penalidades são aplicadas pelo Prof. Carlos. Contestações via WhatsApp.</p>
         </div>
       )}
     </div>
@@ -380,43 +305,30 @@ function RuleItem({ n, label, consequence, color }: { n: number; label: string; 
   );
 }
 
-// ---------------------------------------------------------------------------
-// Componente principal
-// ---------------------------------------------------------------------------
-
 export default function MuralScreen({ onBack, emailUsuario }: Props) {
-  const [jogos, setJogos]         = useState<Jogo[]>([]);
+  const [jogos, setJogos]               = useState<Jogo[]>([]);
   const [loadingJogos, setLoadingJogos] = useState(true);
-
-  // Cidade
-  const [cidade, setCidade]           = useState<string>(() => localStorage.getItem(LS_CIDADE) || '');
-  const [showCityPicker, setShowCity] = useState(!localStorage.getItem(LS_CIDADE));
-
-  // Penalidades
+  const [cidade, setCidade]             = useState<string>(() => localStorage.getItem(LS_CIDADE) || '');
+  const [showCityPicker, setShowCity]   = useState(!localStorage.getItem(LS_CIDADE));
   const banStatus  = getBanStatus(emailUsuario);
   const penalidade = getPenalidade(emailUsuario);
-  const [furosMap, setFurosMap] = useState<Record<string, number>>(getFurosReportados);
-
-  // Calendário
-  const [calAberto, setCalAberto]         = useState(false);
-  const [selectedDate, setSelectedDate]   = useState<string | null>(null);
-
-  // Form
-  const [formAberto, setFormAberto]         = useState(true);
-  const [classe, setClasse]                 = useState('Iniciante');
-  const [janelaData, setJanelaData]         = useState(false);
-  const [dataInicio, setDataInicio]         = useState('');
-  const [dataFim, setDataFim]               = useState('');
-  const [horarioInicio, setHorarioInicio]   = useState('');
-  const [horarioFim, setHorarioFim]         = useState('');
-  const [local, setLocal]                   = useState(LOCAIS[0]);
-  const [whatsapp, setWhatsapp]             = useState('');
-  const [erro, setErro]                     = useState('');
-  const [sucesso, setSucesso]               = useState(false);
+  const [furosMap, setFurosMap]         = useState<Record<string, number>>(getFurosReportados);
+  const [calAberto, setCalAberto]       = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [formAberto, setFormAberto]     = useState(true);
+  const [classe, setClasse]             = useState('Iniciante');
+  const [janelaData, setJanelaData]     = useState(false);
+  const [dataInicio, setDataInicio]     = useState('');
+  const [dataFim, setDataFim]           = useState('');
+  const [horarioInicio, setHorarioInicio] = useState('');
+  const [horarioFim, setHorarioFim]     = useState('');
+  const [local, setLocal]               = useState(LOCAIS[0]);
+  const [whatsapp, setWhatsapp]         = useState('');
+  const [erro, setErro]                 = useState('');
+  const [sucesso, setSucesso]           = useState(false);
 
   const hoje = new Date().toISOString().split('T')[0];
 
-  // Carrega jogos do backend sempre que a cidade muda
   useEffect(() => {
     if (!cidade) return;
     setLoadingJogos(true);
@@ -431,10 +343,6 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
     setCidade(c);
     setShowCity(false);
   }, []);
-
-  const handleTrocarCidade = () => {
-    setShowCity(true);
-  };
 
   const handlePublicar = async () => {
     setErro('');
@@ -485,16 +393,19 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
   return (
     <div style={s.page}>
 
-      {/* Modal de cidade */}
-      {showCityPicker && <CityPickerModal onConfirm={handleConfirmCity} />}
+      {showCityPicker && (
+        <CityPickerModal
+          onConfirm={handleConfirmCity}
+          onBack={onBack}
+        />
+      )}
 
-      {/* Header */}
       <div style={s.header}>
         <button onClick={onBack} style={s.backBtn}>← Voltar</button>
         <div style={s.headerCenter}>
           <span style={s.headerTitle}>Mural de Treinos</span>
           {cidade && (
-            <button onClick={handleTrocarCidade} style={s.cidadeBtn}>
+            <button onClick={() => setShowCity(true)} style={s.cidadeBtn}>
               📍 {cidade}
             </button>
           )}
@@ -502,14 +413,11 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
         <span style={s.headerSpacer} />
       </div>
 
-      {/* Corpo rolável */}
       <div style={s.scrollBody}>
         <div style={s.inner}>
 
-          {/* Regras */}
           <RegrasMural furos={penalidade.furos} />
 
-          {/* ── Formulário ─────────────────────────────── */}
           <section style={s.section}>
             <div style={s.sectionHead}>
               <span style={s.sectionIcon}>📢</span>
@@ -528,7 +436,6 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
               ? <BanBanner status={banStatus} />
               : formAberto && (
                 <div style={s.formCard}>
-
                   <FieldGroup label="Sua Classe">
                     <select value={classe} onChange={e => setClasse(e.target.value)} style={s.select}>
                       {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -537,26 +444,20 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
 
                   <FieldGroup label="Disponibilidade de dias">
                     <div style={s.modeToggle}>
-                      <button style={{ ...s.modeBtn, ...(janelaData ? {} : s.modeBtnActive) }} onClick={() => setJanelaData(false)}>
-                        Dia único
-                      </button>
-                      <button style={{ ...s.modeBtn, ...(janelaData ? s.modeBtnActive : {}) }} onClick={() => setJanelaData(true)}>
-                        Janela de dias
-                      </button>
+                      <button style={{ ...s.modeBtn, ...(janelaData ? {} : s.modeBtnActive) }} onClick={() => setJanelaData(false)}>Dia único</button>
+                      <button style={{ ...s.modeBtn, ...(janelaData ? s.modeBtnActive : {}) }} onClick={() => setJanelaData(true)}>Janela de dias</button>
                     </div>
                   </FieldGroup>
 
                   <div style={s.row}>
                     <div style={s.col}>
                       <span style={s.subLabel}>{janelaData ? 'De' : 'Data'}</span>
-                      <input type="date" value={dataInicio} min={hoje}
-                        onChange={e => setDataInicio(e.target.value)} style={s.input} />
+                      <input type="date" value={dataInicio} min={hoje} onChange={e => setDataInicio(e.target.value)} style={s.input} />
                     </div>
                     {janelaData && (
                       <div style={s.col}>
                         <span style={s.subLabel}>Até</span>
-                        <input type="date" value={dataFim} min={dataInicio || hoje}
-                          onChange={e => setDataFim(e.target.value)} style={s.input} />
+                        <input type="date" value={dataFim} min={dataInicio || hoje} onChange={e => setDataFim(e.target.value)} style={s.input} />
                       </div>
                     )}
                   </div>
@@ -565,13 +466,11 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
                     <div style={s.timeStack}>
                       <div style={s.timeRow}>
                         <span style={s.timeLabel}>Das</span>
-                        <input type="time" value={horarioInicio}
-                          onChange={e => setHorarioInicio(e.target.value)} style={s.timeInput} />
+                        <input type="time" value={horarioInicio} onChange={e => setHorarioInicio(e.target.value)} style={s.timeInput} />
                       </div>
                       <div style={s.timeRow}>
                         <span style={s.timeLabel}>Às</span>
-                        <input type="time" value={horarioFim}
-                          onChange={e => setHorarioFim(e.target.value)} style={s.timeInput} />
+                        <input type="time" value={horarioFim} onChange={e => setHorarioFim(e.target.value)} style={s.timeInput} />
                       </div>
                     </div>
                   </FieldGroup>
@@ -583,25 +482,19 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
                   </FieldGroup>
 
                   <FieldGroup label="Seu WhatsApp">
-                    <input
-                      type="tel" inputMode="numeric" placeholder="(33) 99999-0000"
-                      value={whatsapp} onChange={e => setWhatsapp(maskPhone(e.target.value))}
-                      style={s.input}
-                    />
+                    <input type="tel" inputMode="numeric" placeholder="(33) 99999-0000"
+                      value={whatsapp} onChange={e => setWhatsapp(maskPhone(e.target.value))} style={s.input} />
                   </FieldGroup>
 
                   {erro    && <p style={s.erro}>{erro}</p>}
                   {sucesso && <p style={s.ok}>✅ Publicado! Aguardando parceiro…</p>}
 
-                  <button onClick={handlePublicar} style={s.publishBtn}>
-                    📢 Publicar Disponibilidade
-                  </button>
+                  <button onClick={handlePublicar} style={s.publishBtn}>📢 Publicar Disponibilidade</button>
                 </div>
               )
             }
           </section>
 
-          {/* ── Feed ─────────────────────────────────── */}
           <section style={s.section}>
             <div style={s.sectionHead}>
               <span style={s.sectionIcon}>🎾</span>
@@ -617,45 +510,27 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
                 style={{ ...s.minimizeBtn, color: calAberto ? '#4fc3f7' : 'rgba(255,255,255,0.6)',
                   boxShadow: calAberto ? 'inset 0 0 0 1px rgba(79,195,247,0.4)' : 'none',
                   background: calAberto ? 'rgba(79,195,247,0.12)' : 'rgba(255,255,255,0.07)' }}
-                title="Filtrar por data"
               >
                 📅
               </button>
             </div>
 
-            {calAberto && (
-              <MiniCalendar
-                jogos={jogosAtivos}
-                selectedDate={selectedDate}
-                onSelectDate={setSelectedDate}
-              />
-            )}
+            {calAberto && <MiniCalendar jogos={jogosAtivos} selectedDate={selectedDate} onSelectDate={setSelectedDate} />}
 
             {loadingJogos ? (
-              <div style={s.emptyFeed}>
-                <p style={s.emptyText}>Carregando mural...</p>
-              </div>
+              <div style={s.emptyFeed}><p style={s.emptyText}>Carregando mural...</p></div>
             ) : jogosExibidos.length === 0 ? (
               <div style={s.emptyFeed}>
                 <span style={{ fontSize: 40 }}>🎾</span>
                 <p style={s.emptyText}>
-                  {selectedDate
-                    ? `Nenhum parceiro em ${fmtData(selectedDate)}.`
-                    : `Nenhum parceiro disponível em ${cidade} ainda.`}
+                  {selectedDate ? `Nenhum parceiro em ${fmtData(selectedDate)}.` : `Nenhum parceiro disponível em ${cidade} ainda.`}
                 </p>
-                <p style={s.emptyHint}>
-                  {selectedDate ? 'Tente outra data.' : 'Seja o primeiro a publicar!'}
-                </p>
+                <p style={s.emptyHint}>{selectedDate ? 'Tente outra data.' : 'Seja o primeiro a publicar!'}</p>
               </div>
             ) : (
               <div style={s.feed}>
                 {jogosExibidos.map(jogo => (
-                  <JogoCard
-                    key={jogo.id}
-                    jogo={jogo}
-                    furosReportados={furosMap[jogo.whatsapp] || 0}
-                    onReportarFuro={() => handleReportarFuro(jogo)}
-                  />
+                  <JogoCard key={jogo.id} jogo={jogo} furosReportados={furosMap[jogo.whatsapp] || 0} onReportarFuro={() => handleReportarFuro(jogo)} />
                 ))}
               </div>
             )}
@@ -667,10 +542,6 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// FieldGroup
-// ---------------------------------------------------------------------------
-
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -680,18 +551,11 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-// ---------------------------------------------------------------------------
-// MiniCalendar — filtro por data no feed
-// ---------------------------------------------------------------------------
-
-function MiniCalendar({
-  jogos, selectedDate, onSelectDate,
-}: { jogos: Jogo[]; selectedDate: string | null; onSelectDate: (d: string | null) => void }) {
+function MiniCalendar({ jogos, selectedDate, onSelectDate }: { jogos: Jogo[]; selectedDate: string | null; onSelectDate: (d: string | null) => void }) {
   const now = new Date();
   const [viewYear,  setViewYear]  = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
 
-  // Conjunto de datas com jogos disponíveis
   const availDates = new Set<string>();
   jogos.forEach(jogo => {
     const start  = new Date(jogo.dataInicio + 'T12:00:00');
@@ -703,9 +567,9 @@ function MiniCalendar({
     }
   });
 
-  const todayStr   = now.toISOString().split('T')[0];
-  const firstDow   = new Date(viewYear, viewMonth, 1).getDay();
-  const lastDay    = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const todayStr = now.toISOString().split('T')[0];
+  const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+  const lastDay  = new Date(viewYear, viewMonth + 1, 0).getDate();
   const cells: (number | null)[] = [
     ...Array(firstDow).fill(null),
     ...Array.from({ length: lastDay }, (_, i) => i + 1),
@@ -722,123 +586,65 @@ function MiniCalendar({
         <span style={cal.monthLabel}>{MESES[viewMonth]} {viewYear}</span>
         <button onClick={nextMonth} style={cal.navBtn}>▶</button>
       </div>
-
       <div style={cal.grid}>
-        {['D','S','T','Q','Q','S','S'].map((d, i) => (
-          <span key={`dow${i}`} style={cal.dow}>{d}</span>
-        ))}
+        {['D','S','T','Q','Q','S','S'].map((d, i) => <span key={`dow${i}`} style={cal.dow}>{d}</span>)}
         {cells.map((d, i) => {
           if (d === null) return <span key={`e${i}`} />;
           const mm = String(viewMonth + 1).padStart(2, '0');
           const dd = String(d).padStart(2, '0');
-          const dateStr  = `${viewYear}-${mm}-${dd}`;
-          const hasJogos = availDates.has(dateStr);
-          const isPast   = dateStr < todayStr;
-          const isToday  = dateStr === todayStr;
-          const isSel    = dateStr === selectedDate;
+          const dateStr   = `${viewYear}-${mm}-${dd}`;
+          const hasJogos  = availDates.has(dateStr);
+          const isPast    = dateStr < todayStr;
+          const isToday   = dateStr === todayStr;
+          const isSel     = dateStr === selectedDate;
           const clickable = hasJogos && !isPast;
-
           return (
-            <button
-              key={dateStr}
-              onClick={() => clickable && onSelectDate(isSel ? null : dateStr)}
-              style={{
-                ...cal.dayBtn,
-                ...(isPast   ? cal.dayPast  : {}),
-                ...(isToday && !isSel  ? cal.dayToday : {}),
-                ...(clickable && !isSel ? cal.dayHas   : {}),
-                ...(isSel    ? cal.daySel   : {}),
-                cursor: clickable ? 'pointer' : 'default',
-              }}
-            >
+            <button key={dateStr} onClick={() => clickable && onSelectDate(isSel ? null : dateStr)}
+              style={{ ...cal.dayBtn, ...(isPast ? cal.dayPast : {}), ...(isToday && !isSel ? cal.dayToday : {}), ...(clickable && !isSel ? cal.dayHas : {}), ...(isSel ? cal.daySel : {}), cursor: clickable ? 'pointer' : 'default' }}>
               {d}
               {clickable && <span style={{ ...cal.dot, background: isSel ? '#000' : '#4fc3f7' }} />}
             </button>
           );
         })}
       </div>
-
-      {selectedDate && (
-        <button onClick={() => onSelectDate(null)} style={cal.clearBtn}>
-          × Mostrar todos os dias
-        </button>
-      )}
+      {selectedDate && <button onClick={() => onSelectDate(null)} style={cal.clearBtn}>× Mostrar todos os dias</button>}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// JogoCard
-// ---------------------------------------------------------------------------
-
-function JogoCard({
-  jogo,
-  furosReportados,
-  onReportarFuro,
-}: {
-  jogo: Jogo;
-  furosReportados: number;
-  onReportarFuro: () => void;
-}) {
-  const cor    = classeColor(jogo.classe);
-  const waUrl  = buildWhatsAppUrl(jogo);
+function JogoCard({ jogo, furosReportados, onReportarFuro }: { jogo: Jogo; furosReportados: number; onReportarFuro: () => void }) {
+  const cor   = classeColor(jogo.classe);
+  const waUrl = buildWhatsAppUrl(jogo);
   const calUrl = buildGCalUrl(jogo);
   const [reportado, setReportado] = useState(false);
-
-  const handleReport = () => {
-    onReportarFuro();
-    setReportado(true);
-  };
 
   return (
     <div style={{ ...sc.card, boxShadow: `inset 5px 0 0 0 ${cor}` }}>
       <div style={sc.content}>
-
-        {/* Cabeçalho */}
         <div style={sc.cardHeader}>
-          <span style={{ ...sc.classeBadge, color: cor, borderColor: `${cor}60`, background: `${cor}1a` }}>
-            {jogo.classe}
-          </span>
+          <span style={{ ...sc.classeBadge, color: cor, borderColor: `${cor}60`, background: `${cor}1a` }}>{jogo.classe}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {furosReportados >= 3 && (
-              <span style={sc.furoBadge} title={`${furosReportados} furos reportados`}>
-                ⚠️ {furosReportados} furos
-              </span>
-            )}
+            {furosReportados >= 3 && <span style={sc.furoBadge}>⚠️ {furosReportados} furos</span>}
             <span style={sc.tempo}>{tempoRelativo(jogo.publicadoEm)}</span>
           </div>
         </div>
-
-        {/* Infos */}
         <div style={sc.infoList}>
           <InfoItem icon="📅" text={fmtDataRange(jogo)} />
           <InfoItem icon="🕐" text={`${jogo.horarioInicio.replace(':', 'h')} – ${jogo.horarioFim.replace(':', 'h')}`} />
           <InfoItem icon="📍" text={jogo.local} />
         </div>
-
-        {/* Botões principais */}
         <div style={sc.btnRow}>
           <a href={waUrl} target="_blank" rel="noopener noreferrer" style={sc.waBtn}>
-            <WaIcon />
-            WhatsApp
+            <WaIcon />WhatsApp
           </a>
-          <a href={calUrl} target="_blank" rel="noopener noreferrer" style={sc.calBtn}>
-            📅 Agendar
-          </a>
+          <a href={calUrl} target="_blank" rel="noopener noreferrer" style={sc.calBtn}>📅 Agendar</a>
         </div>
-
-        {/* Denunciar furo */}
         <div style={sc.reportRow}>
           {reportado
             ? <span style={sc.reportadoTxt}>✓ Furo registrado</span>
-            : (
-              <button onClick={handleReport} style={sc.reportBtn}>
-                Denunciar furo
-              </button>
-            )
+            : <button onClick={() => { onReportarFuro(); setReportado(true); }} style={sc.reportBtn}>Denunciar furo</button>
           }
         </div>
-
       </div>
     </div>
   );
@@ -861,128 +667,46 @@ function WaIcon() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Estilos — MiniCalendar
-// ---------------------------------------------------------------------------
 const cal: Record<string, React.CSSProperties> = {
-  wrapper: {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.09)',
-    borderRadius: 16, padding: '14px 10px',
-  },
-  nav: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: 10, padding: '0 2px',
-  },
-  navBtn: {
-    background: 'none', border: '1px solid rgba(255,255,255,0.15)',
-    color: '#fff', width: 30, height: 30, borderRadius: 8,
-    cursor: 'pointer', fontSize: 12, display: 'flex',
-    alignItems: 'center', justifyContent: 'center',
-  },
+  wrapper: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 16, padding: '14px 10px' },
+  nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 2px' },
+  navBtn: { background: 'none', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', width: 30, height: 30, borderRadius: 8, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   monthLabel: { fontSize: 14, fontWeight: 700, color: '#fff' },
-  grid: {
-    display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2,
-  },
-  dow: {
-    fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    paddingBottom: 6,
-  },
-  dayBtn: {
-    position: 'relative', display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center',
-    aspectRatio: '1', borderRadius: 8, border: 'none',
-    background: 'transparent', color: 'rgba(255,255,255,0.35)',
-    fontSize: 13, padding: 0, gap: 1,
-  },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 },
+  dow: { fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 6 },
+  dayBtn: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', aspectRatio: '1', borderRadius: 8, border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.35)', fontSize: 13, padding: 0, gap: 1 },
   dayPast:  { color: 'rgba(255,255,255,0.12)' },
   dayToday: { color: '#4fc3f7', boxShadow: 'inset 0 0 0 1px rgba(79,195,247,0.4)', borderRadius: 8 },
   dayHas:   { color: '#fff', fontWeight: 700 },
   daySel:   { background: '#4fc3f7', color: '#000', fontWeight: 800, borderRadius: 8 },
-  dot: {
-    position: 'absolute', bottom: 3,
-    width: 4, height: 4, borderRadius: '50%',
-  },
-  clearBtn: {
-    marginTop: 10, width: '100%', background: 'none',
-    border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)',
-    padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
-    boxSizing: 'border-box',
-  },
+  dot: { position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: '50%' },
+  clearBtn: { marginTop: 10, width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)', padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 12, boxSizing: 'border-box' },
 };
 
-// ---------------------------------------------------------------------------
-// Estilos — CityPickerModal
-// ---------------------------------------------------------------------------
 const cm: Record<string, React.CSSProperties> = {
-  overlay: {
-    position: 'fixed', inset: 0, zIndex: 100,
-    background: 'rgba(13,13,26,0.97)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: 24,
-  },
-  sheet: {
-    background: '#111827',
-    border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: 24,
-    padding: '32px 24px',
-    maxWidth: 400, width: '100%',
-    display: 'flex', flexDirection: 'column', gap: 16,
-    alignItems: 'center',
-  },
+  overlay: { position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(13,13,26,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  sheet: { background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: '24px 24px 32px', maxWidth: 400, width: '100%', display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' },
+  backBtn: { alignSelf: 'flex-start', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: '#cce0ff', padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   icon:  { fontSize: 52, lineHeight: 1 },
   title: { margin: 0, fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center' },
   sub:   { margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 1.5 },
-  detectBtn: {
-    width: '100%', padding: '14px 16px', borderRadius: 14,
-    background: 'rgba(79,195,247,0.12)', border: '1.5px solid #4fc3f7',
-    color: '#4fc3f7', fontSize: 15, fontWeight: 700, cursor: 'pointer',
-  },
+  detectBtn: { width: '100%', padding: '14px 16px', borderRadius: 14, background: 'rgba(79,195,247,0.12)', border: '1.5px solid #4fc3f7', color: '#4fc3f7', fontSize: 15, fontWeight: 700, cursor: 'pointer' },
   ouLabel: { margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.3)' },
-  input: {
-    width: '100%', padding: '14px 16px', borderRadius: 12,
-    background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.18)',
-    color: '#fff', fontSize: 16, boxSizing: 'border-box', colorScheme: 'dark',
-  },
+  input: { width: '100%', padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', fontSize: 16, boxSizing: 'border-box', colorScheme: 'dark' },
   erro: { margin: 0, fontSize: 13, color: '#ff6b6b', textAlign: 'center' },
-  confirmBtn: {
-    width: '100%', padding: '16px', borderRadius: 14,
-    background: 'linear-gradient(135deg, #1b5e20, #388e3c)',
-    border: 'none', color: '#fff', fontSize: 16, fontWeight: 800,
-    cursor: 'pointer', opacity: 1,
-  },
+  confirmBtn: { width: '100%', padding: '16px', borderRadius: 14, background: 'linear-gradient(135deg, #1b5e20, #388e3c)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer' },
 };
 
-// ---------------------------------------------------------------------------
-// Estilos — BanBanner
-// ---------------------------------------------------------------------------
 const bb: Record<string, React.CSSProperties> = {
-  banner: {
-    background: 'rgba(244,67,54,0.12)', border: '1px solid rgba(244,67,54,0.4)',
-    borderRadius: 16, padding: '16px 18px',
-    display: 'flex', alignItems: 'flex-start', gap: 14,
-  },
+  banner: { background: 'rgba(244,67,54,0.12)', border: '1px solid rgba(244,67,54,0.4)', borderRadius: 16, padding: '16px 18px', display: 'flex', alignItems: 'flex-start', gap: 14 },
   title: { margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: '#ef9a9a' },
   msg:   { margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 },
   sub:   { margin: '6px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)' },
 };
 
-// ---------------------------------------------------------------------------
-// Estilos — RegrasMural
-// ---------------------------------------------------------------------------
 const rg: Record<string, React.CSSProperties> = {
-  card: {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: 16, overflow: 'hidden',
-  },
-  header: {
-    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '14px 16px', background: 'none', border: 'none',
-    color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-    boxSizing: 'border-box',
-  },
+  card: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden' },
+  header: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxSizing: 'border-box' },
   body: { padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 },
   intro: { margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 },
   rules: { display: 'flex', flexDirection: 'column', gap: 8 },
@@ -993,174 +717,57 @@ const rg: Record<string, React.CSSProperties> = {
   note: { margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.35)', lineHeight: 1.5 },
 };
 
-// ---------------------------------------------------------------------------
-// Estilos principais
-// ---------------------------------------------------------------------------
 const s: Record<string, React.CSSProperties> = {
-  page: {
-    position: 'fixed', inset: 0,
-    background: '#0d0d1a', color: '#fff',
-    display: 'flex', flexDirection: 'column',
-    fontFamily: 'system-ui, sans-serif',
-  },
-  header: {
-    display: 'flex', alignItems: 'center',
-    padding: '12px 16px',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-    gap: 12,
-    background: 'rgba(0,0,0,0.5)',
-    backdropFilter: 'blur(10px)',
-    flexShrink: 0, zIndex: 10,
-  },
-  backBtn: {
-    background: 'none', border: '1px solid rgba(255,255,255,0.22)',
-    color: '#cce0ff', padding: '8px 14px', borderRadius: 10,
-    fontSize: 14, cursor: 'pointer', fontWeight: 600, flexShrink: 0,
-  },
-  headerCenter: {
-    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-  },
-  headerTitle: {
-    fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: -0.2,
-  },
-  cidadeBtn: {
-    background: 'rgba(79,195,247,0.1)', border: '1px solid rgba(79,195,247,0.3)',
-    color: '#4fc3f7', padding: '3px 10px', borderRadius: 20,
-    fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.2,
-  },
+  page: { position: 'fixed', inset: 0, background: '#0d0d1a', color: '#fff', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' },
+  header: { display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)', gap: 12, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', flexShrink: 0, zIndex: 10 },
+  backBtn: { background: 'none', border: '1px solid rgba(255,255,255,0.22)', color: '#cce0ff', padding: '8px 14px', borderRadius: 10, fontSize: 14, cursor: 'pointer', fontWeight: 600, flexShrink: 0 },
+  headerCenter: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
+  headerTitle: { fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: -0.2 },
+  cidadeBtn: { background: 'rgba(79,195,247,0.1)', border: '1px solid rgba(79,195,247,0.3)', color: '#4fc3f7', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.2 },
   headerSpacer: { width: 70, flexShrink: 0 },
-
-  scrollBody: {
-    flex: 1, overflowY: 'auto', overflowX: 'hidden',
-    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-  },
-  inner: {
-    display: 'flex', flexDirection: 'column', gap: 24,
-    padding: '20px 16px 48px',
-    maxWidth: 540, margin: '0 auto',
-    boxSizing: 'border-box', width: '100%',
-  },
-
+  scrollBody: { flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] },
+  inner: { display: 'flex', flexDirection: 'column', gap: 24, padding: '20px 16px 48px', maxWidth: 540, margin: '0 auto', boxSizing: 'border-box', width: '100%' },
   section: { display: 'flex', flexDirection: 'column', gap: 14 },
   sectionHead: { display: 'flex', alignItems: 'flex-start', gap: 12 },
   sectionIcon: { fontSize: 28, lineHeight: 1, flexShrink: 0, marginTop: 2 },
   sectionTitle: { fontSize: 20, fontWeight: 800, margin: 0, color: '#fff', letterSpacing: -0.3 },
   sectionSub:   { margin: '3px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.4)' },
-
-  formCard: {
-    display: 'flex', flexDirection: 'column', gap: 16,
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.09)',
-    borderRadius: 22, padding: '20px 16px 24px',
-  },
-
+  formCard: { display: 'flex', flexDirection: 'column', gap: 16, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 22, padding: '20px 16px 24px' },
   fieldLabel: { fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.8, textTransform: 'uppercase' },
   subLabel:   { fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.38)', letterSpacing: 0.4 },
-
-  input: {
-    width: '100%', maxWidth: '100%', padding: '13px 14px', borderRadius: 12,
-    background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)',
-    color: '#fff', fontSize: 15, boxSizing: 'border-box', colorScheme: 'dark',
-    display: 'block',
-  },
-  select: {
-    width: '100%', padding: '13px 14px', borderRadius: 12,
-    background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)',
-    color: '#fff', fontSize: 15, appearance: 'auto', boxSizing: 'border-box', colorScheme: 'dark',
-  },
-
+  input: { width: '100%', maxWidth: '100%', padding: '13px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)', color: '#fff', fontSize: 15, boxSizing: 'border-box', colorScheme: 'dark', display: 'block' },
+  select: { width: '100%', padding: '13px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)', color: '#fff', fontSize: 15, appearance: 'auto', boxSizing: 'border-box', colorScheme: 'dark' },
   row: { display: 'flex', gap: 10, overflow: 'hidden' },
   col: { flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 6 },
-
-  minimizeBtn: {
-    flexShrink: 0, padding: '8px 14px', borderRadius: 10,
-    background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
-    color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 700,
-    cursor: 'pointer', whiteSpace: 'nowrap', alignSelf: 'flex-start', marginTop: 2,
-  },
-
+  minimizeBtn: { flexShrink: 0, padding: '8px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', alignSelf: 'flex-start', marginTop: 2 },
   timeStack: { display: 'flex', flexDirection: 'column', gap: 8 },
   timeRow:   { display: 'flex', alignItems: 'center', gap: 12 },
   timeLabel: { fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.5)', width: 28, flexShrink: 0 },
-  timeInput: {
-    flex: 1, padding: '12px 14px', borderRadius: 12,
-    background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)',
-    color: '#fff', fontSize: 15, boxSizing: 'border-box', colorScheme: 'dark', minWidth: 0,
-  },
-
+  timeInput: { flex: 1, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)', color: '#fff', fontSize: 15, boxSizing: 'border-box', colorScheme: 'dark', minWidth: 0 },
   modeToggle: { display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 4, gap: 4 },
-  modeBtn: {
-    flex: 1, padding: '10px 8px', borderRadius: 9, border: 'none',
-    background: 'transparent', color: 'rgba(255,255,255,0.45)',
-    fontSize: 13, fontWeight: 600, cursor: 'pointer',
-  },
+  modeBtn: { flex: 1, padding: '10px 8px', borderRadius: 9, border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.45)', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   modeBtnActive: { background: 'rgba(79,195,247,0.2)', color: '#4fc3f7', boxShadow: 'inset 0 0 0 1px rgba(79,195,247,0.4)' },
-
   erro: { color: '#ff6b6b', fontSize: 13, fontWeight: 600, margin: 0 },
   ok:   { color: '#aef359', fontSize: 13, fontWeight: 600, margin: 0 },
-
-  publishBtn: {
-    padding: '16px 20px', borderRadius: 14,
-    background: 'linear-gradient(135deg, #1b5e20, #388e3c)',
-    border: 'none', color: '#fff', fontSize: 16, fontWeight: 800,
-    cursor: 'pointer', boxShadow: '0 4px 20px rgba(56,142,60,0.4)',
-    letterSpacing: 0.2, marginTop: 4,
-  },
-
-  emptyFeed: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    gap: 10, padding: '32px 16px', textAlign: 'center',
-  },
+  publishBtn: { padding: '16px 20px', borderRadius: 14, background: 'linear-gradient(135deg, #1b5e20, #388e3c)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 20px rgba(56,142,60,0.4)', letterSpacing: 0.2, marginTop: 4 },
+  emptyFeed: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '32px 16px', textAlign: 'center' },
   emptyText: { margin: 0, fontSize: 15, color: 'rgba(255,255,255,0.55)', fontWeight: 600 },
   emptyHint: { margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.3)' },
-
   feed: { display: 'flex', flexDirection: 'column', gap: 14 },
 };
 
-// ---------------------------------------------------------------------------
-// Estilos do card
-// ---------------------------------------------------------------------------
 const sc: Record<string, React.CSSProperties> = {
-  card: {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.09)',
-    borderRadius: 18,
-  },
+  card: { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 18 },
   content: { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 },
   cardHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  classeBadge: {
-    fontSize: 13, fontWeight: 800, padding: '5px 14px',
-    borderRadius: 20, border: '1px solid', letterSpacing: 0.3,
-  },
-  furoBadge: {
-    fontSize: 11, fontWeight: 700, padding: '3px 8px',
-    borderRadius: 20, background: 'rgba(244,67,54,0.2)',
-    border: '1px solid rgba(244,67,54,0.5)', color: '#ef9a9a',
-  },
+  classeBadge: { fontSize: 13, fontWeight: 800, padding: '5px 14px', borderRadius: 20, border: '1px solid', letterSpacing: 0.3 },
+  furoBadge: { fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: 'rgba(244,67,54,0.2)', border: '1px solid rgba(244,67,54,0.5)', color: '#ef9a9a' },
   tempo: { fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 500 },
   infoList: { display: 'flex', flexDirection: 'column', gap: 7 },
-
   btnRow: { display: 'flex', gap: 10 },
-  waBtn: {
-    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    gap: 8, padding: '13px 12px', borderRadius: 13,
-    background: 'linear-gradient(135deg, #1b5e20, #388e3c)',
-    color: '#fff', fontSize: 14, fontWeight: 800,
-    textDecoration: 'none', boxShadow: '0 3px 14px rgba(56,142,60,0.35)',
-  },
-  calBtn: {
-    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    gap: 6, padding: '13px 12px', borderRadius: 13,
-    background: 'rgba(66,133,244,0.15)', border: '1.5px solid rgba(66,133,244,0.5)',
-    color: '#90caf9', fontSize: 14, fontWeight: 700,
-    textDecoration: 'none',
-  },
-
+  waBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 12px', borderRadius: 13, background: 'linear-gradient(135deg, #1b5e20, #388e3c)', color: '#fff', fontSize: 14, fontWeight: 800, textDecoration: 'none', boxShadow: '0 3px 14px rgba(56,142,60,0.35)' },
+  calBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px 12px', borderRadius: 13, background: 'rgba(66,133,244,0.15)', border: '1.5px solid rgba(66,133,244,0.5)', color: '#90caf9', fontSize: 14, fontWeight: 700, textDecoration: 'none' },
   reportRow: { display: 'flex', justifyContent: 'flex-end', paddingTop: 2 },
-  reportBtn: {
-    background: 'none', border: 'none', padding: '4px 2px',
-    color: 'rgba(255,255,255,0.22)', fontSize: 11, cursor: 'pointer',
-    textDecoration: 'underline', textUnderlineOffset: 2,
-  },
+  reportBtn: { background: 'none', border: 'none', padding: '4px 2px', color: 'rgba(255,255,255,0.22)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 },
   reportadoTxt: { fontSize: 11, color: '#aef359', fontWeight: 600 },
 };
