@@ -286,8 +286,8 @@ function drawBadge(
   // Offset direction: afasta badge do centro da imagem horizontalmente
   // Joelhos (25, 26) levemente para baixo; cotovelos e quadris levemente para cima
   const isKnee = landmarkIdx === 25 || landmarkIdx === 26;
-  const pushX  = lm.x < 0.5 ? -48 : 48;
-  const pushY  = isKnee ? 12 : -18;
+  const pushX  = lm.x < 0.5 ? -70 : 70;
+  const pushY  = isKnee ? 20 : -28;
 
   const bcx = jx + pushX;   // centro do badge
   const bcy = jy + pushY;
