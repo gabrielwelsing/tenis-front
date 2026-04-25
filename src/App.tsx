@@ -39,12 +39,12 @@ function InstaIcon() {
 // Tela de Login / Cadastro
 // ---------------------------------------------------------------------------
 function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) => void }) {
-  const [mode,  setMode]  = useState<'login' | 'register'>('login');
-  const [nome,  setNome]  = useState('');
-  const [email, setEmail] = useState('');
-  const [pass,  setPass]  = useState('');
-  const [error, setError] = useState('');
-  const [info,  setInfo]  = useState('');
+  const [mode,    setMode]    = useState<'login' | 'register'>('login');
+  const [nome,    setNome]    = useState('');
+  const [email,   setEmail]   = useState('');
+  const [pass,    setPass]    = useState('');
+  const [error,   setError]   = useState('');
+  const [info,    setInfo]    = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -84,7 +84,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
         <h1 style={s.title}>Tenis Coach com Carlão</h1>
         <p style={s.sub}>Entre com seu perfil</p>
 
-        {/* Toggle login/cadastro */}
         <div style={s.modeToggle}>
           <button
             onClick={() => { setMode('login'); setError(''); }}
@@ -153,7 +152,6 @@ function App() {
   const [checking, setChecking] = useState(true);
   const [screen,   setScreen]   = useState<Screen>('home');
 
-  // Valida token salvo ao abrir o app
   useEffect(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) { setChecking(false); return; }
@@ -177,6 +175,13 @@ function App() {
     setScreen('home');
   };
 
+  // Guarda de rota — user comum só acessa mural e instagram
+  const handleNavigate = (target: Screen) => {
+    const adminOnly: Screen[] = ['camera', 'history', 'biomechanics', 'comparison'];
+    if (user?.role === 'user' && adminOnly.includes(target)) return;
+    setScreen(target);
+  };
+
   if (checking) {
     return (
       <div style={{ background: '#0d0d1a', minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -192,7 +197,7 @@ function App() {
 
   switch (screen) {
     case 'home':
-      return <HomeScreen saveMode={saveMode} username={username} onLogout={handleLogout} onNavigate={setScreen} />;
+      return <HomeScreen saveMode={saveMode} username={username} role={user.role} onLogout={handleLogout} onNavigate={handleNavigate} />;
     case 'camera':
       return <CameraScreen saveMode={saveMode} username={username} onGoHistory={() => setScreen('history')} onLogout={() => setScreen('home')} />;
     case 'history':
@@ -206,7 +211,7 @@ function App() {
     case 'mural':
       return <MuralScreen onBack={() => setScreen('home')} emailUsuario={user.email} />;
     default:
-      return <HomeScreen saveMode={saveMode} username={username} onLogout={handleLogout} onNavigate={setScreen} />;
+      return <HomeScreen saveMode={saveMode} username={username} role={user.role} onLogout={handleLogout} onNavigate={handleNavigate} />;
   }
 }
 
@@ -269,9 +274,7 @@ const s: Record<string, React.CSSProperties> = {
     background: 'transparent', color: 'rgba(255,255,255,0.5)',
     fontSize: 15, fontWeight: 700, cursor: 'pointer',
   },
-  modeBtnActive: {
-    background: '#2e7d32', color: '#fff',
-  },
+  modeBtnActive: { background: '#2e7d32', color: '#fff' },
   admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 12 },
   input: {
     width: '100%', padding: '14px 16px', borderRadius: 12,
