@@ -29,7 +29,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
       <div style={s.scrollBody}>
         <div style={s.content}>
 
-          {/* Header */}
           <div style={s.header}>
             <div style={s.headerLeft}>
               <h2 style={s.greeting}>
@@ -40,10 +39,8 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
             <button onClick={onLogout} style={s.sairBtn}>Sair</button>
           </div>
 
-          {/* Cards */}
           <div style={s.cardList}>
 
-            {/* Mural de Treinos — todos */}
             <button style={{ ...s.card, ...s.cardGreen }} onClick={() => onNavigate('mural')}>
               <div style={s.cardIcon}>🎾</div>
               <div style={s.cardBody}>
@@ -53,7 +50,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               <div style={{ ...s.badge, ...s.badgeGreen }}>novo</div>
             </button>
 
-            {/* Instagram Reels — todos */}
             <button style={{ ...s.card, ...s.cardGradient }} onClick={() => onNavigate('instagram')}>
               <div style={s.cardIcon}>📱</div>
               <div style={s.cardBody}>
@@ -63,7 +59,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               <div style={{ ...s.badge, ...s.badgePink }}>local</div>
             </button>
 
-            {/* Câmera — admin only */}
             {isAdmin && (
               <button style={{ ...s.card, ...s.cardRed }} onClick={() => onNavigate('camera')}>
                 <div style={s.cardIcon}>🎬</div>
@@ -75,7 +70,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               </button>
             )}
 
-            {/* Análise Biomecânica — admin only */}
             {isAdmin && (
               <button style={{ ...s.card, ...s.cardTeal }} onClick={() => onNavigate('biomechanics')}>
                 <div style={s.cardIcon}>🦴</div>
@@ -87,7 +81,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               </button>
             )}
 
-            {/* Comparativo de Vídeos — admin only */}
             {isAdmin && (
               <button style={{ ...s.card, ...s.cardPurple }} onClick={() => onNavigate('comparison')}>
                 <div style={s.cardIcon}>⚖️</div>
@@ -99,7 +92,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               </button>
             )}
 
-            {/* Histórico — admin only */}
             {isAdmin && (
               <button style={{ ...s.card, ...s.cardGray }} onClick={() => onNavigate('history')}>
                 <div style={s.cardIcon}>📂</div>
@@ -112,31 +104,11 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
 
           </div>
 
-          {/* Footer */}
           <div style={s.footer}>
             <span style={s.footerText}>
               {saveMode === 'drive' ? '☁️ Google Drive' : '📱 Armazenamento local'}
             </span>
-            
-              href="https://www.instagram.com/jogartenisto/"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={s.instaLink}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                <rect x="2" y="2" width="20" height="20" rx="6" stroke="url(#ig2)" strokeWidth="2"/>
-                <circle cx="12" cy="12" r="4.5" stroke="url(#ig2)" strokeWidth="2"/>
-                <circle cx="17.5" cy="6.5" r="1.2" fill="url(#ig2)"/>
-                <defs>
-                  <linearGradient id="ig2" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#f56040"/>
-                    <stop offset="0.5" stopColor="#c13584"/>
-                    <stop offset="1" stopColor="#405de6"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-              @jogartenisto
-            </a>
+            <span style={s.footerText}>@jogartenisto</span>
           </div>
 
         </div>
