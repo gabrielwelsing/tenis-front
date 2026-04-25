@@ -9,22 +9,23 @@ import type { Screen } from '../App';
 interface Props {
   saveMode: SaveMode;
   username: string;
+  role: 'user' | 'admin';
   onLogout: () => void;
   onNavigate: (screen: Screen) => void;
 }
 
-export default function HomeScreen({ saveMode, username, onLogout, onNavigate }: Props) {
+export default function HomeScreen({ saveMode, username, role, onLogout, onNavigate }: Props) {
   const displayName = username
     ? username.charAt(0).toUpperCase() + username.slice(1)
     : 'Professor';
 
+  const isAdmin = role === 'admin';
+
   return (
-    // Scroll fix iOS: position:fixed + filho com overflowY:auto
     <div style={s.page}>
       <div style={s.bgImage} />
       <div style={s.bgOverlay} />
 
-      {/* Área rolável */}
       <div style={s.scrollBody}>
         <div style={s.content}>
 
@@ -42,7 +43,7 @@ export default function HomeScreen({ saveMode, username, onLogout, onNavigate }:
           {/* Cards */}
           <div style={s.cardList}>
 
-            {/* Card 1 — Mural de Treinos (primeiro) */}
+            {/* Mural de Treinos — todos */}
             <button style={{ ...s.card, ...s.cardGreen }} onClick={() => onNavigate('mural')}>
               <div style={s.cardIcon}>🎾</div>
               <div style={s.cardBody}>
@@ -52,37 +53,7 @@ export default function HomeScreen({ saveMode, username, onLogout, onNavigate }:
               <div style={{ ...s.badge, ...s.badgeGreen }}>novo</div>
             </button>
 
-            {/* Card 2 — Câmera */}
-            <button style={{ ...s.card, ...s.cardRed }} onClick={() => onNavigate('camera')}>
-              <div style={s.cardIcon}>🎬</div>
-              <div style={s.cardBody}>
-                <div style={s.cardTitle}>Câmera</div>
-                <div style={s.cardSub}>Grave e salve os últimos segundos do treino</div>
-              </div>
-              <div style={{ ...s.badge, ...s.badgeRed }}>principal</div>
-            </button>
-
-            {/* Card 3 — Análise Biomecânica */}
-            <button style={{ ...s.card, ...s.cardTeal }} onClick={() => onNavigate('biomechanics')}>
-              <div style={s.cardIcon}>🦴</div>
-              <div style={s.cardBody}>
-                <div style={s.cardTitle}>Análise Biomecânica</div>
-                <div style={s.cardSub}>Detecte ângulos articulares via IA</div>
-              </div>
-              <div style={{ ...s.badge, ...s.badgeTeal }}>sem custo</div>
-            </button>
-
-            {/* Card 4 — Comparativo de Vídeos */}
-            <button style={{ ...s.card, ...s.cardPurple }} onClick={() => onNavigate('comparison')}>
-              <div style={s.cardIcon}>⚖️</div>
-              <div style={s.cardBody}>
-                <div style={s.cardTitle}>Comparativo de Vídeos</div>
-                <div style={s.cardSub}>Compare dois vídeos lado a lado</div>
-              </div>
-              <div style={{ ...s.badge, ...s.badgePurple }}>sincronizado</div>
-            </button>
-
-            {/* Card 5 — Instagram Reels */}
+            {/* Instagram Reels — todos */}
             <button style={{ ...s.card, ...s.cardGradient }} onClick={() => onNavigate('instagram')}>
               <div style={s.cardIcon}>📱</div>
               <div style={s.cardBody}>
@@ -92,14 +63,52 @@ export default function HomeScreen({ saveMode, username, onLogout, onNavigate }:
               <div style={{ ...s.badge, ...s.badgePink }}>local</div>
             </button>
 
-            {/* Card 6 — Histórico */}
-            <button style={{ ...s.card, ...s.cardGray }} onClick={() => onNavigate('history')}>
-              <div style={s.cardIcon}>📂</div>
-              <div style={s.cardBody}>
-                <div style={s.cardTitle}>Histórico</div>
-                <div style={s.cardSub}>Veja os vídeos e áudios salvos</div>
-              </div>
-            </button>
+            {/* Câmera — admin only */}
+            {isAdmin && (
+              <button style={{ ...s.card, ...s.cardRed }} onClick={() => onNavigate('camera')}>
+                <div style={s.cardIcon}>🎬</div>
+                <div style={s.cardBody}>
+                  <div style={s.cardTitle}>Câmera</div>
+                  <div style={s.cardSub}>Grave e salve os últimos segundos do treino</div>
+                </div>
+                <div style={{ ...s.badge, ...s.badgeRed }}>principal</div>
+              </button>
+            )}
+
+            {/* Análise Biomecânica — admin only */}
+            {isAdmin && (
+              <button style={{ ...s.card, ...s.cardTeal }} onClick={() => onNavigate('biomechanics')}>
+                <div style={s.cardIcon}>🦴</div>
+                <div style={s.cardBody}>
+                  <div style={s.cardTitle}>Análise Biomecânica</div>
+                  <div style={s.cardSub}>Detecte ângulos articulares via IA</div>
+                </div>
+                <div style={{ ...s.badge, ...s.badgeTeal }}>sem custo</div>
+              </button>
+            )}
+
+            {/* Comparativo de Vídeos — admin only */}
+            {isAdmin && (
+              <button style={{ ...s.card, ...s.cardPurple }} onClick={() => onNavigate('comparison')}>
+                <div style={s.cardIcon}>⚖️</div>
+                <div style={s.cardBody}>
+                  <div style={s.cardTitle}>Comparativo de Vídeos</div>
+                  <div style={s.cardSub}>Compare dois vídeos lado a lado</div>
+                </div>
+                <div style={{ ...s.badge, ...s.badgePurple }}>sincronizado</div>
+              </button>
+            )}
+
+            {/* Histórico — admin only */}
+            {isAdmin && (
+              <button style={{ ...s.card, ...s.cardGray }} onClick={() => onNavigate('history')}>
+                <div style={s.cardIcon}>📂</div>
+                <div style={s.cardBody}>
+                  <div style={s.cardTitle}>Histórico</div>
+                  <div style={s.cardSub}>Veja os vídeos e áudios salvos</div>
+                </div>
+              </button>
+            )}
 
           </div>
 
@@ -108,7 +117,7 @@ export default function HomeScreen({ saveMode, username, onLogout, onNavigate }:
             <span style={s.footerText}>
               {saveMode === 'drive' ? '☁️ Google Drive' : '📱 Armazenamento local'}
             </span>
-            <a
+            
               href="https://www.instagram.com/jogartenisto/"
               target="_blank"
               rel="noopener noreferrer"
@@ -137,7 +146,6 @@ export default function HomeScreen({ saveMode, username, onLogout, onNavigate }:
 }
 
 const s: Record<string, React.CSSProperties> = {
-  // Fix scroll iOS
   page: {
     position: 'fixed',
     inset: 0,
@@ -180,8 +188,6 @@ const s: Record<string, React.CSSProperties> = {
     boxSizing: 'border-box',
     paddingTop: 'max(20px, env(safe-area-inset-top, 20px))',
   },
-
-  // Header
   header: {
     display: 'flex',
     alignItems: 'flex-start',
@@ -201,9 +207,7 @@ const s: Record<string, React.CSSProperties> = {
     lineHeight: 1.15,
     letterSpacing: -0.5,
   },
-  greetingName: {
-    color: '#4fc3f7',
-  },
+  greetingName: { color: '#4fc3f7' },
   appName: {
     color: 'rgba(255,255,255,0.55)',
     fontSize: 13,
@@ -223,8 +227,6 @@ const s: Record<string, React.CSSProperties> = {
     minHeight: 40,
     flexShrink: 0,
   },
-
-  // Card list
   cardList: {
     display: 'flex',
     flexDirection: 'column',
@@ -245,91 +247,31 @@ const s: Record<string, React.CSSProperties> = {
     position: 'relative',
     fontFamily: 'system-ui, sans-serif',
   },
-  cardGreen: {
-    background: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)',
-    boxShadow: '0 4px 20px rgba(46,125,50,0.35)',
-  },
-  cardRed: {
-    background: 'linear-gradient(135deg, #b71c1c 0%, #e53935 100%)',
-    boxShadow: '0 4px 20px rgba(229,57,53,0.32)',
-  },
-  cardTeal: {
-    background: 'linear-gradient(135deg, #006064 0%, #00838f 100%)',
-    boxShadow: '0 4px 20px rgba(0,131,143,0.28)',
-  },
-  cardPurple: {
-    background: 'linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%)',
-    boxShadow: '0 4px 20px rgba(123,31,162,0.28)',
-  },
-  cardGradient: {
-    background: 'linear-gradient(135deg, #880e4f 0%, #c2185b 50%, #7b1fa2 100%)',
-    boxShadow: '0 4px 20px rgba(194,24,91,0.28)',
-  },
-  cardGray: {
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
-  },
-  cardIcon: {
-    fontSize: 28,
-    lineHeight: 1,
-    flexShrink: 0,
-  },
-  cardBody: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 3,
-  },
-  cardTitle: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: 800,
-    lineHeight: 1.2,
-    letterSpacing: -0.3,
-  },
-  cardSub: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    lineHeight: 1.4,
-  },
+  cardGreen:    { background: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)', boxShadow: '0 4px 20px rgba(46,125,50,0.35)' },
+  cardRed:      { background: 'linear-gradient(135deg, #b71c1c 0%, #e53935 100%)', boxShadow: '0 4px 20px rgba(229,57,53,0.32)' },
+  cardTeal:     { background: 'linear-gradient(135deg, #006064 0%, #00838f 100%)', boxShadow: '0 4px 20px rgba(0,131,143,0.28)' },
+  cardPurple:   { background: 'linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%)', boxShadow: '0 4px 20px rgba(123,31,162,0.28)' },
+  cardGradient: { background: 'linear-gradient(135deg, #880e4f 0%, #c2185b 50%, #7b1fa2 100%)', boxShadow: '0 4px 20px rgba(194,24,91,0.28)' },
+  cardGray:     { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' },
+  cardIcon:  { fontSize: 28, lineHeight: 1, flexShrink: 0 },
+  cardBody:  { flex: 1, display: 'flex', flexDirection: 'column', gap: 3 },
+  cardTitle: { color: '#fff', fontSize: 17, fontWeight: 800, lineHeight: 1.2, letterSpacing: -0.3 },
+  cardSub:   { color: 'rgba(255,255,255,0.7)', fontSize: 12, lineHeight: 1.4 },
   badge: {
-    position: 'absolute',
-    top: 9,
-    right: 12,
-    fontSize: 10,
-    fontWeight: 700,
-    padding: '3px 8px',
-    borderRadius: 20,
-    letterSpacing: 0.3,
-    whiteSpace: 'nowrap',
-    textTransform: 'uppercase',
+    position: 'absolute', top: 9, right: 12,
+    fontSize: 10, fontWeight: 700, padding: '3px 8px',
+    borderRadius: 20, letterSpacing: 0.3, whiteSpace: 'nowrap', textTransform: 'uppercase',
   },
   badgeGreen:  { background: 'rgba(0,0,0,0.25)', color: '#c8e6c9' },
   badgeRed:    { background: 'rgba(255,255,255,0.2)', color: '#fff' },
   badgeTeal:   { background: 'rgba(0,0,0,0.25)', color: '#b2ebf2' },
   badgePurple: { background: 'rgba(0,0,0,0.25)', color: '#e1bee7' },
   badgePink:   { background: 'rgba(0,0,0,0.25)', color: '#f8bbd0' },
-
-  // Footer
-  footer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 4,
-  },
-  footerText: {
-    color: 'rgba(255,255,255,0.28)',
-    fontSize: 11,
-  },
+  footer: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, paddingTop: 4 },
+  footerText: { color: 'rgba(255,255,255,0.28)', fontSize: 11 },
   instaLink: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 5,
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 12,
-    textDecoration: 'none',
-    fontWeight: 600,
-    letterSpacing: 0.3,
+    display: 'flex', alignItems: 'center', gap: 5,
+    color: 'rgba(255,255,255,0.45)', fontSize: 12,
+    textDecoration: 'none', fontWeight: 600, letterSpacing: 0.3,
   },
 };
