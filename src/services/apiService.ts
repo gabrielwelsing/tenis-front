@@ -5,6 +5,57 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://tenis-back-production-9f72.up.railway.app';
 
 // ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export interface UserRecord {
+  id:    number;
+  nome:  string;
+  email: string;
+  role:  'user' | 'admin';
+}
+
+export interface AuthResponse {
+  token: string;
+  user:  UserRecord;
+}
+
+export async function register(nome: string, email: string, password: string): Promise<AuthResponse> {
+  const res = await fetch(`${BASE_URL}/auth/register`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ nome, email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error ?? 'Erro ao cadastrar.');
+  }
+  return res.json();
+}
+
+export async function login(email: string, password: string): Promise<AuthResponse> {
+  const res = await fetch(`${BASE_URL}/auth/login`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error ?? 'Erro ao fazer login.');
+  }
+  return res.json();
+}
+
+export async function getMe(token: string): Promise<UserRecord> {
+  const res = await fetch(`${BASE_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Sessão inválida.');
+  const data = await res.json();
+  return data.user;
+}
+
+// ---------------------------------------------------------------------------
 // Gabarito biomecânico
 // ---------------------------------------------------------------------------
 
@@ -17,10 +68,10 @@ export const NIVEL_LABELS: Record<NivelAluno, string> = {
 };
 
 export interface JointMeta {
-  label: string;
-  ideal: number;
+  label:      string;
+  ideal:      number;
   tolerancia: number;
-  peso: number;
+  peso:       number;
 }
 
 export interface NivelConfig {
@@ -51,40 +102,40 @@ export async function fetchGabarito(): Promise<Record<string, GabaritoEntry>> {
 // ---------------------------------------------------------------------------
 
 export interface ClipRecord {
-  id: string;
-  timestamp: string;
+  id:              string;
+  timestamp:       string;
   videoDurationMs: number;
   audioDurationMs: number | null;
-  driveVideoUrl: string;
-  driveAudioUrl: string | null;
-  syncStatus: string;
-  createdAt: string;
+  driveVideoUrl:   string;
+  driveAudioUrl:   string | null;
+  syncStatus:      string;
+  createdAt:       string;
 }
 
 export async function saveVideo(params: {
-  id: string;
-  timestamp: number;
+  id:              string;
+  timestamp:       number;
   videoDurationMs: number;
-  driveVideoUrl: string;
+  driveVideoUrl:   string;
 }): Promise<void> {
   const res = await fetch(`${BASE_URL}/clips`, {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...params, driveAudioUrl: null, audioDurationMs: null }),
+    body:    JSON.stringify({ ...params, driveAudioUrl: null, audioDurationMs: null }),
   });
   if (!res.ok) throw new Error(`Erro ao salvar vídeo: ${res.status}`);
 }
 
 export async function saveAudio(params: {
-  timestamp: number;
+  timestamp:       number;
   audioDurationMs: number;
-  driveAudioUrl: string;
-  videoId?: string;
+  driveAudioUrl:   string;
+  videoId?:        string;
 }): Promise<void> {
   const res = await fetch(`${BASE_URL}/clips/audio`, {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body:    JSON.stringify(params),
   });
   if (!res.ok) throw new Error(`Erro ao salvar áudio: ${res.status}`);
 }
@@ -100,16 +151,16 @@ export async function getClips(): Promise<ClipRecord[]> {
 // ---------------------------------------------------------------------------
 
 export interface JogoRecord {
-  id:              string;
-  cidade:          string;
-  classe:          string;
-  dataInicio:      string;
-  dataFim?:        string | null;
-  horarioInicio:   string;
-  horarioFim:      string;
-  local:           string;
-  whatsapp:        string;
-  publicadoEm:     number;
+  id:               string;
+  cidade:           string;
+  classe:           string;
+  dataInicio:       string;
+  dataFim?:         string | null;
+  horarioInicio:    string;
+  horarioFim:       string;
+  local:            string;
+  whatsapp:         string;
+  publicadoEm:      number;
   emailPublicador?: string | null;
 }
 
