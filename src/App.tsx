@@ -19,12 +19,10 @@ const TOKEN_KEY = 'tenis_token';
 
 export type SaveMode = 'drive' | 'local';
 export type Screen   = 'camera' | 'history' | 'biomechanics' | 'home' | 'comparison' | 'instagram' | 'mural';
+export type Role     = 'user' | 'aluno' | 'admin';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-// ---------------------------------------------------------------------------
-// Ícone Instagram
-// ---------------------------------------------------------------------------
 function InstaIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -35,9 +33,6 @@ function InstaIcon() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Tela de Login / Cadastro
-// ---------------------------------------------------------------------------
 function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) => void }) {
   const [mode,    setMode]    = useState<'login' | 'register'>('login');
   const [nome,    setNome]    = useState('');
@@ -143,9 +138,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
   );
 }
 
-// ---------------------------------------------------------------------------
-// App principal
-// ---------------------------------------------------------------------------
 function App() {
   const [user,     setUser]     = useState<UserRecord | null>(null);
   const [token,    setToken]    = useState<string | null>(null);
@@ -175,7 +167,7 @@ function App() {
     setScreen('home');
   };
 
-  // Guarda de rota — user comum só acessa mural e instagram
+  // user bloqueado nos módulos principais — admin e aluno têm acesso total
   const handleNavigate = (target: Screen) => {
     const adminOnly: Screen[] = ['camera', 'history', 'biomechanics', 'comparison'];
     if (user?.role === 'user' && adminOnly.includes(target)) return;
@@ -223,9 +215,6 @@ export default function Root() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Estilos
-// ---------------------------------------------------------------------------
 const s: Record<string, React.CSSProperties> = {
   page: {
     position: 'relative', minHeight: '100dvh', overflow: 'hidden',
