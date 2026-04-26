@@ -190,10 +190,6 @@ async function detectarCidade(): Promise<string> {
   });
 }
 
-// ---------------------------------------------------------------------------
-// CityPickerModal — agora com botão Voltar
-// ---------------------------------------------------------------------------
-
 function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void; onBack: () => void }) {
   const [input,   setInput]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -222,17 +218,10 @@ function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void
         <div style={cm.icon}>📍</div>
         <h2 style={cm.title}>Qual é a sua cidade?</h2>
         <p style={cm.sub}>O mural mostra apenas publicações da sua cidade.</p>
-
-        <button
-          onClick={handleDetectar}
-          disabled={loading}
-          style={{ ...cm.detectBtn, opacity: loading ? 0.6 : 1 }}
-        >
+        <button onClick={handleDetectar} disabled={loading} style={{ ...cm.detectBtn, opacity: loading ? 0.6 : 1 }}>
           {loading ? '🔍 Detectando...' : '📡 Detectar minha localização'}
         </button>
-
         <p style={cm.ouLabel}>— ou digite manualmente —</p>
-
         <input
           style={cm.input}
           placeholder="Ex: Teófilo Otoni"
@@ -241,14 +230,8 @@ function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void
           onKeyDown={e => e.key === 'Enter' && handleConfirmar()}
           autoFocus
         />
-
         {erro && <p style={cm.erro}>{erro}</p>}
-
-        <button
-          onClick={handleConfirmar}
-          style={cm.confirmBtn}
-          disabled={!input.trim()}
-        >
+        <button onClick={handleConfirmar} style={cm.confirmBtn} disabled={!input.trim()}>
           Acessar o Mural →
         </button>
       </div>
@@ -323,6 +306,7 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
   const [horarioInicio, setHorarioInicio] = useState('');
   const [horarioFim, setHorarioFim]     = useState('');
   const [local, setLocal]               = useState(LOCAIS[0]);
+  const [localOutro, setLocalOutro]     = useState('');
   const [whatsapp, setWhatsapp]         = useState('');
   const [erro, setErro]                 = useState('');
   const [sucesso, setSucesso]           = useState(false);
@@ -352,15 +336,18 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
     if (!horarioInicio) { setErro('Informe o horário de início.'); return; }
     if (!horarioFim)    { setErro('Informe o horário final.'); return; }
     if (horarioFim <= horarioInicio) { setErro('Horário final deve ser após o inicial.'); return; }
+    if (local === 'Outro' && !localOutro.trim()) { setErro('Descreva o local.'); return; }
     const digits = whatsapp.replace(/\D/g, '');
     if (digits.length < 10) { setErro('WhatsApp inválido. Ex: (33) 99999-0000.'); return; }
+
+    const localFinal = local === 'Outro' ? localOutro.trim() : local;
 
     const novo: JogoRecord = {
       id: `j-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       cidade, classe, dataInicio,
       dataFim: janelaData ? dataFim : null,
       horarioInicio, horarioFim,
-      local, whatsapp: digits,
+      local: localFinal, whatsapp: digits,
       publicadoEm: Date.now(),
       emailPublicador: emailUsuario,
     };
@@ -369,7 +356,7 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
       const salvo = await postJogo(novo);
       setJogos(prev => [salvo as Jogo, ...prev]);
       setSucesso(true);
-      setDataInicio(''); setDataFim(''); setHorarioInicio(''); setHorarioFim(''); setWhatsapp('');
+      setDataInicio(''); setDataFim(''); setHorarioInicio(''); setHorarioFim(''); setWhatsapp(''); setLocalOutro('');
       setTimeout(() => setSucesso(false), 3000);
     } catch {
       setErro('Erro ao publicar. Tente novamente.');
@@ -393,21 +380,14 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
   return (
     <div style={s.page}>
 
-      {showCityPicker && (
-        <CityPickerModal
-          onConfirm={handleConfirmCity}
-          onBack={onBack}
-        />
-      )}
+      {showCityPicker && <CityPickerModal onConfirm={handleConfirmCity} onBack={onBack} />}
 
       <div style={s.header}>
         <button onClick={onBack} style={s.backBtn}>← Voltar</button>
         <div style={s.headerCenter}>
           <span style={s.headerTitle}>Mural de Treinos</span>
           {cidade && (
-            <button onClick={() => setShowCity(true)} style={s.cidadeBtn}>
-              📍 {cidade}
-            </button>
+            <button onClick={() => setShowCity(true)} style={s.cidadeBtn}>📍 {cidade}</button>
           )}
         </div>
         <span style={s.headerSpacer} />
@@ -476,9 +456,19 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
                   </FieldGroup>
 
                   <FieldGroup label="Local">
-                    <select value={local} onChange={e => setLocal(e.target.value)} style={s.select}>
+                    <select value={local} onChange={e => { setLocal(e.target.value); setLocalOutro(''); }} style={s.select}>
                       {LOCAIS.map(l => <option key={l} value={l}>{l}</option>)}
                     </select>
+                    {local === 'Outro' && (
+                      <input
+                        style={{ ...s.input, marginTop: 8 }}
+                        placeholder="Descreva o local..."
+                        type="text"
+                        value={localOutro}
+                        onChange={e => setLocalOutro(e.target.value)}
+                        autoCapitalize="words"
+                      />
+                    )}
                   </FieldGroup>
 
                   <FieldGroup label="Seu WhatsApp">
@@ -613,8 +603,8 @@ function MiniCalendar({ jogos, selectedDate, onSelectDate }: { jogos: Jogo[]; se
 }
 
 function JogoCard({ jogo, furosReportados, onReportarFuro }: { jogo: Jogo; furosReportados: number; onReportarFuro: () => void }) {
-  const cor   = classeColor(jogo.classe);
-  const waUrl = buildWhatsAppUrl(jogo);
+  const cor    = classeColor(jogo.classe);
+  const waUrl  = buildWhatsAppUrl(jogo);
   const calUrl = buildGCalUrl(jogo);
   const [reportado, setReportado] = useState(false);
 
@@ -711,9 +701,9 @@ const rg: Record<string, React.CSSProperties> = {
   intro: { margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 },
   rules: { display: 'flex', flexDirection: 'column', gap: 8 },
   ruleRow: { display: 'flex', alignItems: 'center', gap: 10 },
-  ruleN: { fontSize: 14, fontWeight: 800, minWidth: 90 },
-  ruleArrow: { color: 'rgba(255,255,255,0.3)', fontSize: 14 },
-  ruleConsequence: { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 600 },
+  ruleN:           { fontSize: 14, fontWeight: 800, minWidth: 90, color: '#fff' },
+  ruleArrow:       { color: 'rgba(255,255,255,0.5)', fontSize: 14 },
+  ruleConsequence: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: 600 },
   note: { margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.35)', lineHeight: 1.5 },
 };
 
