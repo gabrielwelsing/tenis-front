@@ -25,20 +25,10 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function InstaIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
       <rect x="2" y="2" width="20" height="20" rx="6" stroke="white" strokeWidth="2"/>
       <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="2"/>
       <circle cx="17.5" cy="6.5" r="1.2" fill="white"/>
-    </svg>
-  );
-}
-
-function TennisIcon() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-      <circle cx="20" cy="20" r="18" stroke="#00e5ff" strokeWidth="2" fill="none"/>
-      <path d="M6 14 Q20 20 34 14" stroke="#00e5ff" strokeWidth="2" fill="none"/>
-      <path d="M6 26 Q20 20 34 26" stroke="#00e5ff" strokeWidth="2" fill="none"/>
     </svg>
   );
 }
@@ -77,22 +67,18 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
 
   return (
     <div style={s.page}>
-      <div style={s.bgGlow1} />
-      <div style={s.bgGlow2} />
+      <div style={s.bgImage} />
+      <div style={s.bgOverlay} />
+      <div style={s.bgSides} />
 
       <a href="https://www.instagram.com/jogartenisto/" target="_blank" rel="noopener noreferrer" style={s.instaCorner}>
         <InstaIcon />
       </a>
 
       <div style={s.card}>
-        {/* Logo */}
-        <div style={s.logoWrap}>
-          <TennisIcon />
-        </div>
-        <h1 style={s.title}>Tenis Coach</h1>
-        <p style={s.sub}>com Carlão</p>
+        <h1 style={s.title}>Tenis Coach com Carlão</h1>
+        <p style={s.sub}>Entre com seu perfil</p>
 
-        {/* Toggle */}
         <div style={s.modeToggle}>
           <button
             onClick={() => { setMode('login'); setError(''); }}
@@ -110,45 +96,36 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
 
         <div style={s.admForm}>
           {mode === 'register' && (
-            <div style={s.inputWrap}>
-              <span style={s.inputIcon}>👤</span>
-              <input
-                style={s.input}
-                placeholder="Seu nome"
-                type="text"
-                value={nome}
-                onChange={e => setNome(e.target.value)}
-                autoCapitalize="words"
-              />
-            </div>
+            <input
+              style={s.input}
+              placeholder="Seu nome"
+              type="text"
+              value={nome}
+              onChange={e => setNome(e.target.value)}
+              autoCapitalize="words"
+            />
           )}
-          <div style={s.inputWrap}>
-            <span style={s.inputIcon}>✉️</span>
-            <input
-              style={s.input}
-              placeholder="seu@email.com"
-              type="email"
-              inputMode="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              autoCapitalize="none"
-              autoCorrect="off"
-            />
-          </div>
-          <div style={s.inputWrap}>
-            <span style={s.inputIcon}>🔒</span>
-            <input
-              style={s.input}
-              placeholder="Senha"
-              type="password"
-              value={pass}
-              onChange={e => setPass(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            />
-          </div>
+          <input
+            style={s.input}
+            placeholder="seu@email.com"
+            type="email"
+            inputMode="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+          <input
+            style={s.input}
+            placeholder="Senha"
+            type="password"
+            value={pass}
+            onChange={e => setPass(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+          />
           {error && <p style={s.error}>{error}</p>}
           {info  && <p style={s.infoMsg}>{info}</p>}
-          <button onClick={handleSubmit} style={{ ...s.admBtn, opacity: loading ? 0.7 : 1 }} disabled={loading}>
+          <button onClick={handleSubmit} style={{ ...s.admBtn, opacity: loading ? 0.6 : 1 }} disabled={loading}>
             {loading ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Criar conta'}
           </button>
         </div>
@@ -190,6 +167,7 @@ function App() {
     setScreen('home');
   };
 
+  // user bloqueado nos módulos principais — admin e aluno têm acesso total
   const handleNavigate = (target: Screen) => {
     const adminOnly: Screen[] = ['camera', 'history', 'biomechanics', 'comparison'];
     if (user?.role === 'user' && adminOnly.includes(target)) return;
@@ -198,8 +176,8 @@ function App() {
 
   if (checking) {
     return (
-      <div style={{ background: '#0a0a0f', minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 40, height: 40, border: '3px solid rgba(0,229,255,0.2)', borderTop: '3px solid #00e5ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ background: '#0d0d1a', minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, border: '4px solid rgba(255,255,255,0.15)', borderTop: '4px solid #4fc3f7', borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
       </div>
     );
   }
@@ -240,98 +218,68 @@ export default function Root() {
 const s: Record<string, React.CSSProperties> = {
   page: {
     position: 'relative', minHeight: '100dvh', overflow: 'hidden',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: '#0a0a0f',
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
   },
-  bgGlow1: {
-    position: 'fixed', top: '-20%', left: '-10%',
-    width: '60vw', height: '60vw', borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(0,229,255,0.08) 0%, transparent 70%)',
-    pointerEvents: 'none',
+  bgImage: {
+    position: 'fixed', inset: 0,
+    backgroundImage: 'url(/carlao-atual.jpg)',
+    backgroundPosition: 'center top',
+    backgroundSize: window.innerWidth >= 768 && navigator.maxTouchPoints === 0 ? 'auto 100%' : 'cover',
+    backgroundRepeat: 'no-repeat',
+    backgroundColor: '#0d0d1a',
   },
-  bgGlow2: {
-    position: 'fixed', bottom: '-20%', right: '-10%',
-    width: '50vw', height: '50vw', borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(0,150,200,0.07) 0%, transparent 70%)',
-    pointerEvents: 'none',
+  bgOverlay: {
+    position: 'fixed', inset: 0,
+    background: 'linear-gradient(to bottom, transparent 0%, transparent 42%, rgba(0,0,0,0.55) 58%, rgba(0,0,0,0.82) 74%, rgba(0,0,0,0.92) 100%)',
+  },
+  bgSides: {
+    position: 'fixed', inset: 0,
+    background: 'radial-gradient(ellipse at 0% 65%, rgba(0,0,0,0.3) 0%, transparent 50%), radial-gradient(ellipse at 100% 65%, rgba(0,0,0,0.3) 0%, transparent 50%)',
   },
   instaCorner: {
     position: 'fixed', top: 16, right: 16, zIndex: 50,
-    width: 40, height: 40, borderRadius: 12,
-    background: 'linear-gradient(135deg, #405de6, #833ab4, #c13584, #e1306c, #fd1d1d, #f56040)',
+    width: 44, height: 44, borderRadius: 14,
+    background: 'linear-gradient(135deg, #405de6 0%, #833ab4 30%, #c13584 55%, #e1306c 75%, #fd1d1d 88%, #f56040 100%)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 2px 12px rgba(193,53,132,0.4)', textDecoration: 'none',
+    boxShadow: '0 2px 12px rgba(193,53,132,0.5)', textDecoration: 'none',
   },
   card: {
     position: 'relative', zIndex: 10,
     display: 'flex', flexDirection: 'column', alignItems: 'center',
-    gap: 16, padding: '40px 28px 48px',
-    maxWidth: 380, width: '100%',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(0,229,255,0.15)',
-    borderRadius: 28,
-    backdropFilter: 'blur(20px)',
-    boxShadow: '0 0 60px rgba(0,229,255,0.05), 0 20px 60px rgba(0,0,0,0.4)',
-    margin: '0 16px',
-  },
-  logoWrap: {
-    width: 72, height: 72, borderRadius: 20,
-    background: 'rgba(0,229,255,0.08)',
-    border: '1px solid rgba(0,229,255,0.2)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 0 30px rgba(0,229,255,0.15)',
+    gap: 14, padding: '0 24px 48px', maxWidth: 360, width: '100%',
   },
   title: {
-    color: '#fff', fontSize: 26, fontWeight: 800, margin: 0,
-    textAlign: 'center', letterSpacing: -0.5,
+    color: '#fff', fontSize: 28, fontWeight: 800, margin: 0,
+    textAlign: 'center', lineHeight: 1.2, textShadow: '0 2px 12px rgba(0,0,0,0.9)',
   },
-  sub: {
-    color: '#00e5ff', fontSize: 13, fontWeight: 600, margin: '-8px 0 0',
-    letterSpacing: 2, textTransform: 'uppercase',
-  },
+  sub: { color: '#cce0ff', fontSize: 14, margin: 0, textShadow: '0 1px 6px rgba(0,0,0,0.8)' },
   modeToggle: {
     display: 'flex', width: '100%',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: 14, padding: 4, gap: 4,
+    background: 'rgba(0,0,20,0.5)', borderRadius: 14, padding: 4, gap: 4,
+    backdropFilter: 'blur(6px)',
   },
   modeBtn: {
-    flex: 1, padding: '11px 0', borderRadius: 11, border: 'none',
-    background: 'transparent', color: 'rgba(255,255,255,0.4)',
-    fontSize: 14, fontWeight: 700, cursor: 'pointer',
-    transition: 'all 0.2s',
+    flex: 1, padding: '12px 0', borderRadius: 11, border: 'none',
+    background: 'transparent', color: 'rgba(255,255,255,0.5)',
+    fontSize: 15, fontWeight: 700, cursor: 'pointer',
   },
-  modeBtnActive: {
-    background: 'linear-gradient(135deg, #0097a7, #00bcd4)',
-    color: '#fff',
-    boxShadow: '0 2px 12px rgba(0,188,212,0.4)',
-  },
-  admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
-  inputWrap: {
-    position: 'relative', display: 'flex', alignItems: 'center',
-  },
-  inputIcon: {
-    position: 'absolute', left: 14, fontSize: 15, pointerEvents: 'none',
-  },
+  modeBtnActive: { background: '#2e7d32', color: '#fff' },
+  admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 12 },
   input: {
-    width: '100%', padding: '14px 16px 14px 42px', borderRadius: 12,
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(0,229,255,0.15)',
-    color: '#fff', fontSize: 15, boxSizing: 'border-box',
-    outline: 'none',
+    width: '100%', padding: '14px 16px', borderRadius: 12,
+    background: 'rgba(0,0,20,0.65)', border: '1px solid rgba(255,255,255,0.2)',
+    color: '#fff', fontSize: 15, boxSizing: 'border-box', backdropFilter: 'blur(6px)',
   },
   admBtn: {
     width: '100%', padding: '16px 20px', borderRadius: 14,
-    background: 'linear-gradient(135deg, #0097a7 0%, #00e5ff 100%)',
-    border: 'none', color: '#000',
-    fontSize: 15, fontWeight: 800, cursor: 'pointer',
-    boxShadow: '0 4px 20px rgba(0,229,255,0.35)',
-    letterSpacing: 0.3, marginTop: 4,
+    background: '#2e7d32', border: 'none', color: '#fff',
+    fontSize: 16, fontWeight: 700, cursor: 'pointer',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
   },
-  error:   { color: '#ff6b6b', fontSize: 13, margin: 0, textAlign: 'center' },
-  infoMsg: { color: '#00e5ff', fontSize: 13, margin: 0, textAlign: 'center' },
+  error:   { color: '#ff6666', fontSize: 13, margin: 0, textAlign: 'center' },
+  infoMsg: { color: '#44ff88', fontSize: 13, margin: 0, textAlign: 'center' },
   hint: {
-    color: 'rgba(255,255,255,0.3)', fontSize: 11, textAlign: 'center',
+    color: 'rgba(160,200,255,0.65)', fontSize: 11, textAlign: 'center',
     lineHeight: 1.6, marginTop: 4,
   },
 };
