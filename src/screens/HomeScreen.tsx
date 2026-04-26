@@ -2,25 +2,42 @@
 // HOME SCREEN — Hub principal pós-login
 // =============================================================================
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
 
 interface Props {
-  saveMode:  SaveMode;
-  username:  string;
-  role:      'user' | 'aluno' | 'admin';
-  fotoUrl?:  string | null;
-  onLogout:  () => void;
-  onNavigate: (screen: Screen) => void;
+  saveMode:      SaveMode;
+  username:      string;
+  role:          'user' | 'aluno' | 'admin';
+  fotoUrl?:      string | null;
+  onLogout:      () => void;
+  onNavigate:    (screen: Screen) => void;
+  onFotoUpload:  (file: File) => Promise<void>;
 }
 
-export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout, onNavigate }: Props) {
+export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout, onNavigate, onFotoUpload }: Props) {
   const displayName = username
     ? username.charAt(0).toUpperCase() + username.slice(1)
     : 'Professor';
 
   const isAdmin = role === 'admin' || role === 'aluno';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleAvatarClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await onFotoUpload(file);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const LockedCard = ({ icon, title, sub, cardStyle }: { icon: string; title: string; sub: string; cardStyle: React.CSSProperties }) => (
     <div style={{ ...s.card, ...cardStyle, opacity: 0.4, cursor: 'default' }}>
@@ -39,21 +56,35 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
       <div style={s.bgGlow2} />
       <div style={s.bgImage} />
 
+      {/* Input oculto pra seleção de foto */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
       <div style={s.scrollBody}>
         <div style={s.content}>
 
           {/* Header */}
           <div style={s.header}>
             <div style={s.headerLeft}>
-              {/* Avatar */}
               <div style={s.avatarRow}>
-                {fotoUrl ? (
-                  <img src={fotoUrl} alt={displayName} style={s.avatar} />
-                ) : (
-                  <div style={s.avatarFallback}>
-                    {displayName.charAt(0).toUpperCase()}
-                  </div>
-                )}
+                {/* Avatar clicável */}
+                <div style={s.avatarWrap} onClick={handleAvatarClick} title="Alterar foto">
+                  {uploading ? (
+                    <div style={{ ...s.avatarFallback, fontSize: 12 }}>⏳</div>
+                  ) : fotoUrl ? (
+                    <img src={fotoUrl} alt={displayName} style={s.avatar} />
+                  ) : (
+                    <div style={s.avatarFallback}>
+                      {displayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div style={s.avatarEditBadge}>📷</div>
+                </div>
                 <div>
                   <h2 style={s.greeting}>
                     Olá, <span style={s.greetingName}>{displayName}</span> 👋
@@ -65,7 +96,6 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
             <button onClick={onLogout} style={s.sairBtn}>Sair</button>
           </div>
 
-          {/* Banner upgrade */}
           {role === 'user' && (
             <div style={s.upgradeBanner}>
               <span style={s.upgradeText}>⚡ Assine por R$ 14,90/mês e desbloqueie todas as funcionalidades</span>
@@ -177,10 +207,8 @@ const s: Record<string, React.CSSProperties> = {
     position: 'absolute', inset: 0,
     backgroundImage: 'url(/carlao-atual.jpg)',
     backgroundPosition: 'center center',
-    backgroundSize: 'cover',
-    backgroundRepeat: 'no-repeat',
-    opacity: 0.04,
-    pointerEvents: 'none', zIndex: 0,
+    backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
+    opacity: 0.04, pointerEvents: 'none', zIndex: 0,
   },
   scrollBody: {
     flex: 1, overflowY: 'auto',
@@ -200,18 +228,29 @@ const s: Record<string, React.CSSProperties> = {
   },
   headerLeft: { display: 'flex', flexDirection: 'column', gap: 3 },
   avatarRow: { display: 'flex', alignItems: 'center', gap: 12 },
+  avatarWrap: {
+    position: 'relative', cursor: 'pointer', flexShrink: 0,
+    width: 48, height: 48,
+  },
   avatar: {
-    width: 46, height: 46, borderRadius: '50%',
-    objectFit: 'cover', flexShrink: 0,
+    width: 48, height: 48, borderRadius: '50%',
+    objectFit: 'cover',
     border: '2px solid rgba(0,229,255,0.4)',
     boxShadow: '0 0 12px rgba(0,229,255,0.2)',
   },
   avatarFallback: {
-    width: 46, height: 46, borderRadius: '50%',
+    width: 48, height: 48, borderRadius: '50%',
     background: 'linear-gradient(135deg, #0097a7, #00e5ff)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 20, fontWeight: 800, color: '#000', flexShrink: 0,
+    fontSize: 20, fontWeight: 800, color: '#000',
     border: '2px solid rgba(0,229,255,0.4)',
+  },
+  avatarEditBadge: {
+    position: 'absolute', bottom: -2, right: -2,
+    background: '#0a0a0f', borderRadius: '50%',
+    fontSize: 12, width: 20, height: 20,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    border: '1px solid rgba(0,229,255,0.3)',
   },
   greeting: {
     color: '#fff', fontSize: 22, fontWeight: 800,
