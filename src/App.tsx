@@ -3,8 +3,8 @@
 // =============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-import { login, register, getMe, type UserRecord } from '@services/apiService';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { login, register, loginGoogle, getMe, type UserRecord } from '@services/apiService';
 import { setCurrentUser } from '@services/localSaveService';
 import CameraScreen       from '@screens/CameraScreen';
 import HistoryScreen      from '@screens/HistoryScreen';
@@ -33,14 +33,19 @@ function InstaIcon() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// LoginScreen
+// ---------------------------------------------------------------------------
 function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) => void }) {
-  const [mode,    setMode]    = useState<'login' | 'register'>('login');
-  const [nome,    setNome]    = useState('');
-  const [email,   setEmail]   = useState('');
-  const [pass,    setPass]    = useState('');
-  const [error,   setError]   = useState('');
-  const [info,    setInfo]    = useState('');
-  const [loading, setLoading] = useState(false);
+  const [mode,       setMode]       = useState<'login' | 'register'>('login');
+  const [nome,       setNome]       = useState('');
+  const [email,      setEmail]      = useState('');
+  const [pass,       setPass]       = useState('');
+  const [localidade, setLocalidade] = useState('');
+  const [telefone,   setTelefone]   = useState('');
+  const [error,      setError]      = useState('');
+  const [info,       setInfo]       = useState('');
+  const [loading,    setLoading]    = useState(false);
 
   const handleSubmit = async () => {
     setError(''); setInfo('');
@@ -53,13 +58,27 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
     try {
       const res = mode === 'login'
         ? await login(rawEmail, pass)
-        : await register(nome.trim(), rawEmail, pass);
+        : await register(nome.trim(), rawEmail, pass, localidade || undefined, telefone || undefined);
 
       localStorage.setItem(TOKEN_KEY, res.token);
       if (mode === 'register') setInfo('Cadastro realizado! Bem-vindo(a).');
       setTimeout(() => onLogin(res.user, res.token), 300);
     } catch (e: any) {
       setError(e.message ?? 'Erro. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (!credentialResponse.credential) return;
+    setLoading(true);
+    try {
+      const res = await loginGoogle(credentialResponse.credential);
+      localStorage.setItem(TOKEN_KEY, res.token);
+      onLogin(res.user, res.token);
+    } catch (e: any) {
+      setError(e.message ?? 'Erro ao entrar com Google.');
     } finally {
       setLoading(false);
     }
@@ -79,6 +98,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
         <h1 style={s.title}>Tenis Coach com Carlão</h1>
         <p style={s.sub}>Entre com seu perfil</p>
 
+        {/* Toggle login/cadastro */}
         <div style={s.modeToggle}>
           <button
             onClick={() => { setMode('login'); setError(''); }}
@@ -94,20 +114,57 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
           </button>
         </div>
 
+        {/* Botão Google */}
+        <div style={s.googleWrap}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError('Falha ao entrar com Google.')}
+            text={mode === 'login' ? 'signin_with' : 'signup_with'}
+            shape="rectangular"
+            theme="filled_black"
+            width="312"
+          />
+        </div>
+
+        <div style={s.divider}>
+          <div style={s.dividerLine} />
+          <span style={s.dividerText}>ou</span>
+          <div style={s.dividerLine} />
+        </div>
+
+        {/* Formulário */}
         <div style={s.admForm}>
           {mode === 'register' && (
-            <input
-              style={s.input}
-              placeholder="Seu nome"
-              type="text"
-              value={nome}
-              onChange={e => setNome(e.target.value)}
-              autoCapitalize="words"
-            />
+            <>
+              <input
+                style={s.input}
+                placeholder="Seu nome *"
+                type="text"
+                value={nome}
+                onChange={e => setNome(e.target.value)}
+                autoCapitalize="words"
+              />
+              <input
+                style={s.input}
+                placeholder="Cidade / Localidade"
+                type="text"
+                value={localidade}
+                onChange={e => setLocalidade(e.target.value)}
+                autoCapitalize="words"
+              />
+              <input
+                style={s.input}
+                placeholder="Telefone / WhatsApp"
+                type="tel"
+                inputMode="numeric"
+                value={telefone}
+                onChange={e => setTelefone(e.target.value)}
+              />
+            </>
           )}
           <input
             style={s.input}
-            placeholder="seu@email.com"
+            placeholder="seu@email.com *"
             type="email"
             inputMode="email"
             value={email}
@@ -117,7 +174,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
           />
           <input
             style={s.input}
-            placeholder="Senha"
+            placeholder="Senha *"
             type="password"
             value={pass}
             onChange={e => setPass(e.target.value)}
@@ -138,6 +195,9 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
   );
 }
 
+// ---------------------------------------------------------------------------
+// App principal
+// ---------------------------------------------------------------------------
 function App() {
   const [user,     setUser]     = useState<UserRecord | null>(null);
   const [token,    setToken]    = useState<string | null>(null);
@@ -167,7 +227,6 @@ function App() {
     setScreen('home');
   };
 
-  // user bloqueado nos módulos principais — admin e aluno têm acesso total
   const handleNavigate = (target: Screen) => {
     const adminOnly: Screen[] = ['camera', 'history', 'biomechanics', 'comparison'];
     if (user?.role === 'user' && adminOnly.includes(target)) return;
@@ -215,6 +274,9 @@ export default function Root() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Estilos
+// ---------------------------------------------------------------------------
 const s: Record<string, React.CSSProperties> = {
   page: {
     position: 'relative', minHeight: '100dvh', overflow: 'hidden',
@@ -264,7 +326,17 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 15, fontWeight: 700, cursor: 'pointer',
   },
   modeBtnActive: { background: '#2e7d32', color: '#fff' },
-  admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 12 },
+  googleWrap: { width: '100%', display: 'flex', justifyContent: 'center' },
+  divider: {
+    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+  },
+  dividerLine: {
+    flex: 1, height: 1, background: 'rgba(255,255,255,0.15)',
+  },
+  dividerText: {
+    color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: 600,
+  },
+  admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
   input: {
     width: '100%', padding: '14px 16px', borderRadius: 12,
     background: 'rgba(0,0,20,0.65)', border: '1px solid rgba(255,255,255,0.2)',
