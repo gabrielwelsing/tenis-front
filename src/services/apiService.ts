@@ -9,10 +9,13 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://tenis-back-production-
 // ---------------------------------------------------------------------------
 
 export interface UserRecord {
-  id:    number;
-  nome:  string;
-  email: string;
-  role:  'user' | 'admin';
+  id:         number;
+  nome:       string;
+  email:      string;
+  role:       'user' | 'aluno' | 'admin';
+  foto_url:   string | null;
+  localidade: string | null;
+  telefone:   string | null;
 }
 
 export interface AuthResponse {
@@ -20,11 +23,17 @@ export interface AuthResponse {
   user:  UserRecord;
 }
 
-export async function register(nome: string, email: string, password: string): Promise<AuthResponse> {
+export async function register(
+  nome: string,
+  email: string,
+  password: string,
+  localidade?: string,
+  telefone?: string,
+): Promise<AuthResponse> {
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ nome, email, password }),
+    body:    JSON.stringify({ nome, email, password, localidade, telefone }),
   });
   if (!res.ok) {
     const err = await res.json();
@@ -46,6 +55,19 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return res.json();
 }
 
+export async function loginGoogle(credential: string): Promise<AuthResponse> {
+  const res = await fetch(`${BASE_URL}/auth/google`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ credential }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error ?? 'Erro ao autenticar com Google.');
+  }
+  return res.json();
+}
+
 export async function getMe(token: string): Promise<UserRecord> {
   const res = await fetch(`${BASE_URL}/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -53,6 +75,20 @@ export async function getMe(token: string): Promise<UserRecord> {
   if (!res.ok) throw new Error('Sessão inválida.');
   const data = await res.json();
   return data.user;
+}
+
+export async function updateProfile(
+  token: string,
+  data: { nome?: string; localidade?: string; telefone?: string; foto_url?: string },
+): Promise<UserRecord> {
+  const res = await fetch(`${BASE_URL}/auth/profile`, {
+    method:  'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body:    JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Erro ao atualizar perfil.');
+  const result = await res.json();
+  return result.user;
 }
 
 // ---------------------------------------------------------------------------
