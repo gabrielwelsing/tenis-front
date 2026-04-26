@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import { login, register, loginGoogle, getMe, type UserRecord } from '@services/apiService';
+import { login, register, loginGoogle, getMe, updateProfile, type UserRecord } from '@services/apiService';
 import { setCurrentUser } from '@services/localSaveService';
 import CameraScreen       from '@screens/CameraScreen';
 import HistoryScreen      from '@screens/HistoryScreen';
@@ -14,7 +14,9 @@ import ComparisonScreen   from '@screens/ComparisonScreen';
 import InstagramScreen    from '@screens/InstagramScreen';
 import MuralScreen        from '@screens/MuralScreen';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
+const GOOGLE_CLIENT_ID  = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
+const CLOUDINARY_CLOUD  = 'dgier8xfp';
+const CLOUDINARY_PRESET = 'tenis-to';
 const TOKEN_KEY = 'tenis_token';
 
 export type SaveMode = 'drive' | 'local';
@@ -22,6 +24,19 @@ export type Screen   = 'camera' | 'history' | 'biomechanics' | 'home' | 'compari
 export type Role     = 'user' | 'aluno' | 'admin';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+async function uploadFotoCloudinary(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Erro ao fazer upload da foto.');
+  const data = await res.json();
+  return data.secure_url as string;
+}
 
 function InstaIcon() {
   return (
@@ -56,7 +71,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
       const res = mode === 'login'
         ? await login(rawEmail, pass)
         : await register(nome.trim(), rawEmail, pass, localidade || undefined, telefone || undefined);
-
       localStorage.setItem(TOKEN_KEY, res.token);
       if (mode === 'register') setInfo('Cadastro realizado! Bem-vindo(a).');
       setTimeout(() => onLogin(res.user, res.token), 300);
@@ -96,18 +110,8 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
         <p style={s.sub}>Entre com seu perfil</p>
 
         <div style={s.modeToggle}>
-          <button
-            onClick={() => { setMode('login'); setError(''); }}
-            style={{ ...s.modeBtn, ...(mode === 'login' ? s.modeBtnActive : {}) }}
-          >
-            Entrar
-          </button>
-          <button
-            onClick={() => { setMode('register'); setError(''); }}
-            style={{ ...s.modeBtn, ...(mode === 'register' ? s.modeBtnActive : {}) }}
-          >
-            Cadastrar
-          </button>
+          <button onClick={() => { setMode('login'); setError(''); }} style={{ ...s.modeBtn, ...(mode === 'login' ? s.modeBtnActive : {}) }}>Entrar</button>
+          <button onClick={() => { setMode('register'); setError(''); }} style={{ ...s.modeBtn, ...(mode === 'register' ? s.modeBtnActive : {}) }}>Cadastrar</button>
         </div>
 
         <div style={s.googleWrap}>
@@ -130,50 +134,13 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
         <div style={s.admForm}>
           {mode === 'register' && (
             <>
-              <input
-                style={s.input}
-                placeholder="Seu nome *"
-                type="text"
-                value={nome}
-                onChange={e => setNome(e.target.value)}
-                autoCapitalize="words"
-              />
-              <input
-                style={s.input}
-                placeholder="Cidade / Localidade"
-                type="text"
-                value={localidade}
-                onChange={e => setLocalidade(e.target.value)}
-                autoCapitalize="words"
-              />
-              <input
-                style={s.input}
-                placeholder="Telefone / WhatsApp"
-                type="tel"
-                inputMode="numeric"
-                value={telefone}
-                onChange={e => setTelefone(e.target.value)}
-              />
+              <input style={s.input} placeholder="Seu nome *" type="text" value={nome} onChange={e => setNome(e.target.value)} autoCapitalize="words" />
+              <input style={s.input} placeholder="Cidade / Localidade" type="text" value={localidade} onChange={e => setLocalidade(e.target.value)} autoCapitalize="words" />
+              <input style={s.input} placeholder="Telefone / WhatsApp" type="tel" inputMode="numeric" value={telefone} onChange={e => setTelefone(e.target.value)} />
             </>
           )}
-          <input
-            style={s.input}
-            placeholder="seu@email.com *"
-            type="email"
-            inputMode="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            autoCapitalize="none"
-            autoCorrect="off"
-          />
-          <input
-            style={s.input}
-            placeholder="Senha *"
-            type="password"
-            value={pass}
-            onChange={e => setPass(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          />
+          <input style={s.input} placeholder="seu@email.com *" type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} autoCapitalize="none" autoCorrect="off" />
+          <input style={s.input} placeholder="Senha *" type="password" value={pass} onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
           {error && <p style={s.error}>{error}</p>}
           {info  && <p style={s.infoMsg}>{info}</p>}
           <button onClick={handleSubmit} style={{ ...s.admBtn, opacity: loading ? 0.6 : 1 }} disabled={loading}>
@@ -181,9 +148,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
           </button>
         </div>
 
-        {mode === 'login' && (
-          <p style={s.hint}>Primeira vez? Clique em "Cadastrar" para criar sua conta.</p>
-        )}
+        {mode === 'login' && <p style={s.hint}>Primeira vez? Clique em "Cadastrar" para criar sua conta.</p>}
       </div>
     </div>
   );
@@ -205,16 +170,14 @@ function App() {
   }, []);
 
   const handleLogin = (u: UserRecord, t: string) => {
-    setUser(u);
-    setToken(t);
+    setUser(u); setToken(t);
     setCurrentUser(u.email.split('@')[0]);
     setScreen('home');
   };
 
   const handleLogout = () => {
     localStorage.removeItem(TOKEN_KEY);
-    setUser(null);
-    setToken(null);
+    setUser(null); setToken(null);
     setScreen('home');
   };
 
@@ -222,6 +185,17 @@ function App() {
     const adminOnly: Screen[] = ['camera', 'history', 'biomechanics', 'comparison'];
     if (user?.role === 'user' && adminOnly.includes(target)) return;
     setScreen(target);
+  };
+
+  const handleFotoUpload = async (file: File) => {
+    if (!token || !user) return;
+    try {
+      const url     = await uploadFotoCloudinary(file);
+      const updated = await updateProfile(token, { foto_url: url });
+      setUser(prev => prev ? { ...prev, foto_url: updated.foto_url } : prev);
+    } catch (e) {
+      console.error('[FotoUpload]', e);
+    }
   };
 
   if (checking) {
@@ -239,7 +213,7 @@ function App() {
 
   switch (screen) {
     case 'home':
-      return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} onLogout={handleLogout} onNavigate={handleNavigate} />;
+      return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} onLogout={handleLogout} onNavigate={handleNavigate} onFotoUpload={handleFotoUpload} />;
     case 'camera':
       return <CameraScreen saveMode={saveMode} username={username} onGoHistory={() => setScreen('history')} onLogout={() => setScreen('home')} />;
     case 'history':
@@ -253,7 +227,7 @@ function App() {
     case 'mural':
       return <MuralScreen onBack={() => setScreen('home')} emailUsuario={user.email} />;
     default:
-      return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} onLogout={handleLogout} onNavigate={handleNavigate} />;
+      return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} onLogout={handleLogout} onNavigate={handleNavigate} onFotoUpload={handleFotoUpload} />;
   }
 }
 
@@ -275,8 +249,7 @@ const s: Record<string, React.CSSProperties> = {
     backgroundImage: 'url(/carlao-atual.jpg)',
     backgroundPosition: 'center top',
     backgroundSize: window.innerWidth >= 768 && navigator.maxTouchPoints === 0 ? 'auto 100%' : 'cover',
-    backgroundRepeat: 'no-repeat',
-    backgroundColor: '#0d0d1a',
+    backgroundRepeat: 'no-repeat', backgroundColor: '#0d0d1a',
   },
   bgOverlay: {
     position: 'fixed', inset: 0,
