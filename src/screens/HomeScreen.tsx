@@ -9,7 +9,7 @@ import type { Screen } from '../App';
 interface Props {
   saveMode: SaveMode;
   username: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'aluno' | 'admin';
   onLogout: () => void;
   onNavigate: (screen: Screen) => void;
 }
@@ -19,7 +19,20 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
     ? username.charAt(0).toUpperCase() + username.slice(1)
     : 'Professor';
 
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'aluno';
+  const isUser  = role === 'user';
+
+  // Cards bloqueados para user
+  const LockedCard = ({ icon, title, sub, cardStyle }: { icon: string; title: string; sub: string; cardStyle: React.CSSProperties }) => (
+    <div style={{ ...s.card, ...cardStyle, opacity: 0.5, cursor: 'default', position: 'relative' }}>
+      <div style={s.cardIcon}>{icon}</div>
+      <div style={s.cardBody}>
+        <div style={s.cardTitle}>{title}</div>
+        <div style={s.cardSub}>{sub}</div>
+      </div>
+      <div style={s.lockBadge}>🔒 Assine o plano mensal por R$ 14,90</div>
+    </div>
+  );
 
   return (
     <div style={s.page}>
@@ -41,6 +54,7 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
 
           <div style={s.cardList}>
 
+            {/* Mural — todos */}
             <button style={{ ...s.card, ...s.cardGreen }} onClick={() => onNavigate('mural')}>
               <div style={s.cardIcon}>🎾</div>
               <div style={s.cardBody}>
@@ -50,6 +64,7 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               <div style={{ ...s.badge, ...s.badgeGreen }}>novo</div>
             </button>
 
+            {/* Instagram — todos */}
             <button style={{ ...s.card, ...s.cardGradient }} onClick={() => onNavigate('instagram')}>
               <div style={s.cardIcon}>📱</div>
               <div style={s.cardBody}>
@@ -59,7 +74,8 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               <div style={{ ...s.badge, ...s.badgePink }}>local</div>
             </button>
 
-            {isAdmin && (
+            {/* Câmera */}
+            {isAdmin ? (
               <button style={{ ...s.card, ...s.cardRed }} onClick={() => onNavigate('camera')}>
                 <div style={s.cardIcon}>🎬</div>
                 <div style={s.cardBody}>
@@ -68,9 +84,12 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
                 </div>
                 <div style={{ ...s.badge, ...s.badgeRed }}>principal</div>
               </button>
+            ) : (
+              <LockedCard icon="🎬" title="Câmera" sub="Grave e salve os últimos segundos do treino" cardStyle={s.cardRed} />
             )}
 
-            {isAdmin && (
+            {/* Análise Biomecânica */}
+            {isAdmin ? (
               <button style={{ ...s.card, ...s.cardTeal }} onClick={() => onNavigate('biomechanics')}>
                 <div style={s.cardIcon}>🦴</div>
                 <div style={s.cardBody}>
@@ -79,9 +98,12 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
                 </div>
                 <div style={{ ...s.badge, ...s.badgeTeal }}>sem custo</div>
               </button>
+            ) : (
+              <LockedCard icon="🦴" title="Análise Biomecânica" sub="Detecte ângulos articulares via IA" cardStyle={s.cardTeal} />
             )}
 
-            {isAdmin && (
+            {/* Comparativo */}
+            {isAdmin ? (
               <button style={{ ...s.card, ...s.cardPurple }} onClick={() => onNavigate('comparison')}>
                 <div style={s.cardIcon}>⚖️</div>
                 <div style={s.cardBody}>
@@ -90,9 +112,12 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
                 </div>
                 <div style={{ ...s.badge, ...s.badgePurple }}>sincronizado</div>
               </button>
+            ) : (
+              <LockedCard icon="⚖️" title="Comparativo de Vídeos" sub="Compare dois vídeos lado a lado" cardStyle={s.cardPurple} />
             )}
 
-            {isAdmin && (
+            {/* Histórico */}
+            {isAdmin ? (
               <button style={{ ...s.card, ...s.cardGray }} onClick={() => onNavigate('history')}>
                 <div style={s.cardIcon}>📂</div>
                 <div style={s.cardBody}>
@@ -100,6 +125,8 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
                   <div style={s.cardSub}>Veja os vídeos e áudios salvos</div>
                 </div>
               </button>
+            ) : (
+              <LockedCard icon="📂" title="Histórico" sub="Veja os vídeos e áudios salvos" cardStyle={s.cardGray} />
             )}
 
           </div>
@@ -239,6 +266,13 @@ const s: Record<string, React.CSSProperties> = {
   badgeTeal:   { background: 'rgba(0,0,0,0.25)', color: '#b2ebf2' },
   badgePurple: { background: 'rgba(0,0,0,0.25)', color: '#e1bee7' },
   badgePink:   { background: 'rgba(0,0,0,0.25)', color: '#f8bbd0' },
+  lockBadge: {
+    position: 'absolute', bottom: 8, right: 12,
+    fontSize: 9, fontWeight: 700, padding: '3px 8px',
+    borderRadius: 20, background: 'rgba(0,0,0,0.5)',
+    color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap',
+    letterSpacing: 0.2,
+  },
   footer: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, paddingTop: 4 },
   footerText: { color: 'rgba(255,255,255,0.28)', fontSize: 11 },
   instaLink: {
