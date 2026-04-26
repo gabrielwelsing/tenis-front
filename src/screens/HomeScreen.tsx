@@ -7,14 +7,15 @@ import type { SaveMode } from '../App';
 import type { Screen } from '../App';
 
 interface Props {
-  saveMode: SaveMode;
-  username: string;
-  role: 'user' | 'aluno' | 'admin';
-  onLogout: () => void;
+  saveMode:  SaveMode;
+  username:  string;
+  role:      'user' | 'aluno' | 'admin';
+  fotoUrl?:  string | null;
+  onLogout:  () => void;
   onNavigate: (screen: Screen) => void;
 }
 
-export default function HomeScreen({ saveMode, username, role, onLogout, onNavigate }: Props) {
+export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout, onNavigate }: Props) {
   const displayName = username
     ? username.charAt(0).toUpperCase() + username.slice(1)
     : 'Professor';
@@ -23,7 +24,7 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
 
   const LockedCard = ({ icon, title, sub, cardStyle }: { icon: string; title: string; sub: string; cardStyle: React.CSSProperties }) => (
     <div style={{ ...s.card, ...cardStyle, opacity: 0.4, cursor: 'default' }}>
-      <div style={s.cardIcon}>{icon}</div>
+      <div style={s.cardIconWrap}>{icon}</div>
       <div style={s.cardBody}>
         <div style={s.cardTitle}>{title}</div>
         <div style={s.cardSub}>{sub}</div>
@@ -44,15 +45,27 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
           {/* Header */}
           <div style={s.header}>
             <div style={s.headerLeft}>
-              <h2 style={s.greeting}>
-                Olá, <span style={s.greetingName}>{displayName}</span> 👋
-              </h2>
-              <p style={s.appName}>Tenis Coach com Carlão</p>
+              {/* Avatar */}
+              <div style={s.avatarRow}>
+                {fotoUrl ? (
+                  <img src={fotoUrl} alt={displayName} style={s.avatar} />
+                ) : (
+                  <div style={s.avatarFallback}>
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h2 style={s.greeting}>
+                    Olá, <span style={s.greetingName}>{displayName}</span> 👋
+                  </h2>
+                  <p style={s.appName}>Tenis Coach com Carlão</p>
+                </div>
+              </div>
             </div>
             <button onClick={onLogout} style={s.sairBtn}>Sair</button>
           </div>
 
-          {/* Badge de role */}
+          {/* Banner upgrade */}
           {role === 'user' && (
             <div style={s.upgradeBanner}>
               <span style={s.upgradeText}>⚡ Assine por R$ 14,90/mês e desbloqueie todas as funcionalidades</span>
@@ -61,7 +74,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
 
           <div style={s.cardList}>
 
-            {/* Mural — todos */}
             <button style={{ ...s.card, ...s.cardCyan }} onClick={() => onNavigate('mural')}>
               <div style={s.cardIconWrap}>🎾</div>
               <div style={s.cardBody}>
@@ -71,7 +83,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               <div style={{ ...s.badge, ...s.badgeCyan }}>novo</div>
             </button>
 
-            {/* Instagram — todos */}
             <button style={{ ...s.card, ...s.cardPink }} onClick={() => onNavigate('instagram')}>
               <div style={s.cardIconWrap}>📱</div>
               <div style={s.cardBody}>
@@ -81,7 +92,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               <div style={{ ...s.badge, ...s.badgePink }}>local</div>
             </button>
 
-            {/* Câmera */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardBlue }} onClick={() => onNavigate('camera')}>
                 <div style={s.cardIconWrap}>🎬</div>
@@ -95,7 +105,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               <LockedCard icon="🎬" title="Câmera" sub="Grave e salve os últimos segundos do treino" cardStyle={s.cardBlue} />
             )}
 
-            {/* Análise Biomecânica */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardTeal }} onClick={() => onNavigate('biomechanics')}>
                 <div style={s.cardIconWrap}>🦴</div>
@@ -109,7 +118,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               <LockedCard icon="🦴" title="Análise Biomecânica" sub="Detecte ângulos articulares via IA" cardStyle={s.cardTeal} />
             )}
 
-            {/* Comparativo */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardPurple }} onClick={() => onNavigate('comparison')}>
                 <div style={s.cardIconWrap}>⚖️</div>
@@ -123,7 +131,6 @@ export default function HomeScreen({ saveMode, username, role, onLogout, onNavig
               <LockedCard icon="⚖️" title="Comparativo de Vídeos" sub="Compare dois vídeos lado a lado" cardStyle={s.cardPurple} />
             )}
 
-            {/* Histórico */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardGray }} onClick={() => onNavigate('history')}>
                 <div style={s.cardIconWrap}>📂</div>
@@ -188,17 +195,31 @@ const s: Record<string, React.CSSProperties> = {
     paddingTop: 'max(24px, env(safe-area-inset-top, 24px))',
   },
   header: {
-    display: 'flex', alignItems: 'flex-start',
+    display: 'flex', alignItems: 'center',
     justifyContent: 'space-between', paddingBottom: 4,
   },
   headerLeft: { display: 'flex', flexDirection: 'column', gap: 3 },
+  avatarRow: { display: 'flex', alignItems: 'center', gap: 12 },
+  avatar: {
+    width: 46, height: 46, borderRadius: '50%',
+    objectFit: 'cover', flexShrink: 0,
+    border: '2px solid rgba(0,229,255,0.4)',
+    boxShadow: '0 0 12px rgba(0,229,255,0.2)',
+  },
+  avatarFallback: {
+    width: 46, height: 46, borderRadius: '50%',
+    background: 'linear-gradient(135deg, #0097a7, #00e5ff)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 20, fontWeight: 800, color: '#000', flexShrink: 0,
+    border: '2px solid rgba(0,229,255,0.4)',
+  },
   greeting: {
-    color: '#fff', fontSize: 26, fontWeight: 800,
+    color: '#fff', fontSize: 22, fontWeight: 800,
     margin: 0, lineHeight: 1.15, letterSpacing: -0.5,
   },
   greetingName: { color: '#00e5ff' },
   appName: {
-    color: 'rgba(0,229,255,0.45)', fontSize: 12,
+    color: 'rgba(0,229,255,0.45)', fontSize: 11,
     fontWeight: 700, margin: 0, letterSpacing: 1,
     textTransform: 'uppercase',
   },
@@ -214,9 +235,7 @@ const s: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(0,229,255,0.2)',
     borderRadius: 14, padding: '12px 16px',
   },
-  upgradeText: {
-    color: '#00e5ff', fontSize: 12, fontWeight: 600, lineHeight: 1.5,
-  },
+  upgradeText: { color: '#00e5ff', fontSize: 12, fontWeight: 600, lineHeight: 1.5 },
   cardList: { display: 'flex', flexDirection: 'column', gap: 10 },
   card: {
     display: 'flex', alignItems: 'center', gap: 14,
