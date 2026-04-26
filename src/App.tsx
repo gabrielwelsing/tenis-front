@@ -33,9 +33,6 @@ function InstaIcon() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// LoginScreen
-// ---------------------------------------------------------------------------
 function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) => void }) {
   const [mode,       setMode]       = useState<'login' | 'register'>('login');
   const [nome,       setNome]       = useState('');
@@ -98,7 +95,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
         <h1 style={s.title}>Tenis Coach com Carlão</h1>
         <p style={s.sub}>Entre com seu perfil</p>
 
-        {/* Toggle login/cadastro */}
         <div style={s.modeToggle}>
           <button
             onClick={() => { setMode('login'); setError(''); }}
@@ -114,7 +110,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
           </button>
         </div>
 
-        {/* Botão Google */}
         <div style={s.googleWrap}>
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
@@ -132,7 +127,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
           <div style={s.dividerLine} />
         </div>
 
-        {/* Formulário */}
         <div style={s.admForm}>
           {mode === 'register' && (
             <>
@@ -195,9 +189,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
   );
 }
 
-// ---------------------------------------------------------------------------
-// App principal
-// ---------------------------------------------------------------------------
 function App() {
   const [user,     setUser]     = useState<UserRecord | null>(null);
   const [token,    setToken]    = useState<string | null>(null);
@@ -248,7 +239,7 @@ function App() {
 
   switch (screen) {
     case 'home':
-      return <HomeScreen saveMode={saveMode} username={username} role={user.role} onLogout={handleLogout} onNavigate={handleNavigate} />;
+      return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} onLogout={handleLogout} onNavigate={handleNavigate} />;
     case 'camera':
       return <CameraScreen saveMode={saveMode} username={username} onGoHistory={() => setScreen('history')} onLogout={() => setScreen('home')} />;
     case 'history':
@@ -262,7 +253,7 @@ function App() {
     case 'mural':
       return <MuralScreen onBack={() => setScreen('home')} emailUsuario={user.email} />;
     default:
-      return <HomeScreen saveMode={saveMode} username={username} role={user.role} onLogout={handleLogout} onNavigate={handleNavigate} />;
+      return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} onLogout={handleLogout} onNavigate={handleNavigate} />;
   }
 }
 
@@ -274,9 +265,6 @@ export default function Root() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Estilos
-// ---------------------------------------------------------------------------
 const s: Record<string, React.CSSProperties> = {
   page: {
     position: 'relative', minHeight: '100dvh', overflow: 'hidden',
@@ -327,15 +315,9 @@ const s: Record<string, React.CSSProperties> = {
   },
   modeBtnActive: { background: '#2e7d32', color: '#fff' },
   googleWrap: { width: '100%', display: 'flex', justifyContent: 'center' },
-  divider: {
-    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-  },
-  dividerLine: {
-    flex: 1, height: 1, background: 'rgba(255,255,255,0.15)',
-  },
-  dividerText: {
-    color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: 600,
-  },
+  divider: { width: '100%', display: 'flex', alignItems: 'center', gap: 10 },
+  dividerLine: { flex: 1, height: 1, background: 'rgba(255,255,255,0.15)' },
+  dividerText: { color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: 600 },
   admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
   input: {
     width: '100%', padding: '14px 16px', borderRadius: 12,
