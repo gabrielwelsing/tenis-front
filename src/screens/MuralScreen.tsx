@@ -222,18 +222,9 @@ function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void
           {loading ? '🔍 Detectando...' : '📡 Detectar minha localização'}
         </button>
         <p style={cm.ouLabel}>— ou digite manualmente —</p>
-        <input
-          style={cm.input}
-          placeholder="Ex: Teófilo Otoni"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleConfirmar()}
-          autoFocus
-        />
+        <input style={cm.input} placeholder="Ex: Teófilo Otoni" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleConfirmar()} autoFocus />
         {erro && <p style={cm.erro}>{erro}</p>}
-        <button onClick={handleConfirmar} style={cm.confirmBtn} disabled={!input.trim()}>
-          Acessar o Mural →
-        </button>
+        <button onClick={handleConfirmar} style={cm.confirmBtn} disabled={!input.trim()}>Acessar o Mural →</button>
       </div>
     </div>
   );
@@ -386,9 +377,7 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
         <button onClick={onBack} style={s.backBtn}>← Voltar</button>
         <div style={s.headerCenter}>
           <span style={s.headerTitle}>Mural de Treinos</span>
-          {cidade && (
-            <button onClick={() => setShowCity(true)} style={s.cidadeBtn}>📍 {cidade}</button>
-          )}
+          {cidade && <button onClick={() => setShowCity(true)} style={s.cidadeBtn}>📍 {cidade}</button>}
         </div>
         <span style={s.headerSpacer} />
       </div>
@@ -520,7 +509,13 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
             ) : (
               <div style={s.feed}>
                 {jogosExibidos.map(jogo => (
-                  <JogoCard key={jogo.id} jogo={jogo} furosReportados={furosMap[jogo.whatsapp] || 0} onReportarFuro={() => handleReportarFuro(jogo)} />
+                  <JogoCard
+                    key={jogo.id}
+                    jogo={jogo}
+                    furosReportados={furosMap[jogo.whatsapp] || 0}
+                    onReportarFuro={() => handleReportarFuro(jogo)}
+                    emailUsuario={emailUsuario}
+                  />
                 ))}
               </div>
             )}
@@ -602,11 +597,17 @@ function MiniCalendar({ jogos, selectedDate, onSelectDate }: { jogos: Jogo[]; se
   );
 }
 
-function JogoCard({ jogo, furosReportados, onReportarFuro }: { jogo: Jogo; furosReportados: number; onReportarFuro: () => void }) {
+function JogoCard({ jogo, furosReportados, onReportarFuro, emailUsuario }: {
+  jogo: Jogo;
+  furosReportados: number;
+  onReportarFuro: () => void;
+  emailUsuario: string;
+}) {
   const cor    = classeColor(jogo.classe);
   const waUrl  = buildWhatsAppUrl(jogo);
   const calUrl = buildGCalUrl(jogo);
   const [reportado, setReportado] = useState(false);
+  const isOwner = jogo.emailPublicador === emailUsuario;
 
   return (
     <div style={{ ...sc.card, boxShadow: `inset 5px 0 0 0 ${cor}` }}>
@@ -615,6 +616,7 @@ function JogoCard({ jogo, furosReportados, onReportarFuro }: { jogo: Jogo; furos
           <span style={{ ...sc.classeBadge, color: cor, borderColor: `${cor}60`, background: `${cor}1a` }}>{jogo.classe}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {furosReportados >= 3 && <span style={sc.furoBadge}>⚠️ {furosReportados} furos</span>}
+            {isOwner && <span style={sc.ownerBadge}>sua publicação</span>}
             <span style={sc.tempo}>{tempoRelativo(jogo.publicadoEm)}</span>
           </div>
         </div>
@@ -629,12 +631,14 @@ function JogoCard({ jogo, furosReportados, onReportarFuro }: { jogo: Jogo; furos
           </a>
           <a href={calUrl} target="_blank" rel="noopener noreferrer" style={sc.calBtn}>📅 Agendar</a>
         </div>
-        <div style={sc.reportRow}>
-          {reportado
-            ? <span style={sc.reportadoTxt}>✓ Furo registrado</span>
-            : <button onClick={() => { onReportarFuro(); setReportado(true); }} style={sc.reportBtn}>Denunciar furo</button>
-          }
-        </div>
+        {!isOwner && (
+          <div style={sc.reportRow}>
+            {reportado
+              ? <span style={sc.reportadoTxt}>✓ Furo registrado</span>
+              : <button onClick={() => { onReportarFuro(); setReportado(true); }} style={sc.reportBtn}>Denunciar furo</button>
+            }
+          </div>
+        )}
       </div>
     </div>
   );
@@ -752,6 +756,7 @@ const sc: Record<string, React.CSSProperties> = {
   cardHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   classeBadge: { fontSize: 13, fontWeight: 800, padding: '5px 14px', borderRadius: 20, border: '1px solid', letterSpacing: 0.3 },
   furoBadge: { fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: 'rgba(244,67,54,0.2)', border: '1px solid rgba(244,67,54,0.5)', color: '#ef9a9a' },
+  ownerBadge: { fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: 'rgba(79,195,247,0.15)', border: '1px solid rgba(79,195,247,0.3)', color: '#4fc3f7' },
   tempo: { fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 500 },
   infoList: { display: 'flex', flexDirection: 'column', gap: 7 },
   btnRow: { display: 'flex', gap: 10 },
