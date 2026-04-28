@@ -1,0 +1,786 @@
+// =============================================================================
+// RANKING SCREEN — Ligas, Temporadas, Tabela, Partidas, Desafios, Config
+// Auth: Bearer token do localStorage
+// =============================================================================
+
+import React, { useState, useEffect, useCallback } from 'react';
+
+const API       = import.meta.env.VITE_API_URL ?? 'https://tenis-back-production-9f72.up.railway.app';
+const TOKEN_KEY = 'tenis_token';
+
+interface Props {
+  onBack:    () => void;
+  userId:    number;
+  role:      'user' | 'aluno' | 'admin';
+  username:  string;
+  fotoUrl?:  string | null;
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface Liga {
+  id:                   string;
+  admin_id:             number;
+  nome:                 string;
+  is_admin:             boolean;
+  admin_nome:           string;
+  temporada_ativa_id:   string | null;
+  temporada_ativa_nome: string | null;
+  total_membros:        number;
+}
+interface Temporada { id: string; liga_id: string; nome: string; data_inicio: string; data_fim: string; ativa: boolean; total_partidas: number; }
+interface Membro    { membro_id: string; user_id: number; classe: string; nome: string; email: string; foto_url: string | null; }
+interface RankingEntry { id: number; nome: string; foto_url: string | null; classe: string; total_pontos: number; jogos: number; vitorias: number; derrotas: number; }
+interface Partida   { id: string; jogador_a_id: number; jogador_b_id: number; jogador_a_nome: string; jogador_b_nome: string; vencedor_id: number | null; vencedor_nome: string | null; placar: Array<{setA:number;setB:number}> | null; tipo_partida: string; wo: boolean; pontos_a: number; pontos_b: number; bonus_a: number; bonus_b: number; status: string; data_partida: string; }
+interface Desafio   { id: string; liga_id: string; desafiante_id: number; desafiado_id: number; desafiante_nome: string; desafiado_nome: string; data_sugerida: string; horario_sugerido: string; local_sugerido: string; status: string; contra_data: string | null; contra_horario: string | null; contra_local: string | null; }
+
+type Tab = 'ranking' | 'partidas' | 'desafios' | 'config';
+const CLASSES = ['iniciante', 'intermediario', 'avancado'];
+const CLASSE_LABELS: Record<string, string> = { iniciante: 'Iniciante', intermediario: 'Intermediário', avancado: 'Avançado' };
+const TIPO_LABELS: Record<string, string>   = { melhor_de_3: 'Melhor de 3', '2sets_supertiebreak': '2 Sets + ST', pro_set: 'Pró-set' };
+
+function avatar(nome: string, foto: string | null, size = 36) {
+  if (foto) return <img src={foto} alt={nome} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />;
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'linear-gradient(135deg, #1b5e20, #2e7d32)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+      {nome.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+const MEDAL = ['🥇', '🥈', '🥉'];
+const MEDAL_BG = [
+  'linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,193,7,0.06))',
+  'linear-gradient(135deg, rgba(192,192,192,0.12), rgba(158,158,158,0.06))',
+  'linear-gradient(135deg, rgba(205,127,50,0.12), rgba(188,100,30,0.06))',
+];
+const MEDAL_BORDER = ['rgba(255,215,0,0.35)', 'rgba(192,192,192,0.35)', 'rgba(205,127,50,0.35)'];
+
+// ─── API helpers ─────────────────────────────────────────────────────────────
+async function api(method: string, path: string, body?: unknown) {
+  const token = localStorage.getItem(TOKEN_KEY) ?? '';
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? 'Erro.');
+  return json.data;
+}
+
+// =============================================================================
+export default function RankingScreen({ onBack, userId, role, username, fotoUrl }: Props) {
+  const isAdmin = role === 'admin';
+
+  // ─── Navigation ────────────────────────────────────────────────────────────
+  const [tab, setTab] = useState<Tab>('ranking');
+
+  // ─── Liga / temporada selection ────────────────────────────────────────────
+  const [ligas,       setLigas]       = useState<Liga[]>([]);
+  const [ligaId,      setLigaId]      = useState('');
+  const [temporadas,  setTemporadas]  = useState<Temporada[]>([]);
+  const [temporadaId, setTemporadaId] = useState('');
+
+  // ─── Data ──────────────────────────────────────────────────────────────────
+  const [membros,      setMembros]      = useState<Membro[]>([]);
+  const [rankingData,  setRankingData]  = useState<RankingEntry[]>([]);
+  const [partidas,     setPartidas]     = useState<Partida[]>([]);
+  const [desafios,     setDesafios]     = useState<Desafio[]>([]);
+  const [classeFilter, setClasseFilter] = useState('');
+
+  // ─── UI state ──────────────────────────────────────────────────────────────
+  const [loading, setLoading]   = useState(false);
+  const [msg, setMsg]           = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  // ─── Forms ─────────────────────────────────────────────────────────────────
+  const [novaLiga, setNovaLiga]   = useState('');
+  const [formTemp, setFormTemp]   = useState({ nome: '', data_inicio: '', data_fim: '' });
+  const [formMembro, setFormMembro] = useState({ email: '', classe: 'intermediario' });
+  const [formPartida, setFormPartida] = useState({
+    jogador_a_id: 0, jogador_b_id: 0, tipo_partida: 'melhor_de_3',
+    wo: false, wo_vencedor_id: 0, data_partida: new Date().toISOString().split('T')[0],
+    sets: [{ setA: '', setB: '' }, { setA: '', setB: '' }, { setA: '', setB: '' }],
+  });
+  const [formDesafio, setFormDesafio] = useState({ desafiado_id: 0, data_sugerida: '', horario_sugerido: '', local_sugerido: '' });
+  const [showDesafioForm, setShowDesafioForm] = useState(false);
+
+  const flash = (type: 'ok' | 'err', text: string) => {
+    setMsg({ type, text });
+    setTimeout(() => setMsg(null), 3500);
+  };
+
+  // ─── Load ligas ────────────────────────────────────────────────────────────
+  const loadLigas = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data: Liga[] = await api('GET', '/ranking/ligas');
+      setLigas(data);
+      if (data.length > 0 && !ligaId) {
+        const first = data[0];
+        setLigaId(first.id);
+        if (first.temporada_ativa_id) setTemporadaId(first.temporada_ativa_id);
+      }
+    } catch (e: any) { flash('err', e.message); }
+    setLoading(false);
+  }, [ligaId]);
+
+  useEffect(() => { loadLigas(); }, []);
+
+  // ─── Load data when liga/temporada changes ─────────────────────────────────
+  const loadMembros = useCallback(async () => {
+    if (!ligaId) return;
+    try { setMembros(await api('GET', `/ranking/ligas/${ligaId}/membros`)); } catch { /* silent */ }
+  }, [ligaId]);
+
+  const loadTemporadas = useCallback(async () => {
+    if (!ligaId) return;
+    try {
+      const data: Temporada[] = await api('GET', `/ranking/ligas/${ligaId}/temporadas`);
+      setTemporadas(data);
+      const ativa = data.find(t => t.ativa);
+      if (ativa && !temporadaId) setTemporadaId(ativa.id);
+    } catch { /* silent */ }
+  }, [ligaId, temporadaId]);
+
+  const loadRanking = useCallback(async () => {
+    if (!temporadaId) return;
+    try {
+      const qs = classeFilter ? `?classe=${classeFilter}` : '';
+      setRankingData(await api('GET', `/ranking/temporadas/${temporadaId}/tabela${qs}`));
+    } catch { /* silent */ }
+  }, [temporadaId, classeFilter]);
+
+  const loadPartidas = useCallback(async () => {
+    if (!temporadaId) return;
+    try { setPartidas(await api('GET', `/ranking/temporadas/${temporadaId}/partidas`)); } catch { /* silent */ }
+  }, [temporadaId]);
+
+  const loadDesafios = useCallback(async () => {
+    if (!ligaId) return;
+    try { setDesafios(await api('GET', `/ranking/desafios?ligaId=${ligaId}`)); } catch { /* silent */ }
+  }, [ligaId]);
+
+  useEffect(() => { loadMembros(); loadTemporadas(); }, [ligaId]);
+  useEffect(() => { loadRanking(); loadPartidas(); loadDesafios(); }, [temporadaId]);
+  useEffect(() => { if (temporadaId) loadRanking(); }, [classeFilter]);
+
+  // ─── Actions ───────────────────────────────────────────────────────────────
+  const criarLiga = async () => {
+    if (!novaLiga.trim()) return;
+    setLoading(true);
+    try {
+      await api('POST', '/ranking/ligas', { nome: novaLiga.trim() });
+      setNovaLiga('');
+      flash('ok', 'Liga criada!');
+      await loadLigas();
+    } catch (e: any) { flash('err', e.message); }
+    setLoading(false);
+  };
+
+  const criarTemporada = async () => {
+    if (!formTemp.nome || !formTemp.data_inicio || !formTemp.data_fim) { flash('err', 'Preencha todos os campos.'); return; }
+    setLoading(true);
+    try {
+      await api('POST', `/ranking/ligas/${ligaId}/temporadas`, formTemp);
+      setFormTemp({ nome: '', data_inicio: '', data_fim: '' });
+      flash('ok', 'Temporada criada!');
+      await loadTemporadas();
+    } catch (e: any) { flash('err', e.message); }
+    setLoading(false);
+  };
+
+  const encerrarTemporada = async (id: string) => {
+    if (!confirm('Encerrar esta temporada?')) return;
+    try {
+      await api('PATCH', `/ranking/ligas/${ligaId}/temporadas/${id}`, {});
+      flash('ok', 'Temporada encerrada.');
+      await loadTemporadas();
+    } catch (e: any) { flash('err', e.message); }
+  };
+
+  const adicionarMembro = async () => {
+    if (!formMembro.email) { flash('err', 'E-mail obrigatório.'); return; }
+    setLoading(true);
+    try {
+      await api('POST', `/ranking/ligas/${ligaId}/membros`, formMembro);
+      setFormMembro({ email: '', classe: 'intermediario' });
+      flash('ok', 'Membro adicionado!');
+      await loadMembros();
+    } catch (e: any) { flash('err', e.message); }
+    setLoading(false);
+  };
+
+  const removerMembro = async (uid: number) => {
+    if (!confirm('Remover membro da liga?')) return;
+    try {
+      await api('DELETE', `/ranking/ligas/${ligaId}/membros/${uid}`, {});
+      flash('ok', 'Membro removido.');
+      await loadMembros();
+    } catch (e: any) { flash('err', e.message); }
+  };
+
+  const alterarClasse = async (uid: number, classe: string) => {
+    try {
+      await api('PATCH', `/ranking/ligas/${ligaId}/membros/${uid}`, { classe });
+      flash('ok', 'Classe atualizada.');
+      await loadMembros();
+      await loadRanking();
+    } catch (e: any) { flash('err', e.message); }
+  };
+
+  const registrarPartida = async () => {
+    const { jogador_a_id, jogador_b_id, tipo_partida, wo, wo_vencedor_id, data_partida, sets } = formPartida;
+    if (!jogador_a_id || !jogador_b_id) { flash('err', 'Selecione os dois jogadores.'); return; }
+    if (jogador_a_id === jogador_b_id) { flash('err', 'Jogadores devem ser diferentes.'); return; }
+    if (wo && !wo_vencedor_id) { flash('err', 'Selecione o vencedor do WO.'); return; }
+
+    let placar: Array<{setA:number;setB:number}> | null = null;
+    if (!wo) {
+      const nSets = tipo_partida === 'pro_set' ? 1 : 2;
+      placar = sets.slice(0, nSets).map(s => ({ setA: Number(s.setA || 0), setB: Number(s.setB || 0) }));
+      // add third set if needed (melhor_de_3 and tied)
+      if (tipo_partida !== 'pro_set') {
+        const sA = placar.filter(s => s.setA > s.setB).length;
+        const sB = placar.filter(s => s.setB > s.setA).length;
+        if (sA === 1 && sB === 1) placar.push({ setA: Number(sets[2].setA || 0), setB: Number(sets[2].setB || 0) });
+      }
+    }
+
+    setLoading(true);
+    try {
+      await api('POST', '/ranking/partidas', { temporada_id: temporadaId, jogador_a_id, jogador_b_id, placar, tipo_partida, wo, wo_vencedor_id: wo ? wo_vencedor_id : undefined, data_partida });
+      setFormPartida({ jogador_a_id: 0, jogador_b_id: 0, tipo_partida: 'melhor_de_3', wo: false, wo_vencedor_id: 0, data_partida: new Date().toISOString().split('T')[0], sets: [{ setA: '', setB: '' }, { setA: '', setB: '' }, { setA: '', setB: '' }] });
+      flash('ok', 'Partida registrada! Aguardando confirmação.');
+      await loadPartidas();
+      await loadRanking();
+    } catch (e: any) { flash('err', e.message); }
+    setLoading(false);
+  };
+
+  const confirmarPartida = async (id: string, confirmar: boolean) => {
+    try {
+      await api('PATCH', `/ranking/partidas/${id}/confirmar`, { confirmar });
+      flash('ok', confirmar ? 'Partida confirmada!' : 'Resultado disputado — admin vai revisar.');
+      await loadPartidas();
+      await loadRanking();
+    } catch (e: any) { flash('err', e.message); }
+  };
+
+  const criarDesafio = async () => {
+    if (!formDesafio.desafiado_id || !formDesafio.data_sugerida || !formDesafio.horario_sugerido || !formDesafio.local_sugerido) {
+      flash('err', 'Preencha todos os campos do desafio.'); return;
+    }
+    setLoading(true);
+    try {
+      await api('POST', '/ranking/desafios', { liga_id: ligaId, ...formDesafio });
+      setFormDesafio({ desafiado_id: 0, data_sugerida: '', horario_sugerido: '', local_sugerido: '' });
+      setShowDesafioForm(false);
+      flash('ok', 'Desafio enviado!');
+      await loadDesafios();
+    } catch (e: any) { flash('err', e.message); }
+    setLoading(false);
+  };
+
+  const responderDesafio = async (id: string, status: string) => {
+    try {
+      await api('PATCH', `/ranking/desafios/${id}`, { status });
+      flash('ok', status === 'aceito' ? 'Desafio aceito!' : 'Desafio recusado.');
+      await loadDesafios();
+    } catch (e: any) { flash('err', e.message); }
+  };
+
+  // ─── Derived ───────────────────────────────────────────────────────────────
+  const ligaAtual   = ligas.find(l => l.id === ligaId);
+  const isLigaAdmin = ligaAtual?.is_admin ?? false;
+  const aproveitamento = (v: number, j: number) => j === 0 ? 0 : Math.round((v / j) * 100);
+
+  // ─── Liga selection UI ─────────────────────────────────────────────────────
+  const renderLigaSelect = () => (
+    <div style={s.ligaRow}>
+      <select style={s.ligaSelect} value={ligaId} onChange={e => { setLigaId(e.target.value); setTemporadaId(''); setRankingData([]); }}>
+        {ligas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+      </select>
+      {temporadas.length > 0 && (
+        <select style={{ ...s.ligaSelect, flex: 0.8 }} value={temporadaId} onChange={e => setTemporadaId(e.target.value)}>
+          {temporadas.map(t => <option key={t.id} value={t.id}>{t.nome}{t.ativa ? ' ✓' : ''}</option>)}
+        </select>
+      )}
+    </div>
+  );
+
+  // ─── Tab: Ranking ──────────────────────────────────────────────────────────
+  const renderRanking = () => (
+    <div>
+      {renderLigaSelect()}
+
+      {!temporadaId ? (
+        <div style={s.empty}>
+          {isLigaAdmin
+            ? 'Nenhuma temporada ativa. Vá em Config para criar.'
+            : 'Aguardando o admin criar uma temporada.'}
+        </div>
+      ) : (
+        <>
+          <div style={s.filterRow}>
+            {['', ...CLASSES].map(c => (
+              <button key={c} style={{ ...s.filterBtn, ...(classeFilter === c ? s.filterActive : {}) }} onClick={() => setClasseFilter(c)}>
+                {c === '' ? 'Todos' : CLASSE_LABELS[c]}
+              </button>
+            ))}
+          </div>
+
+          {rankingData.length === 0 && <div style={s.empty}>Nenhuma partida registrada ainda.</div>}
+
+          {rankingData.map((entry, idx) => {
+            const isSelf  = entry.id === userId;
+            const isTop3  = idx < 3;
+            const aprov   = aproveitamento(entry.vitorias, entry.jogos);
+            return (
+              <div key={entry.id} style={{
+                ...s.rankRow,
+                ...(isTop3 ? { background: MEDAL_BG[idx], border: `1px solid ${MEDAL_BORDER[idx]}` } : {}),
+                ...(isSelf  ? { boxShadow: '0 0 0 2px #2e7d32' } : {}),
+              }}>
+                <div style={s.rankPos}>
+                  {isTop3 ? <span style={{ fontSize: 20 }}>{MEDAL[idx]}</span> : <span style={s.rankNum}>#{idx + 1}</span>}
+                </div>
+                {avatar(entry.nome, entry.foto_url)}
+                <div style={s.rankInfo}>
+                  <div style={s.rankNome}>{entry.nome}{isSelf && <span style={s.voce}> (você)</span>}</div>
+                  <div style={s.rankSub}>{CLASSE_LABELS[entry.classe] ?? entry.classe} · {entry.jogos}J {entry.vitorias}V {entry.derrotas}D · {aprov}%</div>
+                </div>
+                <div style={s.rankPts}>
+                  <div style={s.rankPtsNum}>{entry.total_pontos}</div>
+                  <div style={s.rankPtsLabel}>pts</div>
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+
+  // ─── Tab: Partidas ─────────────────────────────────────────────────────────
+  const renderPartidas = () => {
+    const fp  = formPartida;
+    const nSets = fp.tipo_partida === 'pro_set' ? 1 : 2;
+    const need3 = fp.tipo_partida !== 'pro_set' && !fp.wo;
+    const s1A  = Number(fp.sets[0].setA || 0), s1B = Number(fp.sets[0].setB || 0);
+    const s2A  = Number(fp.sets[1].setA || 0), s2B = Number(fp.sets[1].setB || 0);
+    const tied = s1A > s1B && s2A < s2B || s1A < s1B && s2A > s2B;
+    const show3 = need3 && tied;
+
+    return (
+      <div>
+        {renderLigaSelect()}
+        {!temporadaId ? <div style={s.empty}>Selecione uma temporada.</div> : (
+          <>
+            <div style={s.formCard}>
+              <div style={s.formTitle}>Registrar Partida</div>
+
+              <div style={s.formRow}>
+                <div style={s.formGroup}>
+                  <label style={s.label}>Jogador A</label>
+                  <select style={s.sel} value={fp.jogador_a_id} onChange={e => setFormPartida(f => ({ ...f, jogador_a_id: Number(e.target.value) }))}>
+                    <option value={0}>Selecionar…</option>
+                    {membros.map(m => <option key={m.user_id} value={m.user_id}>{m.nome}</option>)}
+                  </select>
+                </div>
+                <div style={s.formGroup}>
+                  <label style={s.label}>Jogador B</label>
+                  <select style={s.sel} value={fp.jogador_b_id} onChange={e => setFormPartida(f => ({ ...f, jogador_b_id: Number(e.target.value) }))}>
+                    <option value={0}>Selecionar…</option>
+                    {membros.map(m => <option key={m.user_id} value={m.user_id}>{m.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={s.formRow}>
+                <div style={s.formGroup}>
+                  <label style={s.label}>Tipo</label>
+                  <select style={s.sel} value={fp.tipo_partida} onChange={e => setFormPartida(f => ({ ...f, tipo_partida: e.target.value }))}>
+                    {Object.entries(TIPO_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </div>
+                <div style={s.formGroup}>
+                  <label style={s.label}>Data</label>
+                  <input style={s.inp} type="date" value={fp.data_partida} onChange={e => setFormPartida(f => ({ ...f, data_partida: e.target.value }))} />
+                </div>
+              </div>
+
+              <div style={s.woRow}>
+                <label style={s.woLabel}>
+                  <input type="checkbox" checked={fp.wo} onChange={e => setFormPartida(f => ({ ...f, wo: e.target.checked }))} style={{ marginRight: 8 }} />
+                  WO (W.O. — adversário não compareceu)
+                </label>
+              </div>
+
+              {!fp.wo && (
+                <>
+                  {Array.from({ length: fp.tipo_partida === 'pro_set' ? 1 : (show3 ? 3 : nSets) }).map((_, i) => (
+                    <div key={i} style={s.setRow}>
+                      <span style={s.setLabel}>{fp.tipo_partida === 'pro_set' ? 'Placar' : `Set ${i + 1}`}</span>
+                      <input style={s.setInp} type="number" min={0} max={99} placeholder="A"
+                        value={fp.sets[i].setA}
+                        onChange={e => setFormPartida(f => { const ns = [...f.sets]; ns[i] = { ...ns[i], setA: e.target.value }; return { ...f, sets: ns }; })} />
+                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>×</span>
+                      <input style={s.setInp} type="number" min={0} max={99} placeholder="B"
+                        value={fp.sets[i].setB}
+                        onChange={e => setFormPartida(f => { const ns = [...f.sets]; ns[i] = { ...ns[i], setB: e.target.value }; return { ...f, sets: ns }; })} />
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {fp.wo && (
+                <div style={s.formGroup}>
+                  <label style={s.label}>Vencedor do WO</label>
+                  <select style={s.sel} value={fp.wo_vencedor_id} onChange={e => setFormPartida(f => ({ ...f, wo_vencedor_id: Number(e.target.value) }))}>
+                    <option value={0}>Selecionar…</option>
+                    {[fp.jogador_a_id, fp.jogador_b_id].filter(Boolean).map(uid => {
+                      const m = membros.find(mb => mb.user_id === uid);
+                      return m ? <option key={uid} value={uid}>{m.nome}</option> : null;
+                    })}
+                  </select>
+                </div>
+              )}
+
+              <button style={{ ...s.submitBtn, opacity: loading ? 0.6 : 1 }} onClick={registrarPartida} disabled={loading}>
+                {loading ? 'Registrando…' : 'Registrar Partida'}
+              </button>
+            </div>
+
+            <div style={s.sectionTitle}>Partidas Recentes</div>
+
+            {partidas.length === 0 && <div style={s.empty}>Nenhuma partida registrada.</div>}
+
+            {partidas.map(pt => {
+              const isPending  = pt.status === 'pendente';
+              const isEnvolved = pt.jogador_a_id === userId || pt.jogador_b_id === userId;
+              const isVencedor = pt.vencedor_id === userId;
+              return (
+                <div key={pt.id} style={s.partidaCard}>
+                  <div style={s.partidaHeader}>
+                    <span style={s.partidaDate}>{pt.data_partida?.slice(0, 10)}</span>
+                    <span style={{ ...s.statusPill, background: pt.status === 'confirmada' ? 'rgba(76,175,80,0.15)' : pt.status === 'disputada_admin' ? 'rgba(244,67,54,0.15)' : 'rgba(255,167,38,0.15)', color: pt.status === 'confirmada' ? '#4caf50' : pt.status === 'disputada_admin' ? '#f44336' : '#ffa726', border: `1px solid ${pt.status === 'confirmada' ? '#4caf50' : pt.status === 'disputada_admin' ? '#f44336' : '#ffa726'}` }}>
+                      {pt.status === 'confirmada' ? 'Confirmada' : pt.status === 'disputada_admin' ? 'Em disputa' : 'Pendente'}
+                    </span>
+                  </div>
+                  <div style={s.partidaVs}>
+                    <span style={{ color: pt.vencedor_id === pt.jogador_a_id ? '#4caf50' : 'rgba(255,255,255,0.7)', fontWeight: pt.vencedor_id === pt.jogador_a_id ? 800 : 500 }}>{pt.jogador_a_nome}</span>
+                    <span style={s.vs}>vs</span>
+                    <span style={{ color: pt.vencedor_id === pt.jogador_b_id ? '#4caf50' : 'rgba(255,255,255,0.7)', fontWeight: pt.vencedor_id === pt.jogador_b_id ? 800 : 500 }}>{pt.jogador_b_nome}</span>
+                  </div>
+                  {pt.placar && (
+                    <div style={s.placarRow}>
+                      {pt.placar.map((set, i) => (
+                        <span key={i} style={s.placarSet}>{set.setA}–{set.setB}</span>
+                      ))}
+                    </div>
+                  )}
+                  {pt.wo && <div style={s.woTag}>W.O.</div>}
+                  <div style={s.ptsRow}>
+                    <span style={s.ptsTag}>{pt.jogador_a_nome}: {pt.pontos_a + pt.bonus_a} pts{pt.bonus_a > 0 ? ` (+${pt.bonus_a})` : ''}</span>
+                    <span style={s.ptsTag}>{pt.jogador_b_nome}: {pt.pontos_b + pt.bonus_b} pts{pt.bonus_b > 0 ? ` (+${pt.bonus_b})` : ''}</span>
+                  </div>
+                  {isPending && isEnvolved && !isVencedor && (
+                    <div style={s.confirmBtns}>
+                      <button style={s.okBtn} onClick={() => confirmarPartida(pt.id, true)}>Confirmar resultado</button>
+                      <button style={s.disputeBtn} onClick={() => confirmarPartida(pt.id, false)}>Disputar</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // ─── Tab: Desafios ─────────────────────────────────────────────────────────
+  const renderDesafios = () => (
+    <div>
+      {renderLigaSelect()}
+      <button style={s.addBtn} onClick={() => setShowDesafioForm(v => !v)}>
+        {showDesafioForm ? '– Fechar' : '+ Desafiar alguém'}
+      </button>
+
+      {showDesafioForm && (
+        <div style={s.formCard}>
+          <div style={s.formTitle}>Novo Desafio</div>
+          <div style={s.formGroup}>
+            <label style={s.label}>Adversário</label>
+            <select style={s.sel} value={formDesafio.desafiado_id} onChange={e => setFormDesafio(f => ({ ...f, desafiado_id: Number(e.target.value) }))}>
+              <option value={0}>Selecionar…</option>
+              {membros.filter(m => m.user_id !== userId).map(m => <option key={m.user_id} value={m.user_id}>{m.nome}</option>)}
+            </select>
+          </div>
+          <div style={s.formRow}>
+            <div style={s.formGroup}>
+              <label style={s.label}>Data</label>
+              <input style={s.inp} type="date" value={formDesafio.data_sugerida} onChange={e => setFormDesafio(f => ({ ...f, data_sugerida: e.target.value }))} />
+            </div>
+            <div style={s.formGroup}>
+              <label style={s.label}>Horário</label>
+              <input style={s.inp} type="time" value={formDesafio.horario_sugerido} onChange={e => setFormDesafio(f => ({ ...f, horario_sugerido: e.target.value }))} />
+            </div>
+          </div>
+          <div style={s.formGroup}>
+            <label style={s.label}>Local</label>
+            <input style={s.inp} placeholder="Ex: Quadra 1 — ACTO" value={formDesafio.local_sugerido} onChange={e => setFormDesafio(f => ({ ...f, local_sugerido: e.target.value }))} />
+          </div>
+          <button style={{ ...s.submitBtn, opacity: loading ? 0.6 : 1 }} onClick={criarDesafio} disabled={loading}>
+            Enviar Desafio
+          </button>
+        </div>
+      )}
+
+      <div style={s.sectionTitle}>Seus Desafios</div>
+      {desafios.length === 0 && <div style={s.empty}>Nenhum desafio ativo.</div>}
+
+      {desafios.map(d => {
+        const recebido = d.desafiado_id === userId;
+        const pending  = d.status === 'pendente' || d.status === 'contraproposto';
+        return (
+          <div key={d.id} style={s.desafioCard}>
+            <div style={s.desafioHeader}>
+              <span style={s.desafioNome}>{recebido ? `De: ${d.desafiante_nome}` : `Para: ${d.desafiado_nome}`}</span>
+              <span style={{ ...s.statusPill, background: d.status === 'aceito' ? 'rgba(76,175,80,0.15)' : d.status === 'recusado' ? 'rgba(244,67,54,0.15)' : 'rgba(255,167,38,0.15)', color: d.status === 'aceito' ? '#4caf50' : d.status === 'recusado' ? '#f44336' : '#ffa726', border: `1px solid ${d.status === 'aceito' ? '#4caf50' : d.status === 'recusado' ? '#f44336' : '#ffa726'}` }}>
+                {d.status}
+              </span>
+            </div>
+            <div style={s.desafioInfo}>{d.data_sugerida} · {d.horario_sugerido} · {d.local_sugerido}</div>
+            {d.contra_data && (
+              <div style={{ ...s.desafioInfo, color: '#ffa726' }}>Contraproposta: {d.contra_data} · {d.contra_horario} · {d.contra_local}</div>
+            )}
+            {recebido && pending && (
+              <div style={s.confirmBtns}>
+                <button style={s.okBtn}      onClick={() => responderDesafio(d.id, 'aceito')}>Aceitar</button>
+                <button style={s.disputeBtn} onClick={() => responderDesafio(d.id, 'recusado')}>Recusar</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // ─── Tab: Config (admin only) ─────────────────────────────────────────────
+  const renderConfig = () => (
+    <div>
+      {!isAdmin && (
+        <div style={s.formCard}>
+          <div style={s.formTitle}>Criar Liga</div>
+          <div style={s.formGroup}>
+            <label style={s.label}>Nome da Liga</label>
+            <input style={s.inp} placeholder="Ex: Liga ACTO 2026" value={novaLiga} onChange={e => setNovaLiga(e.target.value)} />
+          </div>
+          <button style={s.submitBtn} onClick={criarLiga} disabled={loading}>Criar Liga</button>
+        </div>
+      )}
+
+      {isAdmin && (
+        <>
+          {renderLigaSelect()}
+
+          <div style={s.formCard}>
+            <div style={s.formTitle}>Nova Temporada</div>
+            <div style={s.formGroup}>
+              <label style={s.label}>Nome</label>
+              <input style={s.inp} placeholder="Ex: Temporada 1 — 2026" value={formTemp.nome} onChange={e => setFormTemp(f => ({ ...f, nome: e.target.value }))} />
+            </div>
+            <div style={s.formRow}>
+              <div style={s.formGroup}>
+                <label style={s.label}>Início</label>
+                <input style={s.inp} type="date" value={formTemp.data_inicio} onChange={e => setFormTemp(f => ({ ...f, data_inicio: e.target.value }))} />
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.label}>Fim</label>
+                <input style={s.inp} type="date" value={formTemp.data_fim} onChange={e => setFormTemp(f => ({ ...f, data_fim: e.target.value }))} />
+              </div>
+            </div>
+            <button style={s.submitBtn} onClick={criarTemporada} disabled={loading}>Criar Temporada</button>
+          </div>
+
+          <div style={s.sectionTitle}>Temporadas</div>
+          {temporadas.map(t => (
+            <div key={t.id} style={s.tempCard}>
+              <div>
+                <div style={s.tempNome}>{t.nome}</div>
+                <div style={s.tempDatas}>{t.data_inicio?.slice(0, 10)} → {t.data_fim?.slice(0, 10)} · {t.total_partidas} partidas</div>
+              </div>
+              {t.ativa
+                ? <button style={s.encerrarBtn} onClick={() => encerrarTemporada(t.id)}>Encerrar</button>
+                : <span style={s.encerradaTag}>Encerrada</span>}
+            </div>
+          ))}
+
+          <div style={s.sectionTitle}>Membros</div>
+          <div style={s.formCard}>
+            <div style={s.formRow}>
+              <div style={s.formGroup}>
+                <label style={s.label}>E-mail</label>
+                <input style={s.inp} placeholder="aluno@exemplo.com" value={formMembro.email} onChange={e => setFormMembro(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div style={{ ...s.formGroup, flex: 0.7 }}>
+                <label style={s.label}>Classe</label>
+                <select style={s.sel} value={formMembro.classe} onChange={e => setFormMembro(f => ({ ...f, classe: e.target.value }))}>
+                  {CLASSES.map(c => <option key={c} value={c}>{CLASSE_LABELS[c]}</option>)}
+                </select>
+              </div>
+            </div>
+            <button style={s.submitBtn} onClick={adicionarMembro} disabled={loading}>Adicionar Membro</button>
+          </div>
+
+          {membros.map(m => (
+            <div key={m.user_id} style={s.membroCard}>
+              {avatar(m.nome, m.foto_url, 32)}
+              <div style={s.membroInfo}>
+                <div style={s.membroNome}>{m.nome}</div>
+                <div style={s.membroEmail}>{m.email}</div>
+              </div>
+              <select style={s.classeSelect} value={m.classe} onChange={e => alterarClasse(m.user_id, e.target.value)}>
+                {CLASSES.map(c => <option key={c} value={c}>{CLASSE_LABELS[c]}</option>)}
+              </select>
+              <button style={s.removeBtn} onClick={() => removerMembro(m.user_id)}>✕</button>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'ranking',  label: 'Ranking'  },
+    { key: 'partidas', label: 'Partidas' },
+    { key: 'desafios', label: 'Desafios' },
+    { key: 'config',   label: isAdmin ? 'Config' : 'Ligas' },
+  ];
+
+  return (
+    <div style={s.page}>
+      <div style={s.bgGlow} />
+
+      <div style={s.header}>
+        <button style={s.backBtn} onClick={onBack}>‹ Voltar</button>
+        <h2 style={s.title}>🏆 Ranking</h2>
+        <div style={{ width: 64 }} />
+      </div>
+
+      {msg && (
+        <div style={{ ...s.toast, background: msg.type === 'ok' ? 'rgba(46,125,50,0.95)' : 'rgba(198,40,40,0.95)' }}>
+          {msg.text}
+        </div>
+      )}
+
+      <div style={s.tabBar}>
+        {TABS.map(t => (
+          <button key={t.key} style={{ ...s.tabBtn, ...(tab === t.key ? s.tabActive : {}) }} onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={s.body}>
+        {loading && ligas.length === 0 && <div style={s.empty}>Carregando…</div>}
+        {!loading && ligas.length === 0 && (
+          <div style={s.emptyBig}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🎾</div>
+            <div style={s.emptyBigText}>
+              {isAdmin
+                ? 'Crie sua primeira liga na aba "Config".'
+                : 'Peça ao seu professor para te adicionar a uma liga.'}
+            </div>
+            {isAdmin && <button style={s.submitBtn} onClick={() => setTab('config')}>Criar Liga</button>}
+          </div>
+        )}
+
+        {ligas.length > 0 && (
+          tab === 'ranking'  ? renderRanking()  :
+          tab === 'partidas' ? renderPartidas() :
+          tab === 'desafios' ? renderDesafios() :
+          renderConfig()
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+const s: Record<string, React.CSSProperties> = {
+  page: { position: 'fixed', inset: 0, background: '#0d0d1a', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  bgGlow: { position: 'absolute', top: '-20%', left: '-20%', width: '60vw', height: '60vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(46,125,50,0.06) 0%, transparent 70%)', pointerEvents: 'none' },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'max(16px,env(safe-area-inset-top,16px)) 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(13,13,26,0.97)', backdropFilter: 'blur(8px)', position: 'relative', zIndex: 10 },
+  backBtn: { background: 'rgba(46,125,50,0.1)', border: '1px solid rgba(46,125,50,0.3)', color: '#4caf50', padding: '8px 14px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', minWidth: 64 },
+  title: { color: '#fff', fontSize: 18, fontWeight: 800, margin: 0 },
+  toast: { position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)', padding: '10px 20px', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', whiteSpace: 'nowrap' },
+  tabBar: { display: 'flex', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 },
+  tabBtn: { flex: 1, padding: '12px 4px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: 700, cursor: 'pointer', borderBottom: '2px solid transparent', transition: 'color .2s' },
+  tabActive: { color: '#4caf50', borderBottomColor: '#4caf50' },
+  body: { flex: 1, overflowY: 'auto', padding: '14px 14px 40px', maxWidth: 540, width: '100%', margin: '0 auto', boxSizing: 'border-box' },
+  ligaRow: { display: 'flex', gap: 8, marginBottom: 14 },
+  ligaSelect: { flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '9px 12px', fontSize: 13 },
+  filterRow: { display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
+  filterBtn: { padding: '6px 14px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+  filterActive: { background: 'rgba(46,125,50,0.2)', border: '1px solid #2e7d32', color: '#4caf50' },
+  empty: { color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '24px 0', fontSize: 13 },
+  emptyBig: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', gap: 12 },
+  emptyBigText: { color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', lineHeight: 1.6 },
+  rankRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', marginBottom: 8 },
+  rankPos: { width: 32, textAlign: 'center', flexShrink: 0 },
+  rankNum: { color: 'rgba(255,255,255,0.35)', fontSize: 14, fontWeight: 700 },
+  rankInfo: { flex: 1, minWidth: 0 },
+  rankNome: { color: '#fff', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  rankSub: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 },
+  voce: { color: '#4caf50', fontSize: 11 },
+  rankPts: { textAlign: 'right', flexShrink: 0 },
+  rankPtsNum: { color: '#4caf50', fontSize: 20, fontWeight: 900, lineHeight: 1 },
+  rankPtsLabel: { color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: 600 },
+  formCard: { background: 'rgba(46,125,50,0.05)', border: '1px solid rgba(46,125,50,0.2)', borderRadius: 16, padding: 16, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 12 },
+  formTitle: { color: '#4caf50', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
+  formRow: { display: 'flex', gap: 10 },
+  formGroup: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6 },
+  label: { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sel: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '10px 12px', fontSize: 13, width: '100%' },
+  inp: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '10px 12px', fontSize: 13, width: '100%', boxSizing: 'border-box' },
+  woRow: { display: 'flex', alignItems: 'center' },
+  woLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13, display: 'flex', alignItems: 'center', cursor: 'pointer' },
+  setRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  setLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, width: 40, flexShrink: 0 },
+  setInp: { width: 56, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '8px 0', fontSize: 18, fontWeight: 700, textAlign: 'center', boxSizing: 'border-box' },
+  submitBtn: { width: '100%', padding: '13px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b5e20, #2e7d32)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(46,125,50,0.35)' },
+  addBtn: { width: '100%', padding: '12px 0', borderRadius: 12, marginBottom: 12, background: 'rgba(46,125,50,0.08)', border: '1px dashed rgba(46,125,50,0.4)', color: '#4caf50', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+  sectionTitle: { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginTop: 16, marginBottom: 8 },
+  partidaCard: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 14, marginBottom: 8 },
+  partidaHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  partidaDate: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+  statusPill: { fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 },
+  partidaVs: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 6, flexWrap: 'wrap' },
+  vs: { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 },
+  placarRow: { display: 'flex', gap: 6, marginBottom: 4 },
+  placarSet: { background: 'rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 700 },
+  woTag: { display: 'inline-block', background: 'rgba(255,167,38,0.15)', color: '#ffa726', border: '1px solid #ffa726', borderRadius: 6, padding: '1px 8px', fontSize: 11, fontWeight: 700, marginBottom: 4 },
+  ptsRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 },
+  ptsTag: { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
+  confirmBtns: { display: 'flex', gap: 8, marginTop: 10 },
+  okBtn: { flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: '#2e7d32', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
+  disputeBtn: { flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid #f44336', background: 'rgba(244,67,54,0.1)', color: '#f44336', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
+  desafioCard: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 14, marginBottom: 8 },
+  desafioHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  desafioNome: { color: '#fff', fontSize: 14, fontWeight: 700 },
+  desafioInfo: { color: 'rgba(255,255,255,0.45)', fontSize: 12, marginBottom: 2 },
+  tempCard: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '12px 14px', marginBottom: 8 },
+  tempNome: { color: '#fff', fontSize: 14, fontWeight: 700 },
+  tempDatas: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 },
+  encerrarBtn: { background: 'rgba(244,67,54,0.12)', border: '1px solid #f44336', color: '#f44336', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
+  encerradaTag: { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 },
+  membroCard: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '10px 12px', marginBottom: 6 },
+  membroInfo: { flex: 1, minWidth: 0 },
+  membroNome: { color: '#fff', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  membroEmail: { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
+  classeSelect: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', padding: '5px 8px', fontSize: 11, flexShrink: 0 },
+  removeBtn: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 16, cursor: 'pointer', padding: '0 4px', flexShrink: 0 },
+};

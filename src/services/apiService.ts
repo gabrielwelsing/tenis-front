@@ -225,3 +225,36 @@ export async function deleteJogo(id: string, emailPublicador: string): Promise<v
   });
   if (!res.ok) throw new Error(`Erro ao remover: ${res.status}`);
 }
+
+// ---------------------------------------------------------------------------
+// Ranking
+// ---------------------------------------------------------------------------
+
+async function rankingApi(token: string, method: string, path: string, body?: unknown) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? 'Erro.');
+  return json.data;
+}
+
+export const getMinhasLigas         = (t: string)                                          => rankingApi(t, 'GET',    '/ranking/ligas');
+export const criarLiga              = (t: string, nome: string)                            => rankingApi(t, 'POST',   '/ranking/ligas', { nome });
+export const getMembros             = (t: string, ligaId: string)                          => rankingApi(t, 'GET',    `/ranking/ligas/${ligaId}/membros`);
+export const adicionarMembro        = (t: string, ligaId: string, email: string, classe: string) => rankingApi(t, 'POST', `/ranking/ligas/${ligaId}/membros`, { email, classe });
+export const removerMembro          = (t: string, ligaId: string, userId: number)          => rankingApi(t, 'DELETE', `/ranking/ligas/${ligaId}/membros/${userId}`, {});
+export const alterarClasseMembro    = (t: string, ligaId: string, userId: number, classe: string) => rankingApi(t, 'PATCH', `/ranking/ligas/${ligaId}/membros/${userId}`, { classe });
+export const criarTemporada         = (t: string, ligaId: string, dados: object)           => rankingApi(t, 'POST',   `/ranking/ligas/${ligaId}/temporadas`, dados);
+export const getTemporadas          = (t: string, ligaId: string)                          => rankingApi(t, 'GET',    `/ranking/ligas/${ligaId}/temporadas`);
+export const encerrarTemporada      = (t: string, ligaId: string, tempId: string)          => rankingApi(t, 'PATCH',  `/ranking/ligas/${ligaId}/temporadas/${tempId}`, {});
+export const registrarPartida       = (t: string, dados: object)                           => rankingApi(t, 'POST',   '/ranking/partidas', dados);
+export const getPartidas            = (t: string, temporadaId: string)                     => rankingApi(t, 'GET',    `/ranking/temporadas/${temporadaId}/partidas`);
+export const confirmarPartida       = (t: string, partidaId: string, confirmar: boolean)   => rankingApi(t, 'PATCH',  `/ranking/partidas/${partidaId}/confirmar`, { confirmar });
+export const getTabelaRanking       = (t: string, temporadaId: string, classe?: string)    => rankingApi(t, 'GET',    `/ranking/temporadas/${temporadaId}/tabela${classe ? `?classe=${classe}` : ''}`);
+export const criarDesafio           = (t: string, dados: object)                           => rankingApi(t, 'POST',   '/ranking/desafios', dados);
+export const getDesafios            = (t: string, ligaId: string)                          => rankingApi(t, 'GET',    `/ranking/desafios?ligaId=${ligaId}`);
+export const responderDesafio       = (t: string, desafioId: string, dados: object)        => rankingApi(t, 'PATCH',  `/ranking/desafios/${desafioId}`, dados);
+export const converterDesafioPartida = (t: string, desafioId: string, dados: object)       => rankingApi(t, 'POST',   `/ranking/desafios/${desafioId}/partida`, dados);
