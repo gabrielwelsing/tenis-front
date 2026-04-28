@@ -63,7 +63,6 @@ function ModalPagamento({ user, onClose, onSuccess }: {
       });
       const data = await res.json();
       if (!res.ok) { setErro(data.error ?? 'Erro ao criar pagamento.'); setStep('escolha'); return; }
-
       if (tipo === 'pix') {
         setQrCode(data.qr_code ?? '');
         setQrB64(data.qr_code_b64 ?? '');
@@ -127,18 +126,13 @@ function ModalPagamento({ user, onClose, onSuccess }: {
             <h2 style={mp.title}>Pague via PIX</h2>
             <p style={mp.sub}>Escaneie o QR Code ou copie o código</p>
             {qrB64 && (
-              <img
-                src={`data:image/png;base64,${qrB64}`}
-                alt="QR Code PIX"
-                style={{ width: 200, height: 200, borderRadius: 12, background: '#fff', padding: 8 }}
-              />
+              <img src={`data:image/png;base64,${qrB64}`} alt="QR Code PIX"
+                style={{ width: 200, height: 200, borderRadius: 12, background: '#fff', padding: 8 }} />
             )}
             <button style={mp.btnCopiar} onClick={copiarPix}>
               {copiado ? '✓ Copiado!' : '📋 Copiar código PIX'}
             </button>
-            <p style={{ ...mp.hint, marginTop: 8 }}>
-              Após o pagamento, seu acesso será liberado automaticamente em até 1 minuto.
-            </p>
+            <p style={{ ...mp.hint, marginTop: 8 }}>Após o pagamento, seu acesso será liberado automaticamente em até 1 minuto.</p>
             <button style={mp.btnVoltar} onClick={() => setStep('escolha')}>← Voltar</button>
           </>
         )}
@@ -148,9 +142,7 @@ function ModalPagamento({ user, onClose, onSuccess }: {
             <div style={{ fontSize: 40 }}>🔗</div>
             <h2 style={mp.title}>Redirecionado!</h2>
             <p style={mp.sub}>Complete o pagamento na página do Mercado Pago que foi aberta.</p>
-            <p style={{ ...mp.hint, marginTop: 8 }}>
-              Após confirmar, seu acesso será liberado automaticamente.
-            </p>
+            <p style={{ ...mp.hint, marginTop: 8 }}>Após confirmar, seu acesso será liberado automaticamente.</p>
             <button style={mp.btnVoltar} onClick={onClose}>Fechar</button>
           </>
         )}
@@ -311,7 +303,12 @@ function App() {
     }
   };
 
-  // Após pagamento aprovado, recarrega o usuário do backend
+  const handleSalvarPerfil = async (dados: { nome: string; localidade: string; telefone: string }) => {
+    if (!token) return;
+    const updated = await updateProfile(token, dados);
+    setUser(prev => prev ? { ...prev, ...updated } : prev);
+  };
+
   const handlePagamentoSuccess = async () => {
     if (!token) return;
     setShowPagamento(false);
@@ -337,17 +334,13 @@ function App() {
   return (
     <>
       {showPagamento && (
-        <ModalPagamento
-          user={user}
-          onClose={() => setShowPagamento(false)}
-          onSuccess={handlePagamentoSuccess}
-        />
+        <ModalPagamento user={user} onClose={() => setShowPagamento(false)} onSuccess={handlePagamentoSuccess} />
       )}
 
       {(() => {
         switch (screen) {
           case 'home':
-            return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} onLogout={handleLogout} onNavigate={handleNavigate} onFotoUpload={handleFotoUpload} onAssinar={() => setShowPagamento(true)} />;
+            return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} telefone={user.telefone} localidade={user.localidade} onLogout={handleLogout} onNavigate={handleNavigate} onFotoUpload={handleFotoUpload} onAssinar={() => setShowPagamento(true)} onSalvarPerfil={handleSalvarPerfil} />;
           case 'camera':
             return <CameraScreen saveMode={saveMode} username={username} onGoHistory={() => setScreen('history')} onLogout={() => setScreen('home')} />;
           case 'history':
@@ -365,7 +358,7 @@ function App() {
           case 'ranking':
             return <RankingScreen onBack={() => setScreen('home')} userId={user.id} role={user.role} username={username} fotoUrl={user.foto_url} />;
           default:
-            return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} onLogout={handleLogout} onNavigate={handleNavigate} onFotoUpload={handleFotoUpload} onAssinar={() => setShowPagamento(true)} />;
+            return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} telefone={user.telefone} localidade={user.localidade} onLogout={handleLogout} onNavigate={handleNavigate} onFotoUpload={handleFotoUpload} onAssinar={() => setShowPagamento(true)} onSalvarPerfil={handleSalvarPerfil} />;
         }
       })()}
     </>
@@ -411,7 +404,7 @@ const s: Record<string, React.CSSProperties> = {
 // Estilos Modal Pagamento
 // ---------------------------------------------------------------------------
 const mp: Record<string, React.CSSProperties> = {
-  overlay: { position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 0 0' },
+  overlay: { position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' },
   sheet: { background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '24px 24px 0 0', padding: '32px 24px 48px', maxWidth: 480, width: '100%', display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' },
   closeBtn: { alignSelf: 'flex-end', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 20, cursor: 'pointer', padding: 0, marginBottom: -8 },
   icon:  { fontSize: 48, lineHeight: 1 },
