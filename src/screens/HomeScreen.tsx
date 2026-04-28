@@ -7,16 +7,16 @@ import type { SaveMode } from '../App';
 import type { Screen } from '../App';
 
 interface Props {
-  saveMode:      SaveMode;
-  username:      string;
-  role:          'user' | 'aluno' | 'admin';
-  fotoUrl?:      string | null;
-  telefone?:     string | null;
-  localidade?:   string | null;
-  onLogout:      () => void;
-  onNavigate:    (screen: Screen) => void;
-  onFotoUpload:  (file: File) => Promise<void>;
-  onAssinar:     () => void;
+  saveMode:       SaveMode;
+  username:       string;
+  role:           'user' | 'aluno' | 'admin';
+  fotoUrl?:       string | null;
+  telefone?:      string | null;
+  localidade?:    string | null;
+  onLogout:       () => void;
+  onNavigate:     (screen: Screen) => void;
+  onFotoUpload:   (file: File) => Promise<void>;
+  onAssinar:      () => void;
   onSalvarPerfil: (dados: { nome: string; localidade: string; telefone: string }) => Promise<void>;
 }
 
@@ -30,10 +30,9 @@ export default function HomeScreen({
 
   const isAdmin = role === 'admin' || role === 'aluno';
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [showConfig, setShowConfig] = useState(false);
+  const [uploading,   setUploading]   = useState(false);
+  const [showConfig,  setShowConfig]  = useState(false);
 
-  // Form configurações
   const [cfgNome,       setCfgNome]       = useState(username ?? '');
   const [cfgLocalidade, setCfgLocalidade] = useState(localidade ?? '');
   const [cfgTelefone,   setCfgTelefone]   = useState(telefone ?? '');
@@ -50,8 +49,19 @@ export default function HomeScreen({
     finally { setUploading(false); e.target.value = ''; }
   };
 
+  const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const d = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let masked = d;
+    if (d.length > 7)      masked = `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+    else if (d.length > 2) masked = `(${d.slice(0,2)}) ${d.slice(2)}`;
+    else if (d.length > 0) masked = `(${d}`;
+    setCfgTelefone(masked);
+  };
+
   const handleSalvarConfig = async () => {
     if (!cfgNome.trim()) { setCfgMsg('Nome é obrigatório.'); return; }
+    const digits = cfgTelefone.replace(/\D/g, '');
+    if (digits.length !== 11) { setCfgMsg('Telefone inválido. Use (XX) 9XXXX-XXXX.'); return; }
     setCfgLoading(true); setCfgMsg('');
     try {
       await onSalvarPerfil({ nome: cfgNome.trim(), localidade: cfgLocalidade.trim(), telefone: cfgTelefone.trim() });
@@ -103,9 +113,11 @@ export default function HomeScreen({
 
             <div style={cfg.fieldGroup}>
               <span style={cfg.label}>Telefone / WhatsApp *</span>
-              <input style={{ ...cfg.input, borderColor: semTelefone ? '#ff6b6b' : 'rgba(255,255,255,0.13)' }}
-                type="tel" inputMode="numeric" placeholder="(00) 00000-0000"
-                value={cfgTelefone} onChange={e => setCfgTelefone(e.target.value)} />
+              <input
+                style={{ ...cfg.input, borderColor: cfgTelefone.replace(/\D/g,'').length !== 11 ? '#ff6b6b' : 'rgba(255,255,255,0.13)' }}
+                type="tel" inputMode="numeric" placeholder="(11) 91234-5678"
+                value={cfgTelefone} onChange={handleTelefoneChange}
+              />
             </div>
 
             {cfgMsg && <p style={{ color: cfgMsg.startsWith('✅') ? '#81c784' : '#ff6b6b', fontSize: 13, margin: 0, textAlign: 'center' }}>{cfgMsg}</p>}
@@ -145,7 +157,6 @@ export default function HomeScreen({
             </div>
           </div>
 
-          {/* Banner telefone */}
           {semTelefone && (
             <div style={s.alertBanner}>
               <span style={s.alertText}>📱 Preencha seu telefone nas configurações para usar todos os recursos do app.</span>
@@ -153,7 +164,6 @@ export default function HomeScreen({
             </div>
           )}
 
-          {/* Banner upgrade */}
           {role === 'user' && !semTelefone && (
             <div style={s.upgradeBanner}>
               <span style={s.upgradeText}>⚡ Assine por R$ 14,90/mês e desbloqueie todas as funcionalidades</span>
