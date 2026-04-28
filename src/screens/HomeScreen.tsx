@@ -113,6 +113,15 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
               <div style={{ ...s.badge, ...s.badgeCyan }}>novo</div>
             </button>
 
+            <button style={{ ...s.card, ...s.cardOrange }} onClick={() => onNavigate('agenda')}>
+              <div style={s.cardIconWrap}>📅</div>
+              <div style={s.cardBody}>
+                <div style={s.cardTitle}>Agenda</div>
+                <div style={s.cardSub}>Horários, reservas e inscrições</div>
+              </div>
+              <div style={{ ...s.badge, ...s.badgeOrange }}>novo</div>
+            </button>
+
             <button style={{ ...s.card, ...s.cardPink }} onClick={() => onNavigate('instagram')}>
               <div style={s.cardIconWrap}>📱</div>
               <div style={s.cardBody}>
@@ -289,6 +298,7 @@ const s: Record<string, React.CSSProperties> = {
   cardTeal:   { background: 'linear-gradient(135deg, #004d40 0%, #00796b 100%)', boxShadow: '0 4px 20px rgba(0,121,107,0.3)' },
   cardPurple: { background: 'linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%)', boxShadow: '0 4px 20px rgba(123,31,162,0.3)' },
   cardGray:   { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(0,229,255,0.1)' },
+  cardOrange: { background: 'linear-gradient(135deg, #e65100 0%, #f57c00 100%)', boxShadow: '0 4px 20px rgba(245,124,0,0.3)' },
   cardIconWrap: { fontSize: 28, lineHeight: 1, flexShrink: 0 },
   cardBody: { flex: 1, display: 'flex', flexDirection: 'column', gap: 3 },
   cardTitle: { color: '#fff', fontSize: 16, fontWeight: 800, lineHeight: 1.2, letterSpacing: -0.3 },
@@ -304,6 +314,7 @@ const s: Record<string, React.CSSProperties> = {
   badgeBlue:   { background: 'rgba(255,255,255,0.2)', color: '#fff' },
   badgeTeal:   { background: 'rgba(0,0,0,0.3)', color: '#80cbc4' },
   badgePurple: { background: 'rgba(0,0,0,0.3)', color: '#ce93d8' },
+  badgeOrange: { background: 'rgba(0,0,0,0.3)', color: '#ffcc80' },
   lockBadge: {
     position: 'absolute', bottom: 8, right: 12,
     fontSize: 9, fontWeight: 700, padding: '3px 10px',

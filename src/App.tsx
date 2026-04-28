@@ -13,6 +13,7 @@ import HomeScreen         from '@screens/HomeScreen';
 import ComparisonScreen   from '@screens/ComparisonScreen';
 import InstagramScreen    from '@screens/InstagramScreen';
 import MuralScreen        from '@screens/MuralScreen';
+import AgendaScreen       from '@screens/AgendaScreen';
 
 const GOOGLE_CLIENT_ID  = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 const CLOUDINARY_CLOUD  = 'dgier8xfp';
@@ -20,7 +21,7 @@ const CLOUDINARY_PRESET = 'tenis-to';
 const TOKEN_KEY = 'tenis_token';
 
 export type SaveMode = 'drive' | 'local';
-export type Screen   = 'camera' | 'history' | 'biomechanics' | 'home' | 'comparison' | 'instagram' | 'mural';
+export type Screen   = 'camera' | 'history' | 'biomechanics' | 'home' | 'comparison' | 'instagram' | 'mural' | 'agenda';
 export type Role     = 'user' | 'aluno' | 'admin';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -226,6 +227,8 @@ function App() {
       return <InstagramScreen onBack={() => setScreen('home')} />;
     case 'mural':
       return <MuralScreen onBack={() => setScreen('home')} emailUsuario={user.email} />;
+    case 'agenda':
+      return <AgendaScreen onBack={() => setScreen('home')} emailUsuario={user.email} role={user.role} username={username} />;
     default:
       return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} onLogout={handleLogout} onNavigate={handleNavigate} onFotoUpload={handleFotoUpload} />;
   }
