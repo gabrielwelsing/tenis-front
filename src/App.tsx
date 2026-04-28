@@ -183,11 +183,11 @@ function App() {
     setScreen('home');
   };
 
-  const handleNavigate = (target: Screen) => {
-    const adminOnly: Screen[] = ['camera', 'history', 'biomechanics', 'comparison'];
-    if (user?.role === 'user' && adminOnly.includes(target)) return;
-    setScreen(target);
-  };
+const handleNavigate = (target: Screen) => {
+  const alunoOnly: Screen[] = ['camera', 'history', 'biomechanics', 'comparison', 'instagram'];
+  if (user?.role === 'user' && alunoOnly.includes(target)) return;
+  setScreen(target);
+};
 
   const handleFotoUpload = async (file: File) => {
     if (!token || !user) return;
