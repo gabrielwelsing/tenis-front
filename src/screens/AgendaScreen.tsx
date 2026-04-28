@@ -40,8 +40,13 @@ const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function addDays(s: string, n: number) { const d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().split('T')[0]; }
-function fmtDateBr(s: string) { const dt = new Date(s + 'T12:00:00'); const [, m, d] = s.split('-'); return `${DIAS[dt.getDay()]}, ${d}/${m}`; }
 function fmt(t: string) { return t?.slice(0, 5) ?? ''; }
+function fmtDateBr(s: string) {
+  const dateOnly = s.slice(0, 10);
+  const dt = new Date(dateOnly + 'T12:00:00');
+  const [, m, d] = dateOnly.split('-');
+  return `${DIAS[dt.getDay()]}, ${d}/${m}`;
+}
 
 function buildWhatsAppUrl(telefone: string, slot: Slot): string {
   const numero = `55${telefone.replace(/\D/g, '')}`;
