@@ -352,7 +352,7 @@ function App() {
           case 'instagram':
             return <InstagramScreen onBack={() => setScreen('home')} />;
           case 'mural':
-            return <MuralScreen onBack={() => setScreen('home')} emailUsuario={user.email} userId={user.id} />;
+            return <MuralScreen onBack={() => setScreen('home')} emailUsuario={user.email} userId={user.id} username={username} />;
           case 'agenda':
             return <AgendaScreen onBack={() => setScreen('home')} emailUsuario={user.email} role={user.role} username={username} />;
           case 'ranking':
