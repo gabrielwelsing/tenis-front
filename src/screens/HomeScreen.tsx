@@ -14,9 +14,10 @@ interface Props {
   onLogout:      () => void;
   onNavigate:    (screen: Screen) => void;
   onFotoUpload:  (file: File) => Promise<void>;
+  onAssinar:     () => void;
 }
 
-export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout, onNavigate, onFotoUpload }: Props) {
+export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout, onNavigate, onFotoUpload, onAssinar }: Props) {
   const displayName = username
     ? username.charAt(0).toUpperCase() + username.slice(1)
     : 'Professor';
@@ -96,12 +97,12 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
           {role === 'user' && (
             <div style={s.upgradeBanner}>
               <span style={s.upgradeText}>⚡ Assine por R$ 14,90/mês e desbloqueie todas as funcionalidades</span>
+              <button onClick={onAssinar} style={s.assinarBtn}>Assinar agora</button>
             </div>
           )}
 
           <div style={s.cardList}>
 
-            {/* Mural — todos */}
             <button style={{ ...s.card, ...s.cardCyan }} onClick={() => onNavigate('mural')}>
               <div style={s.cardIconWrap}>🎾</div>
               <div style={s.cardBody}>
@@ -111,7 +112,6 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
               <div style={{ ...s.badge, ...s.badgeCyan }}>novo</div>
             </button>
 
-            {/* Agenda — todos */}
             <button style={{ ...s.card, ...s.cardOrange }} onClick={() => onNavigate('agenda')}>
               <div style={s.cardIconWrap}>📅</div>
               <div style={s.cardBody}>
@@ -121,7 +121,6 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
               <div style={{ ...s.badge, ...s.badgeOrange }}>novo</div>
             </button>
 
-            {/* Ranking — aluno/admin */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardGreen }} onClick={() => onNavigate('ranking')}>
                 <div style={s.cardIconWrap}>🏆</div>
@@ -135,7 +134,6 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
               <LockedCard icon="🏆" title="Ranking" sub="Liga, campeonato e tabela de pontos" cardStyle={s.cardGreen} />
             )}
 
-            {/* Instagram — aluno/admin */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardPink }} onClick={() => onNavigate('instagram')}>
                 <div style={s.cardIconWrap}>📱</div>
@@ -149,7 +147,6 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
               <LockedCard icon="📱" title="Instagram Reels" sub="Recorte horizontal → 9:16 para Stories" cardStyle={s.cardPink} />
             )}
 
-            {/* Câmera — aluno/admin */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardBlue }} onClick={() => onNavigate('camera')}>
                 <div style={s.cardIconWrap}>🎬</div>
@@ -163,7 +160,6 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
               <LockedCard icon="🎬" title="Câmera" sub="Grave e salve os últimos segundos do treino" cardStyle={s.cardBlue} />
             )}
 
-            {/* Análise Biomecânica — aluno/admin */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardTeal }} onClick={() => onNavigate('biomechanics')}>
                 <div style={s.cardIconWrap}>🦴</div>
@@ -177,7 +173,6 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
               <LockedCard icon="🦴" title="Análise Biomecânica" sub="Detecte ângulos articulares via IA" cardStyle={s.cardTeal} />
             )}
 
-            {/* Comparativo — aluno/admin */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardPurple }} onClick={() => onNavigate('comparison')}>
                 <div style={s.cardIconWrap}>⚖️</div>
@@ -191,7 +186,6 @@ export default function HomeScreen({ saveMode, username, role, fotoUrl, onLogout
               <LockedCard icon="⚖️" title="Comparativo de Vídeos" sub="Compare dois vídeos lado a lado" cardStyle={s.cardPurple} />
             )}
 
-            {/* Histórico — aluno/admin */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardGray }} onClick={() => onNavigate('history')}>
                 <div style={s.cardIconWrap}>📂</div>
@@ -304,8 +298,15 @@ const s: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, rgba(0,229,255,0.08), rgba(0,100,180,0.12))',
     border: '1px solid rgba(0,229,255,0.2)',
     borderRadius: 14, padding: '12px 16px',
+    display: 'flex', flexDirection: 'column', gap: 10,
   },
   upgradeText: { color: '#00e5ff', fontSize: 12, fontWeight: 600, lineHeight: 1.5 },
+  assinarBtn: {
+    width: '100%', padding: '13px 0', borderRadius: 12,
+    background: 'linear-gradient(135deg, #0097a7, #00e5ff)',
+    border: 'none', color: '#000', fontSize: 14, fontWeight: 800,
+    cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,229,255,0.3)',
+  },
   cardList: { display: 'flex', flexDirection: 'column', gap: 10 },
   card: {
     display: 'flex', alignItems: 'center', gap: 14,
