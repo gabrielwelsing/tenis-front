@@ -6,8 +6,9 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { getJogos, postJogo, deleteJogo, type JogoRecord } from '@services/apiService';
 
 interface Props {
-  onBack: () => void;
+  onBack:       () => void;
   emailUsuario: string;
+  userId:       number;
 }
 
 interface Jogo {
@@ -279,7 +280,7 @@ function RuleItem({ n, label, consequence, color }: { n: number; label: string; 
   );
 }
 
-export default function MuralScreen({ onBack, emailUsuario }: Props) {
+export default function MuralScreen({ onBack, emailUsuario, userId }: Props) {
   const [jogos, setJogos]               = useState<Jogo[]>([]);
   const [loadingJogos, setLoadingJogos] = useState(true);
   const [cidade, setCidade]             = useState<string>(() => localStorage.getItem(LS_CIDADE) || '');
@@ -515,6 +516,7 @@ export default function MuralScreen({ onBack, emailUsuario }: Props) {
                     furosReportados={furosMap[jogo.whatsapp] || 0}
                     onReportarFuro={() => handleReportarFuro(jogo)}
                     emailUsuario={emailUsuario}
+                    userId={userId}
                   />
                 ))}
               </div>
@@ -597,50 +599,236 @@ function MiniCalendar({ jogos, selectedDate, onSelectDate }: { jogos: Jogo[]; se
   );
 }
 
-function JogoCard({ jogo, furosReportados, onReportarFuro, emailUsuario }: {
+// ─── Modal de registro de resultado ─────────────────────────────────────────
+const API_BASE = import.meta.env.VITE_API_URL ?? 'https://tenis-back-production-9f72.up.railway.app';
+const TOKEN_KEY = 'tenis_token';
+
+interface Liga { id: string; nome: string; temporada_ativa_id: string | null; temporada_ativa_nome: string | null; }
+
+function ResultadoModal({ jogo, emailUsuario, userId, onClose }: {
+  jogo: Jogo;
+  emailUsuario: string;
+  userId: number;
+  onClose: () => void;
+}) {
+  const [ligas,      setLigas]      = useState<Liga[]>([]);
+  const [ligaId,     setLigaId]     = useState('');
+  const [tempId,     setTempId]     = useState('');
+  const [tipo,       setTipo]       = useState('melhor_de_3');
+  const [sets,       setSets]       = useState([{ a: '', b: '' }, { a: '', b: '' }, { a: '', b: '' }]);
+  const [wo,         setWo]         = useState(false);
+  const [euGanhei,   setEuGanhei]   = useState(true);
+  const [loading,    setLoading]    = useState(false);
+  const [err,        setErr]        = useState('');
+  const [ok,         setOk]         = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem(TOKEN_KEY) ?? '';
+    if (!token) return;
+    fetch(`${API_BASE}/ranking/ligas`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        const arr: Liga[] = d.data ?? [];
+        setLigas(arr);
+        if (arr.length > 0) { setLigaId(arr[0].id); setTempId(arr[0].temporada_ativa_id ?? ''); }
+      })
+      .catch(() => setErr('Erro ao carregar ligas.'));
+  }, []);
+
+  const onLigaChange = (id: string) => {
+    setLigaId(id);
+    const l = ligas.find(x => x.id === id);
+    setTempId(l?.temporada_ativa_id ?? '');
+  };
+
+  const submit = async () => {
+    if (!tempId) { setErr('Selecione uma liga com temporada ativa.'); return; }
+    setLoading(true); setErr('');
+    const token = localStorage.getItem(TOKEN_KEY) ?? '';
+
+    let placar = null;
+    let vencedorSouEu = euGanhei;
+    if (!wo) {
+      const nSets = tipo === 'pro_set' ? 1 : 2;
+      const parsedSets = sets.slice(0, nSets).map(s => ({ setA: Number(s.a || 0), setB: Number(s.b || 0) }));
+      // add 3rd set if tied
+      if (tipo !== 'pro_set') {
+        const sA = parsedSets.filter(s => s.setA > s.setB).length;
+        const sB = parsedSets.filter(s => s.setB > s.setA).length;
+        if (sA === 1 && sB === 1) parsedSets.push({ setA: Number(sets[2].a || 0), setB: Number(sets[2].b || 0) });
+      }
+      placar = parsedSets;
+      // Determine winner from sets
+      const wA = parsedSets.filter(s => s.setA > s.setB).length;
+      const wB = parsedSets.filter(s => s.setB > s.setA).length;
+      // setA = eu (userId), setB = adversário
+      vencedorSouEu = wA > wB;
+    }
+
+    try {
+      const body: Record<string, unknown> = {
+        temporada_id: tempId,
+        jogador_a_id: userId,
+        email_b:      jogo.emailPublicador,
+        placar,
+        tipo_partida: tipo,
+        wo,
+        data_partida: jogo.dataInicio,
+      };
+      if (wo) body.eu_ganhei = euGanhei;
+      else    body.vencedor_e_a = vencedorSouEu;
+
+      const r = await fetch(`${API_BASE}/ranking/partidas/mural`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const json = await r.json();
+      if (!r.ok) { setErr(json.error ?? 'Erro.'); return; }
+      setOk(true);
+      setTimeout(onClose, 2000);
+    } catch { setErr('Erro de conexão.'); }
+    setLoading(false);
+  };
+
+  if (ok) return (
+    <div style={rm.overlay} onClick={onClose}>
+      <div style={rm.sheet}>
+        <div style={{ fontSize: 48 }}>🏆</div>
+        <p style={{ color: '#81c784', fontWeight: 800, fontSize: 16, margin: 0 }}>Resultado registrado!</p>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>Aguardando confirmação do adversário.</p>
+      </div>
+    </div>
+  );
+
+  const nSets = tipo === 'pro_set' ? 1 : 2;
+  const sA0 = Number(sets[0].a || 0), sB0 = Number(sets[0].b || 0);
+  const sA1 = Number(sets[1].a || 0), sB1 = Number(sets[1].b || 0);
+  const show3 = tipo !== 'pro_set' && !wo && ((sA0 > sB0 && sA1 < sB1) || (sA0 < sB0 && sA1 > sB1));
+
+  return (
+    <div style={rm.overlay} onClick={onClose}>
+      <div style={rm.sheet} onClick={e => e.stopPropagation()}>
+        <div style={rm.header}>
+          <span style={rm.title}>📊 Registrar Resultado</span>
+          <button style={rm.closeBtn} onClick={onClose}>✕</button>
+        </div>
+        <p style={rm.sub}>Você jogou com <strong>{jogo.emailPublicador?.split('@')[0] ?? 'esse jogador'}</strong> em {fmtData(jogo.dataInicio)}</p>
+
+        {ligas.length === 0 && !err && <p style={rm.hint}>Carregando ligas…</p>}
+        {ligas.length > 0 && (
+          <select style={rm.sel} value={ligaId} onChange={e => onLigaChange(e.target.value)}>
+            {ligas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.temporada_ativa_nome ? ` — ${l.temporada_ativa_nome}` : ' (sem temporada)'}</option>)}
+          </select>
+        )}
+
+        <div style={rm.woRow}>
+          <label style={rm.woLabel}>
+            <input type="checkbox" checked={wo} onChange={e => setWo(e.target.checked)} style={{ marginRight: 8 }} />
+            W.O. (adversário não compareceu)
+          </label>
+        </div>
+
+        {!wo && (
+          <>
+            <select style={rm.sel} value={tipo} onChange={e => setTipo(e.target.value)}>
+              <option value="melhor_de_3">Melhor de 3 sets</option>
+              <option value="2sets_supertiebreak">2 Sets + Super Tiebreak</option>
+              <option value="pro_set">Pró-set</option>
+            </select>
+            <p style={rm.hint}>Placar — Eu × Adversário</p>
+            {Array.from({ length: show3 ? 3 : nSets }).map((_, i) => (
+              <div key={i} style={rm.setRow}>
+                <span style={rm.setLabel}>Set {i + 1}</span>
+                <input style={rm.setInp} type="number" min={0} max={99} placeholder="Eu"
+                  value={sets[i].a} onChange={e => setSets(prev => { const n = [...prev]; n[i] = { ...n[i], a: e.target.value }; return n; })} />
+                <span style={{ color: 'rgba(255,255,255,0.4)' }}>×</span>
+                <input style={rm.setInp} type="number" min={0} max={99} placeholder="Adv"
+                  value={sets[i].b} onChange={e => setSets(prev => { const n = [...prev]; n[i] = { ...n[i], b: e.target.value }; return n; })} />
+              </div>
+            ))}
+          </>
+        )}
+
+        {wo && (
+          <div style={rm.woRow}>
+            <label style={rm.woLabel}>
+              <input type="radio" checked={euGanhei} onChange={() => setEuGanhei(true)} style={{ marginRight: 6 }} />
+              Eu ganhei o WO
+            </label>
+            <label style={rm.woLabel}>
+              <input type="radio" checked={!euGanhei} onChange={() => setEuGanhei(false)} style={{ marginRight: 6 }} />
+              Adversário ganhou o WO
+            </label>
+          </div>
+        )}
+
+        {err && <p style={{ color: '#ef5350', fontSize: 13, margin: 0 }}>{err}</p>}
+
+        <button style={{ ...rm.submitBtn, opacity: loading ? 0.6 : 1 }} onClick={submit} disabled={loading || !tempId}>
+          {loading ? 'Enviando…' : '🏆 Registrar no Ranking'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function JogoCard({ jogo, furosReportados, onReportarFuro, emailUsuario, userId }: {
   jogo: Jogo;
   furosReportados: number;
   onReportarFuro: () => void;
   emailUsuario: string;
+  userId: number;
 }) {
   const cor    = classeColor(jogo.classe);
   const waUrl  = buildWhatsAppUrl(jogo);
   const calUrl = buildGCalUrl(jogo);
-  const [reportado, setReportado] = useState(false);
-  const isOwner = jogo.emailPublicador === emailUsuario;
+  const [reportado, setReportado]     = useState(false);
+  const [showResult, setShowResult]   = useState(false);
+  const isOwner   = jogo.emailPublicador === emailUsuario;
+  const jaJogou   = isExpired(jogo);
 
   return (
-    <div style={{ ...sc.card, boxShadow: `inset 5px 0 0 0 ${cor}` }}>
-      <div style={sc.content}>
-        <div style={sc.cardHeader}>
-          <span style={{ ...sc.classeBadge, color: cor, borderColor: `${cor}60`, background: `${cor}1a` }}>{jogo.classe}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {furosReportados >= 3 && <span style={sc.furoBadge}>⚠️ {furosReportados} furos</span>}
-            {isOwner && <span style={sc.ownerBadge}>sua publicação</span>}
-            <span style={sc.tempo}>{tempoRelativo(jogo.publicadoEm)}</span>
+    <>
+      {showResult && (
+        <ResultadoModal jogo={jogo} emailUsuario={emailUsuario} userId={userId} onClose={() => setShowResult(false)} />
+      )}
+      <div style={{ ...sc.card, boxShadow: `inset 5px 0 0 0 ${cor}` }}>
+        <div style={sc.content}>
+          <div style={sc.cardHeader}>
+            <span style={{ ...sc.classeBadge, color: cor, borderColor: `${cor}60`, background: `${cor}1a` }}>{jogo.classe}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {furosReportados >= 3 && <span style={sc.furoBadge}>⚠️ {furosReportados} furos</span>}
+              {isOwner && <span style={sc.ownerBadge}>sua publicação</span>}
+              <span style={sc.tempo}>{tempoRelativo(jogo.publicadoEm)}</span>
+            </div>
           </div>
-        </div>
-        <div style={sc.infoList}>
-          <InfoItem icon="📅" text={fmtDataRange(jogo)} />
-          <InfoItem icon="🕐" text={`${jogo.horarioInicio.replace(':', 'h')} – ${jogo.horarioFim.replace(':', 'h')}`} />
-          <InfoItem icon="📍" text={jogo.local} />
-        </div>
-        <div style={sc.btnRow}>
-          <a href={waUrl} target="_blank" rel="noopener noreferrer" style={sc.waBtn}>
-            <WaIcon />WhatsApp
-          </a>
-          <a href={calUrl} target="_blank" rel="noopener noreferrer" style={sc.calBtn}>📅 Agendar</a>
-        </div>
-        {!isOwner && (
+          <div style={sc.infoList}>
+            <InfoItem icon="📅" text={fmtDataRange(jogo)} />
+            <InfoItem icon="🕐" text={`${jogo.horarioInicio.replace(':', 'h')} – ${jogo.horarioFim.replace(':', 'h')}`} />
+            <InfoItem icon="📍" text={jogo.local} />
+          </div>
+          <div style={sc.btnRow}>
+            <a href={waUrl} target="_blank" rel="noopener noreferrer" style={sc.waBtn}>
+              <WaIcon />WhatsApp
+            </a>
+            <a href={calUrl} target="_blank" rel="noopener noreferrer" style={sc.calBtn}>📅 Agendar</a>
+          </div>
           <div style={sc.reportRow}>
-            {reportado
-              ? <span style={sc.reportadoTxt}>✓ Furo registrado</span>
-              : <button onClick={() => { onReportarFuro(); setReportado(true); }} style={sc.reportBtn}>Denunciar furo</button>
-            }
+            {jaJogou && jogo.emailPublicador && jogo.emailPublicador !== emailUsuario && (
+              <button onClick={() => setShowResult(true)} style={sc.rankBtn}>
+                🏆 Registrar resultado
+              </button>
+            )}
+            {!isOwner && (
+              reportado
+                ? <span style={sc.reportadoTxt}>✓ Furo registrado</span>
+                : <button onClick={() => { onReportarFuro(); setReportado(true); }} style={sc.reportBtn}>Denunciar furo</button>
+            )}
           </div>
-        )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -762,7 +950,25 @@ const sc: Record<string, React.CSSProperties> = {
   btnRow: { display: 'flex', gap: 10 },
   waBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 12px', borderRadius: 13, background: 'linear-gradient(135deg, #1b5e20, #388e3c)', color: '#fff', fontSize: 14, fontWeight: 800, textDecoration: 'none', boxShadow: '0 3px 14px rgba(56,142,60,0.35)' },
   calBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '13px 12px', borderRadius: 13, background: 'rgba(66,133,244,0.15)', border: '1.5px solid rgba(66,133,244,0.5)', color: '#90caf9', fontSize: 14, fontWeight: 700, textDecoration: 'none' },
-  reportRow: { display: 'flex', justifyContent: 'flex-end', paddingTop: 2 },
-  reportBtn: { background: 'none', border: 'none', padding: '4px 2px', color: 'rgba(255,255,255,0.22)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 },
+  reportRow:    { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 2, gap: 8 },
+  reportBtn:    { background: 'none', border: 'none', padding: '4px 2px', color: 'rgba(255,255,255,0.22)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 },
   reportadoTxt: { fontSize: 11, color: '#aef359', fontWeight: 600 },
+  rankBtn:      { background: 'rgba(255,167,38,0.12)', border: '1px solid rgba(255,167,38,0.35)', color: '#ffa726', borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' },
+};
+
+const rm: Record<string, React.CSSProperties> = {
+  overlay:   { position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 16 },
+  sheet:     { background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: '20px 20px 28px', width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 12 },
+  header:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  title:     { fontSize: 16, fontWeight: 800, color: '#fff' },
+  closeBtn:  { background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 20, cursor: 'pointer' },
+  sub:       { margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 },
+  hint:      { margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.4)' },
+  sel:       { width: '100%', padding: '12px 14px', borderRadius: 12, background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.13)', color: '#fff', fontSize: 14, boxSizing: 'border-box', colorScheme: 'dark' as React.CSSProperties['colorScheme'] },
+  woRow:     { display: 'flex', flexDirection: 'column', gap: 8 },
+  woLabel:   { color: 'rgba(255,255,255,0.7)', fontSize: 13, display: 'flex', alignItems: 'center', cursor: 'pointer' },
+  setRow:    { display: 'flex', alignItems: 'center', gap: 10 },
+  setLabel:  { color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, width: 40, flexShrink: 0 },
+  setInp:    { width: 60, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: '#fff', padding: '8px 0', fontSize: 18, fontWeight: 700, textAlign: 'center', boxSizing: 'border-box' },
+  submitBtn: { width: '100%', padding: '14px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b5e20, #2e7d32)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer' },
 };
