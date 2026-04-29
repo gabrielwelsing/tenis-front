@@ -251,6 +251,21 @@ export default function HomeScreen({
               <LockedCard icon="⚖️" title="Comparativo de Vídeos" sub="Compare dois vídeos lado a lado" cardStyle={s.cardPurple} />
             )}
 
+            {/* 7. Instagram Reels */}
+            {isAdmin ? (
+              <button style={{ ...s.card, ...s.cardPink }} onClick={() => onNavigate('instagram')}>
+                <div style={s.cardIconWrap}>📸</div>
+                <div style={s.cardBody}>
+                  <div style={s.cardTitle}>Instagram Reels</div>
+                  <div style={s.cardSub}>Recorte e exporte vídeos 9:16 para o Instagram</div>
+                </div>
+                <div style={{ ...s.badge, ...s.badgePink }}>reels</div>
+              </button>
+            ) : (
+              <LockedCard icon="📸" title="Instagram Reels" sub="Recorte e exporte vídeos 9:16 para o Instagram" cardStyle={s.cardPink} />
+            )}
+
+            {/* 8. Histórico */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardGray }} onClick={() => onNavigate('history')}>
                 <div style={s.cardIconWrap}>📂</div>
@@ -262,16 +277,6 @@ export default function HomeScreen({
             ) : (
               <LockedCard icon="📂" title="Histórico" sub="Veja os vídeos e áudios salvos" cardStyle={s.cardGray} />
             )}
-
-            {/* 7. Instagram */}
-            <button style={{ ...s.card, ...s.cardPink }} onClick={() => window.open('https://www.instagram.com/jogartenisto', '_blank')}>
-              <div style={s.cardIconWrap}>📸</div>
-              <div style={s.cardBody}>
-                <div style={s.cardTitle}>Instagram</div>
-                <div style={s.cardSub}>@jogartenisto — dicas e conteúdo de tênis</div>
-              </div>
-              <div style={{ ...s.badge, ...s.badgePink }}>seguir</div>
-            </button>
 
           </div>
 
