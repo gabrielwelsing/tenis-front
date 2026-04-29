@@ -584,7 +584,10 @@ export default function BiomechanicsScreen({ onBack }: Props) {
       {/* Header */}
       <div style={s.header}>
         <button onClick={onBack} style={s.backBtn}>← Voltar</button>
-        <span style={s.headerTitle}>Análise Biomecânica</span>
+        <div style={s.headerTitleBlock}>
+          <span style={s.headerTitle}>Análise Biomecânica</span>
+          <span style={s.headerSub}>Análise Profissional do Movimento e comparativos com estudos internacionais</span>
+        </div>
         <button
           onClick={handleFindBestPose}
           style={{ ...s.trophyHeaderBtn, opacity: videoUrl && bestScore !== null ? 1 : 0.35 }}
@@ -804,12 +807,26 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     flexShrink: 0,
   },
-  headerTitle: {
+  headerTitleBlock: {
     flex: 1,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 2,
+  },
+  headerTitle: {
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 700,
     color: '#fff',
+  },
+  headerSub: {
+    textAlign: 'center' as const,
+    fontSize: 10,
+    fontWeight: 500,
+    color: 'rgba(79,195,247,0.75)',
+    letterSpacing: 0.2,
+    lineHeight: 1.3,
   },
   trophyHeaderBtn: {
     background: 'rgba(255,215,0,0.12)',
