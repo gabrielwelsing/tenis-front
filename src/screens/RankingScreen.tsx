@@ -30,10 +30,11 @@ interface Liga {
 interface Temporada { id: string; liga_id: string; nome: string; data_inicio: string; data_fim: string; ativa: boolean; total_partidas: number; }
 interface Membro    { membro_id: string; user_id: number; classe: string; nome: string; email: string; foto_url: string | null; }
 interface RankingEntry { id: number; nome: string; foto_url: string | null; classe: string; total_pontos: number; jogos: number; vitorias: number; derrotas: number; }
-interface Partida   { id: string; jogador_a_id: number; jogador_b_id: number; jogador_a_nome: string; jogador_b_nome: string; vencedor_id: number | null; vencedor_nome: string | null; placar: Array<{setA:number;setB:number}> | null; tipo_partida: string; wo: boolean; pontos_a: number; pontos_b: number; bonus_a: number; bonus_b: number; status: string; data_partida: string; }
+interface Partida   { id: string; jogador_a_id: number; jogador_b_id: number; jogador_a_nome: string; jogador_b_nome: string; vencedor_id: number | null; vencedor_nome: string | null; placar: Array<{setA:number;setB:number}> | null; tipo_partida: string; wo: boolean; pontos_a: number; pontos_b: number; bonus_a: number; bonus_b: number; status: string; data_partida: string; confirmado_a: boolean; confirmado_b: boolean; rodada_id: string | null; }
 interface Desafio   { id: string; liga_id: string; desafiante_id: number; desafiado_id: number; desafiante_nome: string; desafiado_nome: string; data_sugerida: string; horario_sugerido: string; local_sugerido: string; status: string; contra_data: string | null; contra_horario: string | null; contra_local: string | null; }
+interface Rodada    { id: string; temporada_id: string; numero: number; ativa: boolean; total_matchups: number; }
 
-type Tab = 'ranking' | 'partidas' | 'desafios' | 'config';
+type Tab = 'ranking' | 'rodada' | 'partidas' | 'desafios' | 'config';
 const CLASSES = ['iniciante', 'intermediario', 'avancado'];
 const CLASSE_LABELS: Record<string, string> = { iniciante: 'Iniciante', intermediario: 'Intermediário', avancado: 'Avançado' };
 const TIPO_LABELS: Record<string, string>   = { melhor_de_3: 'Melhor de 3', '2sets_supertiebreak': '2 Sets + ST', pro_set: 'Pró-set' };
@@ -87,6 +88,10 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   const [partidas,     setPartidas]     = useState<Partida[]>([]);
   const [desafios,     setDesafios]     = useState<Desafio[]>([]);
   const [classeFilter, setClasseFilter] = useState('');
+  const [rodadas,      setRodadas]      = useState<Rodada[]>([]);
+  const [matchups,     setMatchups]     = useState<Partida[]>([]);
+  const [pendentes,    setPendentes]    = useState<Partida[]>([]);
+  const [partSel,      setPartSel]      = useState<Set<number>>(new Set());
 
   // ─── UI state ──────────────────────────────────────────────────────────────
   const [loading, setLoading]   = useState(false);
@@ -160,8 +165,27 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     try { setDesafios(await api('GET', `/ranking/desafios?ligaId=${ligaId}`)); } catch { /* silent */ }
   }, [ligaId]);
 
+  const loadRodadas = useCallback(async () => {
+    if (!temporadaId) return;
+    try {
+      const data: Rodada[] = await api('GET', `/ranking/temporadas/${temporadaId}/rodadas`);
+      setRodadas(data);
+      const ativa = data.find(r => r.ativa);
+      if (ativa) {
+        const mu: Partida[] = await api('GET', `/ranking/rodadas/${ativa.id}/matchups`);
+        setMatchups(mu);
+      } else {
+        setMatchups([]);
+      }
+    } catch { /* silent */ }
+  }, [temporadaId]);
+
+  const loadPendentes = useCallback(async () => {
+    try { setPendentes(await api('GET', '/ranking/partidas/pendentes')); } catch { /* silent */ }
+  }, []);
+
   useEffect(() => { loadMembros(); loadTemporadas(); }, [ligaId]);
-  useEffect(() => { loadRanking(); loadPartidas(); loadDesafios(); }, [temporadaId]);
+  useEffect(() => { loadRanking(); loadPartidas(); loadDesafios(); loadRodadas(); loadPendentes(); }, [temporadaId]);
   useEffect(() => { if (temporadaId) loadRanking(); }, [classeFilter]);
 
   // ─── Actions ───────────────────────────────────────────────────────────────
@@ -260,10 +284,41 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   const confirmarPartida = async (id: string, confirmar: boolean) => {
     try {
       await api('PATCH', `/ranking/partidas/${id}/confirmar`, { confirmar });
-      flash('ok', confirmar ? 'Partida confirmada!' : 'Resultado disputado — admin vai revisar.');
+      flash('ok', confirmar ? 'Confirmado! Pontos entram ao outro confirmar também.' : 'Resultado contestado — admin vai revisar.');
       await loadPartidas();
+      await loadPendentes();
       await loadRanking();
     } catch (e: any) { flash('err', e.message); }
+  };
+
+  const criarRodada = async () => {
+    if (partSel.size < 2) { flash('err', 'Selecione ao menos 2 participantes.'); return; }
+    if (!temporadaId) { flash('err', 'Selecione uma temporada ativa.'); return; }
+    setLoading(true);
+    try {
+      await api('POST', '/ranking/rodadas', { temporada_id: temporadaId, participantes: [...partSel] });
+      setPartSel(new Set());
+      flash('ok', 'Rodada criada e emparelhamentos gerados!');
+      await loadRodadas();
+    } catch (e: any) { flash('err', e.message); }
+    setLoading(false);
+  };
+
+  const encerrarRodada = async (rodadaId: string) => {
+    if (!confirm('Encerrar esta rodada?')) return;
+    try {
+      await api('PATCH', `/ranking/rodadas/${rodadaId}/encerrar`, {});
+      flash('ok', 'Rodada encerrada.');
+      await loadRodadas();
+    } catch (e: any) { flash('err', e.message); }
+  };
+
+  const togglePartSel = (uid: number) => {
+    setPartSel(prev => {
+      const next = new Set(prev);
+      next.has(uid) ? next.delete(uid) : next.add(uid);
+      return next;
+    });
   };
 
   const criarDesafio = async () => {
@@ -307,6 +362,102 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       )}
     </div>
   );
+
+  // ─── Tab: Rodada ───────────────────────────────────────────────────────────
+  const renderRodada = () => {
+    const rodadaAtiva = rodadas.find(r => r.ativa);
+
+    if (!temporadaId) return <div style={s.empty}>Selecione uma temporada.</div>;
+
+    if (!rodadaAtiva) {
+      if (isLigaAdmin) return (
+        <div>
+          <div style={{ textAlign: 'center', padding: '32px 16px 16px', color: 'rgba(255,255,255,.35)' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>⚔️</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Nenhuma rodada ativa</div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>Selecione os participantes e o sistema emparelhará automaticamente por posição no ranking.</div>
+          </div>
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+            {membros.map(m => (
+              <div key={m.user_id} onClick={() => togglePartSel(m.user_id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12,
+                  border: `1.5px solid ${partSel.has(m.user_id) ? 'rgba(255,215,0,.5)' : 'rgba(255,255,255,.08)'}`,
+                  background: partSel.has(m.user_id) ? 'rgba(255,215,0,.06)' : 'rgba(255,255,255,.03)', cursor: 'pointer' }}>
+                <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${partSel.has(m.user_id) ? '#ffd700' : 'rgba(255,255,255,.2)'}`,
+                  background: partSel.has(m.user_id) ? '#ffd700' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#000', flexShrink: 0 }}>
+                  {partSel.has(m.user_id) ? '✓' : ''}
+                </div>
+                {avatar(m.nome, m.foto_url, 30)}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{m.nome}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>{CLASSE_LABELS[m.classe] ?? m.classe}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '0 16px' }}>
+            <button style={{ ...s.submitBtn, opacity: partSel.size >= 2 ? 1 : 0.4 }}
+              onClick={criarRodada} disabled={partSel.size < 2 || loading}>
+              {loading ? 'Gerando…' : `⚔️ Gerar Rodada (${partSel.size} selecionados)`}
+            </button>
+          </div>
+        </div>
+      );
+      return (
+        <div style={{ textAlign: 'center', padding: '48px 24px', color: 'rgba(255,255,255,.35)' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>⏳</div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>Nenhuma rodada no momento</div>
+          <div style={{ fontSize: 12, marginTop: 8, lineHeight: 1.6 }}>Aguarde o professor criar a próxima rodada.</div>
+        </div>
+      );
+    }
+
+    // Rodada ativa
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px 6px' }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>⚔️ Rodada {rodadaAtiva.numero}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>{rodadaAtiva.total_matchups} partidas</div>
+          </div>
+          {isLigaAdmin && (
+            <button onClick={() => encerrarRodada(rodadaAtiva.id)}
+              style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid rgba(239,83,80,.4)', background: 'rgba(239,83,80,.1)', color: '#ef9a9a', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              Encerrar
+            </button>
+          )}
+        </div>
+        {matchups.length === 0 && <div style={s.empty}>Carregando partidas…</div>}
+        {matchups.map((pt, i) => {
+          const isMyMatch = pt.jogador_a_id === userId || pt.jogador_b_id === userId;
+          return (
+            <div key={pt.id} style={{ ...s.partidaCard, ...(isMyMatch ? { boxShadow: '0 0 0 1.5px rgba(255,215,0,.4)' } : {}) }}>
+              <div style={s.partidaHeader}>
+                <span style={s.partidaDate}>Jogo {i + 1}</span>
+                <span style={{ ...s.statusPill,
+                  background: pt.status === 'confirmada' ? 'rgba(76,175,80,.15)' : 'rgba(255,167,38,.15)',
+                  color: pt.status === 'confirmada' ? '#4caf50' : '#ffa726',
+                  border: `1px solid ${pt.status === 'confirmada' ? '#4caf50' : '#ffa726'}` }}>
+                  {pt.status === 'confirmada' ? 'Confirmada' : 'Pendente'}
+                </span>
+              </div>
+              <div style={s.partidaVs}>
+                <span style={{ color: pt.vencedor_id === pt.jogador_a_id ? '#4caf50' : 'rgba(255,255,255,.7)', fontWeight: 800 }}>
+                  {pt.jogador_a_nome}
+                </span>
+                <span style={{ fontSize: 10, color: 'rgba(79,195,247,.7)', fontWeight: 700 }}>Desafiante</span>
+                <span style={s.vs}>VS</span>
+                <span style={{ fontSize: 10, color: 'rgba(255,183,77,.7)', fontWeight: 700 }}>Desafiado</span>
+                <span style={{ color: pt.vencedor_id === pt.jogador_b_id ? '#4caf50' : 'rgba(255,255,255,.7)', fontWeight: 800 }}>
+                  {pt.jogador_b_nome}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   // ─── Tab: Ranking ──────────────────────────────────────────────────────────
   const renderRanking = () => (
@@ -374,6 +525,71 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     return (
       <div>
         {renderLigaSelect()}
+
+        {/* ── Confirmações pendentes ── */}
+        {pendentes.length > 0 && (
+          <>
+            <div style={s.sectionTitle}>📬 Aguardando sua confirmação</div>
+            {pendentes.map(pt => {
+              const euSouA = pt.jogador_a_id === userId;
+              const vencedor = pt.vencedor_id === pt.jogador_a_id ? pt.jogador_a_nome : pt.jogador_b_nome;
+              return (
+                <div key={pt.id} style={{ ...s.partidaCard, border: '1px solid rgba(255,167,38,.4)', background: 'rgba(255,167,38,.04)', marginBottom: 10 }}>
+                  <div style={s.partidaHeader}>
+                    <span style={{ fontSize: 13, fontWeight: 800 }}>
+                      {euSouA ? pt.jogador_b_nome : pt.jogador_a_nome} enviou um resultado
+                    </span>
+                    <span style={{ ...s.statusPill, background: 'rgba(255,167,38,.15)', color: '#ffa726', border: '1px solid #ffa726' }}>
+                      Confirmar
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', marginBottom: 8, lineHeight: 1.5 }}>
+                    Vencedor: <strong style={{ color: '#4caf50' }}>{vencedor}</strong>
+                  </div>
+                  {pt.placar && (
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                      {pt.placar.map((set, i) => (
+                        <span key={i} style={{ background: 'rgba(255,255,255,.08)', borderRadius: 6, padding: '3px 10px', fontSize: 13, fontWeight: 800 }}>
+                          {set.setA}–{set.setB}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginBottom: 10 }}>
+                    {pt.jogador_a_nome}: <strong style={{ color: '#ffd700' }}>{pt.pontos_a + pt.bonus_a} pts</strong>
+                    &nbsp;·&nbsp;
+                    {pt.jogador_b_nome}: <strong style={{ color: '#ffd700' }}>{pt.pontos_b + pt.bonus_b} pts</strong>
+                  </div>
+                  <div style={s.confirmBtns}>
+                    <button style={s.okBtn} onClick={() => confirmarPartida(pt.id, true)}>✓ Confirmar resultado</button>
+                    <button style={s.disputeBtn} onClick={() => confirmarPartida(pt.id, false)}>✕ Contestar</button>
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {/* Resultados que eu enviei aguardando o outro */}
+        {partidas.filter(pt => pt.status === 'pendente' && (pt.jogador_a_id === userId || pt.jogador_b_id === userId)).map(pt => {
+          const euSouA = pt.jogador_a_id === userId;
+          const jaConfirmei = euSouA ? pt.confirmado_a : pt.confirmado_b;
+          if (!jaConfirmei) return null; // já está em pendentes acima
+          return (
+            <div key={pt.id} style={{ ...s.partidaCard, border: '1px solid rgba(79,195,247,.25)', background: 'rgba(79,195,247,.04)', marginBottom: 10 }}>
+              <div style={s.partidaHeader}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>📤 Resultado enviado</span>
+                <span style={{ ...s.statusPill, background: 'rgba(79,195,247,.15)', color: '#4fc3f7', border: '1px solid #4fc3f7' }}>⏳ Aguardando</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', lineHeight: 1.5 }}>
+                {pt.jogador_a_nome} vs {pt.jogador_b_nome}<br/>
+                Aguardando confirmação de <strong>{euSouA ? pt.jogador_b_nome : pt.jogador_a_nome}</strong>.<br/>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,.3)' }}>Após 48h sem contestação é aceito automaticamente.</span>
+              </div>
+            </div>
+          );
+        })}
+
         {!temporadaId ? <div style={s.empty}>Selecione uma temporada.</div> : (
           <>
             <div style={s.formCard}>
@@ -655,8 +871,9 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   // ─── Render ────────────────────────────────────────────────────────────────
   const TABS: { key: Tab; label: string }[] = [
     { key: 'ranking',  label: 'Ranking'  },
-    { key: 'partidas', label: 'Partidas' },
-    { key: 'desafios', label: 'Desafios' },
+    { key: 'rodada',   label: 'Rodada'   },
+    { key: 'partidas', label: 'Resultado' },
+    { key: 'desafios', label: 'Desafio'  },
     { key: 'config',   label: isAdmin ? 'Config' : 'Ligas' },
   ];
 
@@ -700,6 +917,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
 
         {ligas.length > 0 && (
           tab === 'ranking'  ? renderRanking()  :
+          tab === 'rodada'   ? renderRodada()   :
           tab === 'partidas' ? renderPartidas() :
           tab === 'desafios' ? renderDesafios() :
           renderConfig()

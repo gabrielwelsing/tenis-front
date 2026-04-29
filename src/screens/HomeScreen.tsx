@@ -192,7 +192,7 @@ export default function HomeScreen({
               <div style={s.cardIconWrap}>📅</div>
               <div style={s.cardBody}>
                 <div style={s.cardTitle}>Agenda</div>
-                <div style={s.cardSub}>Horários, reservas e inscrições</div>
+                <div style={s.cardSub}>Agendar aulas e quadras</div>
               </div>
               <div style={{ ...s.badge, ...s.badgeOrange }}>novo</div>
             </button>
