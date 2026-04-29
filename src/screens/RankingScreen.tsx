@@ -460,7 +460,20 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   };
 
   // ─── Tab: Ranking ──────────────────────────────────────────────────────────
-  const renderRanking = () => (
+  const CLASS_ICONS: Record<string, string> = { avancado: '🏆', intermediario: '🎾', iniciante: '🌱', geral: '📋' };
+  const CLASS_ORDER = ['avancado', 'intermediario', 'iniciante', 'geral'];
+
+  const renderRanking = () => {
+    // Agrupa por classe para exibição separada (estilo meuranking.com)
+    const byClasse: Record<string, RankingEntry[]> = {};
+    rankingData.forEach(e => {
+      const cl = e.classe || 'geral';
+      if (!byClasse[cl]) byClasse[cl] = [];
+      byClasse[cl].push(e);
+    });
+    const classesPresentes = CLASS_ORDER.filter(c => byClasse[c]?.length > 0);
+
+    return (
     <div>
       {renderLigaSelect()}
 
@@ -472,45 +485,55 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
         </div>
       ) : (
         <>
-          <div style={s.filterRow}>
-            {['', ...CLASSES].map(c => (
-              <button key={c} style={{ ...s.filterBtn, ...(classeFilter === c ? s.filterActive : {}) }} onClick={() => setClasseFilter(c)}>
-                {c === '' ? 'Todos' : CLASSE_LABELS[c]}
-              </button>
-            ))}
-          </div>
-
           {rankingData.length === 0 && <div style={s.empty}>Nenhuma partida registrada ainda.</div>}
 
-          {rankingData.map((entry, idx) => {
-            const isSelf  = entry.id === userId;
-            const isTop3  = idx < 3;
-            const aprov   = aproveitamento(entry.vitorias, entry.jogos);
+          {/* Tabelas separadas por classe — estilo meuranking.com */}
+          {classesPresentes.map(cl => {
+            const entries = byClasse[cl];
             return (
-              <div key={entry.id} style={{
-                ...s.rankRow,
-                ...(isTop3 ? { background: MEDAL_BG[idx], border: `1px solid ${MEDAL_BORDER[idx]}` } : {}),
-                ...(isSelf  ? { boxShadow: '0 0 0 2px #2e7d32' } : {}),
-              }}>
-                <div style={s.rankPos}>
-                  {isTop3 ? <span style={{ fontSize: 20 }}>{MEDAL[idx]}</span> : <span style={s.rankNum}>#{idx + 1}</span>}
+              <div key={cl} style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 6px' }}>
+                  <span style={{ fontSize: 18 }}>{CLASS_ICONS[cl]}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>
+                    {CLASSE_LABELS[cl] ?? cl}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginLeft: 4 }}>
+                    {entries.length} {entries.length === 1 ? 'jogador' : 'jogadores'}
+                  </span>
                 </div>
-                {avatar(entry.nome, entry.foto_url)}
-                <div style={s.rankInfo}>
-                  <div style={s.rankNome}>{entry.nome}{isSelf && <span style={s.voce}> (você)</span>}</div>
-                  <div style={s.rankSub}>{CLASSE_LABELS[entry.classe] ?? entry.classe} · {entry.jogos}J {entry.vitorias}V {entry.derrotas}D · {aprov}%</div>
-                </div>
-                <div style={s.rankPts}>
-                  <div style={s.rankPtsNum}>{entry.total_pontos}</div>
-                  <div style={s.rankPtsLabel}>pts</div>
-                </div>
+                {entries.map((entry, idx) => {
+                  const isSelf  = entry.id === userId;
+                  const isTop3  = idx < 3;
+                  const aprov   = aproveitamento(entry.vitorias, entry.jogos);
+                  return (
+                    <div key={entry.id} style={{
+                      ...s.rankRow,
+                      ...(isTop3 ? { background: MEDAL_BG[idx], border: `1px solid ${MEDAL_BORDER[idx]}` } : {}),
+                      ...(isSelf  ? { boxShadow: '0 0 0 2px #2e7d32' } : {}),
+                    }}>
+                      <div style={s.rankPos}>
+                        {isTop3 ? <span style={{ fontSize: 20 }}>{MEDAL[idx]}</span> : <span style={s.rankNum}>#{idx + 1}</span>}
+                      </div>
+                      {avatar(entry.nome, entry.foto_url)}
+                      <div style={s.rankInfo}>
+                        <div style={s.rankNome}>{entry.nome}{isSelf && <span style={s.voce}> (você)</span>}</div>
+                        <div style={s.rankSub}>{entry.jogos}J · {entry.vitorias}V · {entry.derrotas}D · {aprov}%</div>
+                      </div>
+                      <div style={s.rankPts}>
+                        <div style={s.rankPtsNum}>{entry.total_pontos}</div>
+                        <div style={s.rankPtsLabel}>pts</div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
         </>
       )}
     </div>
-  );
+    );
+  };
 
   // ─── Tab: Partidas ─────────────────────────────────────────────────────────
   const renderPartidas = () => {
@@ -786,14 +809,16 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   // ─── Tab: Config (admin only) ─────────────────────────────────────────────
   const renderConfig = () => (
     <div>
-      {!isAdmin && (
+      {isAdmin && (
         <div style={s.formCard}>
           <div style={s.formTitle}>Criar Liga</div>
           <div style={s.formGroup}>
             <label style={s.label}>Nome da Liga</label>
             <input style={s.inp} placeholder="Ex: Liga ACTO 2026" value={novaLiga} onChange={e => setNovaLiga(e.target.value)} />
           </div>
-          <button style={s.submitBtn} onClick={criarLiga} disabled={loading}>Criar Liga</button>
+          <button style={{ ...s.submitBtn, opacity: loading ? 0.6 : 1 }} onClick={criarLiga} disabled={loading}>
+            {loading ? 'Criando…' : 'Criar Liga'}
+          </button>
         </div>
       )}
 

@@ -179,6 +179,7 @@ export default function HomeScreen({
 
           <div style={s.cardList}>
 
+            {/* 1. Mural de Treinos */}
             <button style={{ ...s.card, ...s.cardCyan }} onClick={() => onNavigate('mural')}>
               <div style={s.cardIconWrap}>🎾</div>
               <div style={s.cardBody}>
@@ -188,6 +189,7 @@ export default function HomeScreen({
               <div style={{ ...s.badge, ...s.badgeCyan }}>novo</div>
             </button>
 
+            {/* 2. Agenda */}
             <button style={{ ...s.card, ...s.cardOrange }} onClick={() => onNavigate('agenda')}>
               <div style={s.cardIconWrap}>📅</div>
               <div style={s.cardBody}>
@@ -197,32 +199,17 @@ export default function HomeScreen({
               <div style={{ ...s.badge, ...s.badgeOrange }}>novo</div>
             </button>
 
-            {isAdmin ? (
-              <button style={{ ...s.card, ...s.cardGreen }} onClick={() => onNavigate('ranking')}>
-                <div style={s.cardIconWrap}>🏆</div>
-                <div style={s.cardBody}>
-                  <div style={s.cardTitle}>Ranking</div>
-                  <div style={s.cardSub}>Liga, campeonato e tabela de pontos</div>
-                </div>
-                <div style={{ ...s.badge, ...s.badgeGreen }}>novo</div>
-              </button>
-            ) : (
-              <LockedCard icon="🏆" title="Ranking" sub="Liga, campeonato e tabela de pontos" cardStyle={s.cardGreen} />
-            )}
+            {/* 3. Ranking — visível para todos */}
+            <button style={{ ...s.card, ...s.cardGreen }} onClick={() => onNavigate('ranking')}>
+              <div style={s.cardIconWrap}>🏆</div>
+              <div style={s.cardBody}>
+                <div style={s.cardTitle}>Ranking</div>
+                <div style={s.cardSub}>Liga, campeonato e tabela de pontos</div>
+              </div>
+              <div style={{ ...s.badge, ...s.badgeGreen }}>novo</div>
+            </button>
 
-            {isAdmin ? (
-              <button style={{ ...s.card, ...s.cardPink }} onClick={() => onNavigate('instagram')}>
-                <div style={s.cardIconWrap}>📱</div>
-                <div style={s.cardBody}>
-                  <div style={s.cardTitle}>Instagram Reels</div>
-                  <div style={s.cardSub}>Recorte horizontal → 9:16 para Stories</div>
-                </div>
-                <div style={{ ...s.badge, ...s.badgePink }}>local</div>
-              </button>
-            ) : (
-              <LockedCard icon="📱" title="Instagram Reels" sub="Recorte horizontal → 9:16 para Stories" cardStyle={s.cardPink} />
-            )}
-
+            {/* 4. Câmera */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardBlue }} onClick={() => onNavigate('camera')}>
                 <div style={s.cardIconWrap}>🎬</div>
@@ -236,6 +223,7 @@ export default function HomeScreen({
               <LockedCard icon="🎬" title="Câmera" sub="Grave e salve os últimos segundos do treino" cardStyle={s.cardBlue} />
             )}
 
+            {/* 5. Análise Biomecânica */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardTeal }} onClick={() => onNavigate('biomechanics')}>
                 <div style={s.cardIconWrap}>🦴</div>
@@ -249,6 +237,7 @@ export default function HomeScreen({
               <LockedCard icon="🦴" title="Análise Biomecânica" sub="Detecte ângulos articulares via IA" cardStyle={s.cardTeal} />
             )}
 
+            {/* 6. Comparativo de Vídeos */}
             {isAdmin ? (
               <button style={{ ...s.card, ...s.cardPurple }} onClick={() => onNavigate('comparison')}>
                 <div style={s.cardIconWrap}>⚖️</div>
@@ -273,6 +262,16 @@ export default function HomeScreen({
             ) : (
               <LockedCard icon="📂" title="Histórico" sub="Veja os vídeos e áudios salvos" cardStyle={s.cardGray} />
             )}
+
+            {/* 7. Instagram */}
+            <button style={{ ...s.card, ...s.cardPink }} onClick={() => window.open('https://www.instagram.com/jogartenisto', '_blank')}>
+              <div style={s.cardIconWrap}>📸</div>
+              <div style={s.cardBody}>
+                <div style={s.cardTitle}>Instagram</div>
+                <div style={s.cardSub}>@jogartenisto — dicas e conteúdo de tênis</div>
+              </div>
+              <div style={{ ...s.badge, ...s.badgePink }}>seguir</div>
+            </button>
 
           </div>
 
