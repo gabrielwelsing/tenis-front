@@ -67,17 +67,34 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   const [snapshotUrl, setSnapshotUrl]                 = useState<string | null>(null);
   const [analysisOpen, setAnalysisOpen]               = useState(false);
 
-  // Melhor pose
-  const [findingBest, setFindingBest]   = useState(false);
-  const [bestProgress, setBestProgress] = useState(0);
-  const [bestScore, setBestScore]       = useState<number | null>(null);
-  const scanCancelRef = useRef(false);
+  // Melhor pose — rastreada passivamente durante reprodução normal
+  const [bestScore, setBestScore]   = useState<number | null>(null);
+  const bestTrackedRef = useRef<{ score: number; time: number; frame: PoseFrame } | null>(null);
+  const gabaritoRef    = useRef<Record<string, GabaritoEntry> | null>(null);
+  const golpeFaseRef   = useRef('saque_preparacao');
+  const nivelRef       = useRef<NivelAluno>('intermediario');
+  const maoRef         = useRef<Mao>('destro');
 
   // Gabarito load state
   const [gabaritoError, setGabaritoError] = useState(false);
 
   // Lateralidade
   const [mao, setMao] = useState<Mao>(() => (localStorage.getItem('mao') as Mao | null) ?? 'destro');
+
+  // Sync refs com estado para uso dentro do renderLoop (evita closure stale)
+  useEffect(() => { gabaritoRef.current = gabarito; }, [gabarito]);
+  useEffect(() => {
+    golpeFaseRef.current   = selectedGolpeFaseId;
+    bestTrackedRef.current = null; setBestScore(null);
+  }, [selectedGolpeFaseId]);
+  useEffect(() => {
+    nivelRef.current       = selectedNivel;
+    bestTrackedRef.current = null; setBestScore(null);
+  }, [selectedNivel]);
+  useEffect(() => {
+    maoRef.current         = mao;
+    bestTrackedRef.current = null; setBestScore(null);
+  }, [mao]);
 
   // Seek bar
   const [videoDuration,    setVideoDuration]    = useState(0);
@@ -156,6 +173,18 @@ export default function BiomechanicsScreen({ onBack }: Props) {
     if (frame) {
       drawPoseFrame(ctx, frame, c.width, c.height, v);
       setCurrentAngles(frame.angles);
+
+      // Rastreia passivamente o melhor frame enquanto o vídeo toca
+      const entry = gabaritoRef.current?.[golpeFaseRef.current];
+      if (entry && validatePosture(frame.landmarks, golpeFaseRef.current, maoRef.current)) {
+        const result = calcularPerformance(
+          entry, nivelRef.current, '', '', frame.angles, maoRef.current, golpeFaseRef.current,
+        );
+        if (result.scorePonderado > (bestTrackedRef.current?.score ?? -1)) {
+          bestTrackedRef.current = { score: result.scorePonderado, time: v.currentTime, frame };
+          setBestScore(result.scorePonderado);
+        }
+      }
     }
     rafRef.current = requestAnimationFrame(renderLoop);
   }, []);
@@ -173,13 +202,13 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   // File handling
   // -------------------------------------------------------------------------
   const loadVideoFile = (file: File) => {
-    scanCancelRef.current = true; // cancela scan em andamento
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     const url = URL.createObjectURL(file);
     setVideoUrl(url);
     setIsPlaying(false);
     setCurrentAngles(null);
     setBestScore(null);
+    bestTrackedRef.current = null;
     cancelAnimationFrame(rafRef.current);
   };
 
@@ -371,121 +400,34 @@ export default function BiomechanicsScreen({ onBack }: Props) {
   };
 
   // -------------------------------------------------------------------------
-  // Busca do melhor frame (maior score) — varre o vídeo a cada 1s
+  // Melhor frame — jump instantâneo para o frame rastreado durante reprodução
   // -------------------------------------------------------------------------
   const handleFindBestPose = useCallback(async () => {
     const v = videoRef.current;
-    if (!v || !gabarito || findingBest) return;
-    const entry = gabarito[selectedGolpeFaseId];
-    if (!entry) return;
+    if (!v || !gabarito) return;
+    const best = bestTrackedRef.current;
+    if (!best) return;
 
     v.pause();
-    setFindingBest(true);
-    setBestProgress(0);
-    setBestScore(null);
-    scanCancelRef.current = false;
+    await handleSeek(Math.round(best.time * 1000));
+    v.currentTime = best.time;
 
-    const duration = v.duration || 0;
-    if (duration < 0.1) { setFindingBest(false); return; }
+    const c   = canvasRef.current;
+    const ctx = c?.getContext('2d');
+    if (c && ctx) drawPoseFrame(ctx, best.frame, c.width, c.height, v);
+    setCurrentAngles(best.frame.angles);
 
-    // Aguarda o vídeo estar em estado seekable
-    const waitReady = (): Promise<void> =>
-      new Promise(resolve => {
-        if (v.readyState >= 2) { resolve(); return; }
-        const fn = () => { v.removeEventListener('canplay', fn); resolve(); };
-        v.addEventListener('canplay', fn);
-        setTimeout(resolve, 500);
-      });
-
-    // Seek confiável: aguarda 'seeked' + garante que o frame está pintado
-    const seekTo = (t: number): Promise<void> =>
-      new Promise(resolve => {
-        let done = false;
-        const finish = () => {
-          if (!done) {
-            done = true;
-            v.removeEventListener('seeked', finish);
-            // Pequeno rAF para garantir que o frame está renderizado antes da detecção
-            requestAnimationFrame(() => resolve());
-          }
-        };
-        v.addEventListener('seeked', finish);
-        v.currentTime = Math.min(Math.max(t, 0), duration - 0.05);
-        setTimeout(finish, 150);
-      });
-
-    await waitReady();
-
-    const STEP = 0.3; // varre a cada 300ms — equilíbrio entre velocidade e cobertura
-    const times: number[] = [];
-    for (let t = 0; t < duration; t += STEP) times.push(t);
-    if (times.length === 0) times.push(0);
-
-    const total = times.length;
-    let bestSc         = -1;
-    let bestT          = 0;
-    let framesDetected = 0;
-    let bestFrameData: PoseFrame | null = null;
-
-    // Garante partida do início para timestamp monotônico
-    await seekTo(0);
-    await handleSeek(0);
-
-    for (let i = 0; i < total; i++) {
-      if (scanCancelRef.current) break;
-
-      await seekTo(times[i]);
-      if (scanCancelRef.current) break;
-
-      const tsMs = Math.round(v.currentTime * 1000);
-      await handleSeek(tsMs);
-      const frame = detectFrame(v, tsMs);
-
-      if (frame && validatePosture(frame.landmarks, selectedGolpeFaseId, mao)) {
-        framesDetected++;
-        const result = calcularPerformance(entry, selectedNivel, '', '', frame.angles, mao, selectedGolpeFaseId);
-        if (result.scorePonderado > bestSc) {
-          bestSc        = result.scorePonderado;
-          bestT         = v.currentTime;
-          bestFrameData = frame;
-        }
-      }
-
-      setBestProgress(Math.round(((i + 1) / total) * 100));
+    const entry = gabarito[selectedGolpeFaseId];
+    if (entry) {
+      const result = calcularPerformance(
+        entry, selectedNivel, entry.label, NIVEL_LABELS[selectedNivel],
+        best.frame.angles, mao, selectedGolpeFaseId,
+      );
+      setAnalysisResult(result);
+      const snap = captureSnapshot();
+      if (snap) setSnapshotUrl(snap);
     }
-
-    if (!scanCancelRef.current) {
-      if (framesDetected === 0 || !bestFrameData) {
-        // Nenhuma pose detectada — permanece no frame atual
-        setBestScore(null);
-      } else {
-        // Navega ao melhor instante e exibe o overlay já calculado
-        await seekTo(bestT);
-        const c   = canvasRef.current;
-        const ctx = c?.getContext('2d');
-        if (c && ctx) drawPoseFrame(ctx, bestFrameData, c.width, c.height, v);
-        setCurrentAngles(bestFrameData.angles);
-        setBestScore(bestSc);
-
-        // Sincroniza analysisResult com o melhor frame para que nota, %
-        // e ângulos no modal sejam idênticos aos exibidos no overlay do canvas
-        const bestResult = calcularPerformance(
-          entry,
-          selectedNivel,
-          entry.label,
-          NIVEL_LABELS[selectedNivel],
-          bestFrameData.angles,
-          mao,
-          selectedGolpeFaseId,
-        );
-        setAnalysisResult(bestResult);
-        const snap = captureSnapshot();
-        if (snap) setSnapshotUrl(snap);
-      }
-    }
-
-    setFindingBest(false);
-  }, [gabarito, selectedGolpeFaseId, selectedNivel, findingBest, captureSnapshot]);
+  }, [gabarito, selectedGolpeFaseId, selectedNivel, mao, captureSnapshot]);
 
   // -------------------------------------------------------------------------
   // Render helpers
@@ -644,12 +586,12 @@ export default function BiomechanicsScreen({ onBack }: Props) {
         <button onClick={onBack} style={s.backBtn}>← Voltar</button>
         <span style={s.headerTitle}>Análise Biomecânica</span>
         <button
-          onClick={findingBest ? () => { scanCancelRef.current = true; } : handleFindBestPose}
-          style={{ ...s.trophyHeaderBtn, opacity: videoUrl && (canAnalyze || findingBest) ? 1 : 0.3 }}
-          disabled={!videoUrl || (!canAnalyze && !findingBest)}
-          title={findingBest ? `Cancelar (${bestProgress}%)` : 'Encontrar melhor posição'}
+          onClick={handleFindBestPose}
+          style={{ ...s.trophyHeaderBtn, opacity: videoUrl && bestScore !== null ? 1 : 0.35 }}
+          disabled={!videoUrl || bestScore === null}
+          title={bestScore !== null ? `Ir para melhor frame (${bestScore}%)` : 'Reproduza o vídeo — o 🏆 rastreia automaticamente'}
         >
-          {findingBest ? `${bestProgress}%` : bestScore !== null ? `🏆 ${bestScore}%` : '🏆'}
+          {bestScore !== null ? `🏆 ${bestScore}%` : isPlaying ? '🏆 …' : '🏆'}
         </button>
       </div>
 
