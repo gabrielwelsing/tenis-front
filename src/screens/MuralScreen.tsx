@@ -13,6 +13,8 @@ interface Props {
   emailUsuario: string;
   userId:       number;
   username:     string;
+  telefone?:    string | null;
+  localidade?:  string | null;
 }
 
 interface Jogo {
@@ -206,28 +208,51 @@ function RegrasMural({ furos }: { furos: number }) {
   );
 }
 
-export default function MuralScreen({ onBack, emailUsuario, userId, username }: Props) {
+export default function MuralScreen({ onBack, emailUsuario, userId, username, telefone, localidade }: Props) {
   const [jogos, setJogos]               = useState<Jogo[]>([]);
   const [loadingJogos, setLoadingJogos] = useState(true);
-  const [cidade, setCidade]             = useState<string>(() => localStorage.getItem(LS_CIDADE) || '');
-  const [showCityPicker, setShowCity]   = useState(!localStorage.getItem(LS_CIDADE));
+
+  const [cidade, setCidade] = useState<string>(() => {
+    const salva = localStorage.getItem(LS_CIDADE);
+    if (salva) return salva;
+    if (localidade?.trim()) {
+      localStorage.setItem(LS_CIDADE, localidade.trim());
+      return localidade.trim();
+    }
+    return '';
+  });
+
+  const [showCityPicker, setShowCity] = useState(() => {
+    if (localStorage.getItem(LS_CIDADE)) return false;
+    if (localidade?.trim()) return false;
+    return true;
+  });
+
   const banStatus  = getBanStatus(emailUsuario);
   const penalidade = getPenalidade(emailUsuario);
-  const [furosMap, setFurosMap]         = useState<Record<string, number>>(getFurosReportados);
-  const [calAberto, setCalAberto]       = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [formAberto, setFormAberto]     = useState(true);
-  const [classe, setClasse]             = useState('Iniciante');
-  const [janelaData, setJanelaData]     = useState(false);
-  const [dataInicio, setDataInicio]     = useState('');
-  const [dataFim, setDataFim]           = useState('');
+  const [furosMap, setFurosMap]           = useState<Record<string, number>>(getFurosReportados);
+  const [calAberto, setCalAberto]         = useState(false);
+  const [selectedDate, setSelectedDate]   = useState<string | null>(null);
+  const [formAberto, setFormAberto]       = useState(true);
+  const [classe, setClasse]               = useState('Iniciante');
+  const [janelaData, setJanelaData]       = useState(false);
+  const [dataInicio, setDataInicio]       = useState('');
+  const [dataFim, setDataFim]             = useState('');
   const [horarioInicio, setHorarioInicio] = useState('');
-  const [horarioFim, setHorarioFim]     = useState('');
-  const [local, setLocal]               = useState(LOCAIS[0]);
-  const [localOutro, setLocalOutro]     = useState('');
-  const [whatsapp, setWhatsapp]         = useState('');
-  const [erro, setErro]                 = useState('');
-  const [sucesso, setSucesso]           = useState(false);
+  const [horarioFim, setHorarioFim]       = useState('');
+  const [local, setLocal]                 = useState(LOCAIS[0]);
+  const [localOutro, setLocalOutro]       = useState('');
+
+  const [whatsapp, setWhatsapp] = useState(() => {
+    if (!telefone) return '';
+    const d = telefone.replace(/\D/g, '').slice(0, 11);
+    if (d.length > 7) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+    if (d.length > 2) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+    return d;
+  });
+
+  const [erro, setErro]     = useState('');
+  const [sucesso, setSucesso] = useState(false);
 
   const hoje = new Date().toISOString().split('T')[0];
 
@@ -270,7 +295,7 @@ export default function MuralScreen({ onBack, emailUsuario, userId, username }: 
       const salvo = await postJogo(novo);
       setJogos(prev => [salvo as Jogo, ...prev]);
       setSucesso(true);
-      setDataInicio(''); setDataFim(''); setHorarioInicio(''); setHorarioFim(''); setWhatsapp(''); setLocalOutro('');
+      setDataInicio(''); setDataFim(''); setHorarioInicio(''); setHorarioFim(''); setLocalOutro('');
       setTimeout(() => setSucesso(false), 3000);
     } catch { setErro('Erro ao publicar. Tente novamente.'); }
   };
@@ -442,13 +467,13 @@ function JogoCard({ jogo, furosReportados, onReportarFuro, onInteressado, onConf
   const isOwner  = jogo.emailPublicador === emailUsuario;
   const isConfirmada = jogo.status === 'confirmada';
 
-  const [reportado,       setReportado]       = useState(false);
-  const [showResult,      setShowResult]       = useState(false);
-  const [interessados,    setInteressados]     = useState<Interessado[]>([]);
-  const [loadingInteress, setLoadingInteress]  = useState(false);
-  const [showInteress,    setShowInteress]     = useState(false);
-  const [selectedEmail,   setSelectedEmail]    = useState('');
-  const [confirmando,     setConfirmando]      = useState(false);
+  const [reportado,       setReportado]      = useState(false);
+  const [showResult,      setShowResult]      = useState(false);
+  const [interessados,    setInteressados]    = useState<Interessado[]>([]);
+  const [loadingInteress, setLoadingInteress] = useState(false);
+  const [showInteress,    setShowInteress]    = useState(false);
+  const [selectedEmail,   setSelectedEmail]   = useState('');
+  const [confirmando,     setConfirmando]     = useState(false);
 
   const handleWaClick = () => { if (!isOwner) onInteressado(); };
 
@@ -503,7 +528,6 @@ function JogoCard({ jogo, furosReportados, onReportarFuro, onInteressado, onConf
             )}
           </div>
 
-          {/* Botões ação */}
           {!isConfirmada && (
             <div style={sc.btnRow}>
               <a href={waUrl} target="_blank" rel="noopener noreferrer" style={sc.waBtn} onClick={handleWaClick}>
@@ -513,7 +537,6 @@ function JogoCard({ jogo, furosReportados, onReportarFuro, onInteressado, onConf
             </div>
           )}
 
-          {/* Dono: ver interessados e confirmar sala */}
           {isOwner && !isConfirmada && (jogo.interessados ?? 0) > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button onClick={toggleInteressados} style={sc.interessBtn}>
@@ -527,11 +550,7 @@ function JogoCard({ jogo, furosReportados, onReportarFuro, onInteressado, onConf
                     <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>Nenhum ainda.</p>
                   ) : (
                     <>
-                      <select
-                        style={sc.interessSelect}
-                        value={selectedEmail}
-                        onChange={e => setSelectedEmail(e.target.value)}
-                      >
+                      <select style={sc.interessSelect} value={selectedEmail} onChange={e => setSelectedEmail(e.target.value)}>
                         <option value="">Selecione com quem confirmou...</option>
                         {interessados.map(i => (
                           <option key={i.email_usuario} value={i.email_usuario}>{i.nome_usuario}</option>
@@ -573,7 +592,7 @@ function JogoCard({ jogo, furosReportados, onReportarFuro, onInteressado, onConf
   );
 }
 
-// ─── ResultadoModal (mantido igual) ──────────────────────────────────────────
+// ─── ResultadoModal ──────────────────────────────────────────────────────────
 interface Liga { id: string; nome: string; temporada_ativa_id: string | null; temporada_ativa_nome: string | null; }
 
 function ResultadoModal({ jogo, emailUsuario, userId, onClose }: { jogo: Jogo; emailUsuario: string; userId: number; onClose: () => void }) {
