@@ -39,6 +39,18 @@ const CLASSES = ['iniciante', 'intermediario', 'avancado'];
 const CLASSE_LABELS: Record<string, string> = { iniciante: 'Iniciante', intermediario: 'Intermediário', avancado: 'Avançado' };
 const TIPO_LABELS: Record<string, string>   = { melhor_de_3: 'Melhor de 3', '2sets_supertiebreak': '2 Sets + ST', pro_set: 'Pró-set' };
 
+// ─── Classe color palette ─────────────────────────────────────────────────────
+const CLASSE_COLORS: Record<string, { color: string; bg: string; border: string; glow: string }> = {
+  avancado:     { color: '#ffd700', bg: 'rgba(255,215,0,0.04)',   border: 'rgba(255,215,0,0.25)',   glow: 'rgba(255,215,0,0.2)'   },
+  intermediario:{ color: '#4fc3f7', bg: 'rgba(79,195,247,0.04)',  border: 'rgba(79,195,247,0.25)',  glow: 'rgba(79,195,247,0.2)'  },
+  iniciante:    { color: '#81c784', bg: 'rgba(129,199,132,0.04)', border: 'rgba(129,199,132,0.25)', glow: 'rgba(129,199,132,0.2)' },
+  geral:        { color: 'rgba(255,255,255,0.7)', bg: 'rgba(255,255,255,0.02)', border: 'rgba(255,255,255,0.1)', glow: 'rgba(255,255,255,0.1)' },
+};
+
+function getClasseColor(classe: string) {
+  return CLASSE_COLORS[classe] ?? CLASSE_COLORS['geral'];
+}
+
 function avatar(nome: string, foto: string | null, size = 36) {
   if (foto) return <img src={foto} alt={nome} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />;
   return (
@@ -125,7 +137,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
         setLigaId(first.id);
         if (first.temporada_ativa_id) setTemporadaId(first.temporada_ativa_id);
       }
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   }, [ligaId]);
 
@@ -197,7 +209,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       setNovaLiga('');
       flash('ok', 'Liga criada!');
       await loadLigas();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
@@ -209,7 +221,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       setFormTemp({ nome: '', data_inicio: '', data_fim: '' });
       flash('ok', 'Temporada criada!');
       await loadTemporadas();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
@@ -219,7 +231,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       await api('PATCH', `/ranking/ligas/${ligaId}/temporadas/${id}`, {});
       flash('ok', 'Temporada encerrada.');
       await loadTemporadas();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const adicionarMembro = async () => {
@@ -230,7 +242,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       setFormMembro({ email: '', classe: 'intermediario' });
       flash('ok', 'Membro adicionado!');
       await loadMembros();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
@@ -240,7 +252,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       await api('DELETE', `/ranking/ligas/${ligaId}/membros/${uid}`, {});
       flash('ok', 'Membro removido.');
       await loadMembros();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const alterarClasse = async (uid: number, classe: string) => {
@@ -249,7 +261,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       flash('ok', 'Classe atualizada.');
       await loadMembros();
       await loadRanking();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const registrarPartida = async () => {
@@ -277,7 +289,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       flash('ok', 'Partida registrada! Aguardando confirmação.');
       await loadPartidas();
       await loadRanking();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
@@ -288,7 +300,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       await loadPartidas();
       await loadPendentes();
       await loadRanking();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const criarRodada = async () => {
@@ -300,7 +312,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       setPartSel(new Set());
       flash('ok', 'Rodada criada e emparelhamentos gerados!');
       await loadRodadas();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
@@ -310,7 +322,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       await api('PATCH', `/ranking/rodadas/${rodadaId}/encerrar`, {});
       flash('ok', 'Rodada encerrada.');
       await loadRodadas();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const togglePartSel = (uid: number) => {
@@ -332,7 +344,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       setShowDesafioForm(false);
       flash('ok', 'Desafio enviado!');
       await loadDesafios();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
@@ -341,7 +353,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       await api('PATCH', `/ranking/desafios/${id}`, { status });
       flash('ok', status === 'aceito' ? 'Desafio aceito!' : 'Desafio recusado.');
       await loadDesafios();
-    } catch (e: any) { flash('err', e.message); }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   // ─── Derived ───────────────────────────────────────────────────────────────
@@ -352,11 +364,23 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   // ─── Liga selection UI ─────────────────────────────────────────────────────
   const renderLigaSelect = () => (
     <div style={s.ligaRow}>
-      <select style={s.ligaSelect} value={ligaId} onChange={e => { setLigaId(e.target.value); setTemporadaId(''); setRankingData([]); }}>
-        {ligas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
-      </select>
+      {/* Liga selector estilizado como chip/pill */}
+      <div style={{ position: 'relative', flex: 1 }}>
+        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 14, pointerEvents: 'none', zIndex: 1 }}>🏟️</span>
+        <select
+          style={{ ...s.ligaSelect, paddingLeft: 30 }}
+          value={ligaId}
+          onChange={e => { setLigaId(e.target.value); setTemporadaId(''); setRankingData([]); }}
+        >
+          {ligas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+        </select>
+      </div>
       {temporadas.length > 0 && (
-        <select style={{ ...s.ligaSelect, flex: 0.8 }} value={temporadaId} onChange={e => setTemporadaId(e.target.value)}>
+        <select
+          style={{ ...s.ligaSelect, flex: 0.8 }}
+          value={temporadaId}
+          onChange={e => setTemporadaId(e.target.value)}
+        >
           {temporadas.map(t => <option key={t.id} value={t.id}>{t.nome}{t.ativa ? ' ✓' : ''}</option>)}
         </select>
       )}
@@ -463,8 +487,16 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   const CLASS_ICONS: Record<string, string> = { avancado: '🏆', intermediario: '🎾', iniciante: '🌱', geral: '📋' };
   const CLASS_ORDER = ['avancado', 'intermediario', 'iniciante', 'geral'];
 
+  // Classe filter pill labels
+  const CLASSE_FILTER_OPTIONS: Array<{ value: string; label: string }> = [
+    { value: '',             label: 'Todos'           },
+    { value: 'avancado',     label: '🏆 Avançado'     },
+    { value: 'intermediario',label: '🎾 Intermediário' },
+    { value: 'iniciante',    label: '🌱 Iniciante'    },
+  ];
+
   const renderRanking = () => {
-    // Agrupa por classe para exibição separada (estilo meuranking.com)
+    // Agrupa por classe para exibição separada
     const byClasse: Record<string, RankingEntry[]> = {};
     rankingData.forEach(e => {
       const cl = e.classe || 'geral';
@@ -474,64 +506,143 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     const classesPresentes = CLASS_ORDER.filter(c => byClasse[c]?.length > 0);
 
     return (
-    <div>
-      {renderLigaSelect()}
+      <div>
+        {renderLigaSelect()}
 
-      {!temporadaId ? (
-        <div style={s.empty}>
-          {isLigaAdmin
-            ? 'Nenhuma temporada ativa. Vá em Config para criar.'
-            : 'Aguardando o admin criar uma temporada.'}
-        </div>
-      ) : (
-        <>
-          {rankingData.length === 0 && <div style={s.empty}>Nenhuma partida registrada ainda.</div>}
+        {/* ── Filtros de classe ── */}
+        {temporadaId && (
+          <div style={s.filterRow}>
+            {CLASSE_FILTER_OPTIONS.map(opt => {
+              const isActive = classeFilter === opt.value;
+              const palette  = opt.value ? getClasseColor(opt.value) : null;
+              const activeBg     = palette ? palette.bg    : 'rgba(255,255,255,0.08)';
+              const activeBorder = palette ? palette.border: 'rgba(255,255,255,0.3)';
+              const activeColor  = palette ? palette.color : '#fff';
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setClasseFilter(opt.value)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    border: `1px solid ${isActive ? activeBorder : 'rgba(255,255,255,0.12)'}`,
+                    background: isActive ? activeBg : 'transparent',
+                    color: isActive ? activeColor : 'rgba(255,255,255,0.45)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all .15s',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-          {/* Tabelas separadas por classe — estilo meuranking.com */}
-          {classesPresentes.map(cl => {
-            const entries = byClasse[cl];
-            return (
-              <div key={cl} style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 6px' }}>
-                  <span style={{ fontSize: 18 }}>{CLASS_ICONS[cl]}</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>
-                    {CLASSE_LABELS[cl] ?? cl}
-                  </span>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginLeft: 4 }}>
-                    {entries.length} {entries.length === 1 ? 'jogador' : 'jogadores'}
-                  </span>
+        {!temporadaId ? (
+          <div style={s.empty}>
+            {isLigaAdmin
+              ? 'Nenhuma temporada ativa. Vá em Config para criar.'
+              : 'Aguardando o admin criar uma temporada.'}
+          </div>
+        ) : (
+          <>
+            {rankingData.length === 0 && <div style={s.empty}>Nenhuma partida registrada ainda.</div>}
+
+            {/* Tabelas separadas por classe */}
+            {classesPresentes.map(cl => {
+              const entries = byClasse[cl];
+              const palette = getClasseColor(cl);
+              return (
+                <div key={cl} style={{ marginBottom: 24 }}>
+                  {/* Cabeçalho de seção de classe */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0 10px', marginBottom: 2 }}>
+                    <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, ${palette.border}, transparent)` }} />
+                    <span style={{ fontSize: 13, color: palette.color, fontWeight: 800, whiteSpace: 'nowrap', letterSpacing: 0.5 }}>
+                      {CLASS_ICONS[cl]} {(CLASSE_LABELS[cl] ?? cl).toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>
+                      · {entries.length} {entries.length === 1 ? 'jogador' : 'jogadores'}
+                    </span>
+                    <div style={{ flex: 1, height: 1, background: `linear-gradient(to left, ${palette.border}, transparent)` }} />
+                  </div>
+
+                  {entries.map((entry, idx) => {
+                    const isSelf  = entry.id === userId;
+                    const isTop3  = idx < 3;
+                    const aprov   = aproveitamento(entry.vitorias, entry.jogos);
+
+                    const cardBg     = isTop3 ? MEDAL_BG[idx]       : palette.bg;
+                    const cardBorder = isTop3 ? MEDAL_BORDER[idx]    : palette.border;
+                    const cardGlow   = isTop3 ? `0 0 16px ${palette.glow}, 0 0 0 1px ${MEDAL_BORDER[idx]}` : undefined;
+
+                    return (
+                      <div key={entry.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '12px 14px 12px 12px',
+                        borderRadius: 14,
+                        border: `1px solid ${isSelf ? '#2e7d32' : cardBorder}`,
+                        borderLeft: `3px solid ${palette.color}`,
+                        background: cardBg,
+                        backdropFilter: 'blur(4px)',
+                        marginBottom: 8,
+                        ...(isTop3 ? { boxShadow: cardGlow } : {}),
+                        ...(isSelf && !isTop3 ? { boxShadow: '0 0 0 2px #2e7d32' } : {}),
+                      }}>
+                        {/* Posição */}
+                        <div style={{ width: 32, textAlign: 'center', flexShrink: 0 }}>
+                          {isTop3
+                            ? <span style={{ fontSize: 20 }}>{MEDAL[idx]}</span>
+                            : <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14, fontWeight: 700 }}>#{idx + 1}</span>}
+                        </div>
+
+                        {avatar(entry.nome, entry.foto_url)}
+
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {entry.nome}
+                            {isSelf && <span style={{ color: '#4caf50', fontSize: 11 }}> (você)</span>}
+                          </div>
+                          {/* Stats como pills */}
+                          <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
+                            {[
+                              { label: 'J', val: entry.jogos },
+                              { label: 'V', val: entry.vitorias },
+                              { label: 'D', val: entry.derrotas },
+                            ].map(stat => (
+                              <span key={stat.label} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: '2px 7px', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 700 }}>
+                                {stat.label} {stat.val}
+                              </span>
+                            ))}
+                          </div>
+                          {/* Barra de aproveitamento */}
+                          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 80, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', flexShrink: 0 }}>
+                              <div style={{ width: `${aprov}%`, height: '100%', background: palette.color, borderRadius: 2, transition: 'width .3s' }} />
+                            </div>
+                            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{aprov}%</span>
+                          </div>
+                        </div>
+
+                        {/* Pontos — badge colorido */}
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ color: palette.color, fontSize: 22, fontWeight: 900, lineHeight: 1 }}>{entry.total_pontos}</div>
+                          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: 600, marginTop: 2 }}>pts</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                {entries.map((entry, idx) => {
-                  const isSelf  = entry.id === userId;
-                  const isTop3  = idx < 3;
-                  const aprov   = aproveitamento(entry.vitorias, entry.jogos);
-                  return (
-                    <div key={entry.id} style={{
-                      ...s.rankRow,
-                      ...(isTop3 ? { background: MEDAL_BG[idx], border: `1px solid ${MEDAL_BORDER[idx]}` } : {}),
-                      ...(isSelf  ? { boxShadow: '0 0 0 2px #2e7d32' } : {}),
-                    }}>
-                      <div style={s.rankPos}>
-                        {isTop3 ? <span style={{ fontSize: 20 }}>{MEDAL[idx]}</span> : <span style={s.rankNum}>#{idx + 1}</span>}
-                      </div>
-                      {avatar(entry.nome, entry.foto_url)}
-                      <div style={s.rankInfo}>
-                        <div style={s.rankNome}>{entry.nome}{isSelf && <span style={s.voce}> (você)</span>}</div>
-                        <div style={s.rankSub}>{entry.jogos}J · {entry.vitorias}V · {entry.derrotas}D · {aprov}%</div>
-                      </div>
-                      <div style={s.rankPts}>
-                        <div style={s.rankPtsNum}>{entry.total_pontos}</div>
-                        <div style={s.rankPtsLabel}>pts</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </>
-      )}
-    </div>
+              );
+            })}
+          </>
+        )}
+      </div>
     );
   };
 
@@ -895,20 +1006,35 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
 
   // ─── Render ────────────────────────────────────────────────────────────────
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'ranking',  label: 'Ranking'  },
-    { key: 'rodada',   label: 'Rodada'   },
-    { key: 'partidas', label: 'Resultado' },
-    { key: 'desafios', label: 'Desafio'  },
-    { key: 'config',   label: isAdmin ? 'Config' : 'Ligas' },
+    { key: 'ranking',  label: '🏅 Ranking'  },
+    { key: 'rodada',   label: '⚔️ Rodada'   },
+    { key: 'partidas', label: '🎯 Resultado' },
+    { key: 'desafios', label: '🤝 Desafio'  },
+    { key: 'config',   label: isAdmin ? '⚙️ Config' : '⚙️ Ligas' },
   ];
+
+  // Subtítulo do header: liga + temporada
+  const temporadaAtual = temporadas.find(t => t.id === temporadaId);
+  const headerSubtitle = ligaAtual
+    ? temporadaAtual
+      ? `${ligaAtual.nome} · ${temporadaAtual.nome}`
+      : ligaAtual.nome
+    : null;
 
   return (
     <div style={s.page}>
+      {/* Background glows */}
       <div style={s.bgGlow} />
+      <div style={s.bgGlow2} />
 
       <div style={s.header}>
         <button style={s.backBtn} onClick={onBack}>‹ Voltar</button>
-        <h2 style={s.title}>🏆 Ranking</h2>
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={s.title}>🏆 Ranking</h2>
+          {headerSubtitle && (
+            <div style={s.headerSubtitle}>{headerSubtitle}</div>
+          )}
+        </div>
         <div style={{ width: 64 }} />
       </div>
 
@@ -954,76 +1080,73 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
 
 // =============================================================================
 const s: Record<string, React.CSSProperties> = {
-  page: { position: 'fixed', inset: 0, background: '#0d0d1a', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  bgGlow: { position: 'absolute', top: '-20%', left: '-20%', width: '60vw', height: '60vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(46,125,50,0.06) 0%, transparent 70%)', pointerEvents: 'none' },
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'max(16px,env(safe-area-inset-top,16px)) 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(13,13,26,0.97)', backdropFilter: 'blur(8px)', position: 'relative', zIndex: 10 },
-  backBtn: { background: 'rgba(46,125,50,0.1)', border: '1px solid rgba(46,125,50,0.3)', color: '#4caf50', padding: '8px 14px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', minWidth: 64 },
-  title: { color: '#fff', fontSize: 18, fontWeight: 800, margin: 0 },
-  toast: { position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)', padding: '10px 20px', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', whiteSpace: 'nowrap' },
-  tabBar: { display: 'flex', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 },
-  tabBtn: { flex: 1, padding: '12px 4px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: 700, cursor: 'pointer', borderBottom: '2px solid transparent', transition: 'color .2s' },
+  page:      { position: 'fixed', inset: 0, background: '#0d0d1a', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  bgGlow:    { position: 'absolute', top: '-20%', left: '-20%', width: '60vw', height: '60vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(46,125,50,0.06) 0%, transparent 70%)', pointerEvents: 'none' },
+  bgGlow2:   { position: 'absolute', bottom: '-20%', right: '-20%', width: '50vw', height: '50vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(46,125,50,0.03) 0%, transparent 70%)', pointerEvents: 'none' },
+  header:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'max(16px,env(safe-area-inset-top,16px)) 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(13,13,26,0.92)', backdropFilter: 'blur(12px)', position: 'relative', zIndex: 10 },
+  backBtn:   { background: 'rgba(46,125,50,0.1)', border: '1px solid rgba(46,125,50,0.3)', color: '#4caf50', padding: '8px 14px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', minWidth: 64 },
+  title:     { color: '#fff', fontSize: 18, fontWeight: 800, margin: 0, lineHeight: 1.2 },
+  headerSubtitle: { color: 'rgba(255,255,255,0.38)', fontSize: 11, fontWeight: 500, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 },
+  toast:     { position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)', padding: '10px 20px', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', whiteSpace: 'nowrap' },
+  tabBar:    { display: 'flex', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 },
+  tabBtn:    { flex: 1, padding: '11px 2px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700, cursor: 'pointer', borderBottom: '2px solid transparent', transition: 'color .2s', lineHeight: 1.3 },
   tabActive: { color: '#4caf50', borderBottomColor: '#4caf50' },
-  body: { flex: 1, overflowY: 'auto', padding: '14px 14px 40px', maxWidth: 540, width: '100%', margin: '0 auto', boxSizing: 'border-box' },
-  ligaRow: { display: 'flex', gap: 8, marginBottom: 14 },
-  ligaSelect: { flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '9px 12px', fontSize: 13 },
-  filterRow: { display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
-  filterBtn: { padding: '6px 14px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
-  filterActive: { background: 'rgba(46,125,50,0.2)', border: '1px solid #2e7d32', color: '#4caf50' },
-  empty: { color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '24px 0', fontSize: 13 },
-  emptyBig: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', gap: 12 },
+  body:      { flex: 1, overflowY: 'auto', padding: '14px 14px 40px', maxWidth: 540, width: '100%', margin: '0 auto', boxSizing: 'border-box' },
+  // Liga selector
+  ligaRow:   { display: 'flex', gap: 8, marginBottom: 14 },
+  ligaSelect:{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, color: '#fff', padding: '9px 12px', fontSize: 13, appearance: 'none', WebkitAppearance: 'none' },
+  // Filters
+  filterRow: { display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' },
+  // Misc
+  empty:     { color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '24px 0', fontSize: 13 },
+  emptyBig:  { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', gap: 12 },
   emptyBigText: { color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', lineHeight: 1.6 },
-  rankRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', marginBottom: 8 },
-  rankPos: { width: 32, textAlign: 'center', flexShrink: 0 },
-  rankNum: { color: 'rgba(255,255,255,0.35)', fontSize: 14, fontWeight: 700 },
-  rankInfo: { flex: 1, minWidth: 0 },
-  rankNome: { color: '#fff', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  rankSub: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 },
-  voce: { color: '#4caf50', fontSize: 11 },
-  rankPts: { textAlign: 'right', flexShrink: 0 },
-  rankPtsNum: { color: '#4caf50', fontSize: 20, fontWeight: 900, lineHeight: 1 },
-  rankPtsLabel: { color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: 600 },
-  formCard: { background: 'rgba(46,125,50,0.05)', border: '1px solid rgba(46,125,50,0.2)', borderRadius: 16, padding: 16, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 12 },
+  // Forms
+  formCard:  { background: 'rgba(46,125,50,0.05)', border: '1px solid rgba(46,125,50,0.2)', borderRadius: 16, padding: 16, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 12 },
   formTitle: { color: '#4caf50', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
-  formRow: { display: 'flex', gap: 10 },
+  formRow:   { display: 'flex', gap: 10 },
   formGroup: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6 },
-  label: { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
-  sel: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '10px 12px', fontSize: 13, width: '100%' },
-  inp: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '10px 12px', fontSize: 13, width: '100%', boxSizing: 'border-box' },
-  woRow: { display: 'flex', alignItems: 'center' },
-  woLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13, display: 'flex', alignItems: 'center', cursor: 'pointer' },
-  setRow: { display: 'flex', alignItems: 'center', gap: 10 },
-  setLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, width: 40, flexShrink: 0 },
-  setInp: { width: 56, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '8px 0', fontSize: 18, fontWeight: 700, textAlign: 'center', boxSizing: 'border-box' },
+  label:     { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sel:       { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '10px 12px', fontSize: 13, width: '100%' },
+  inp:       { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '10px 12px', fontSize: 13, width: '100%', boxSizing: 'border-box' },
+  woRow:     { display: 'flex', alignItems: 'center' },
+  woLabel:   { color: 'rgba(255,255,255,0.6)', fontSize: 13, display: 'flex', alignItems: 'center', cursor: 'pointer' },
+  setRow:    { display: 'flex', alignItems: 'center', gap: 10 },
+  setLabel:  { color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, width: 40, flexShrink: 0 },
+  setInp:    { width: 56, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '8px 0', fontSize: 18, fontWeight: 700, textAlign: 'center', boxSizing: 'border-box' },
   submitBtn: { width: '100%', padding: '13px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b5e20, #2e7d32)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(46,125,50,0.35)' },
-  addBtn: { width: '100%', padding: '12px 0', borderRadius: 12, marginBottom: 12, background: 'rgba(46,125,50,0.08)', border: '1px dashed rgba(46,125,50,0.4)', color: '#4caf50', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+  addBtn:    { width: '100%', padding: '12px 0', borderRadius: 12, marginBottom: 12, background: 'rgba(46,125,50,0.08)', border: '1px dashed rgba(46,125,50,0.4)', color: '#4caf50', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
   sectionTitle: { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginTop: 16, marginBottom: 8 },
-  partidaCard: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 14, marginBottom: 8 },
+  // Partidas
+  partidaCard:   { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 14, marginBottom: 8 },
   partidaHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  partidaDate: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
-  statusPill: { fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 },
-  partidaVs: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 6, flexWrap: 'wrap' },
-  vs: { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 },
-  placarRow: { display: 'flex', gap: 6, marginBottom: 4 },
-  placarSet: { background: 'rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 700 },
-  woTag: { display: 'inline-block', background: 'rgba(255,167,38,0.15)', color: '#ffa726', border: '1px solid #ffa726', borderRadius: 6, padding: '1px 8px', fontSize: 11, fontWeight: 700, marginBottom: 4 },
-  ptsRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 },
-  ptsTag: { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
-  confirmBtns: { display: 'flex', gap: 8, marginTop: 10 },
-  okBtn: { flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: '#2e7d32', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
-  disputeBtn: { flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid #f44336', background: 'rgba(244,67,54,0.1)', color: '#f44336', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
-  desafioCard: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 14, marginBottom: 8 },
+  partidaDate:   { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+  statusPill:    { fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 },
+  partidaVs:     { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 6, flexWrap: 'wrap' },
+  vs:            { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 },
+  placarRow:     { display: 'flex', gap: 6, marginBottom: 4 },
+  placarSet:     { background: 'rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 700 },
+  woTag:         { display: 'inline-block', background: 'rgba(255,167,38,0.15)', color: '#ffa726', border: '1px solid #ffa726', borderRadius: 6, padding: '1px 8px', fontSize: 11, fontWeight: 700, marginBottom: 4 },
+  ptsRow:        { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 },
+  ptsTag:        { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
+  confirmBtns:   { display: 'flex', gap: 8, marginTop: 10 },
+  okBtn:         { flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: '#2e7d32', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
+  disputeBtn:    { flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid #f44336', background: 'rgba(244,67,54,0.1)', color: '#f44336', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
+  // Desafios
+  desafioCard:   { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 14, marginBottom: 8 },
   desafioHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  desafioNome: { color: '#fff', fontSize: 14, fontWeight: 700 },
-  desafioInfo: { color: 'rgba(255,255,255,0.45)', fontSize: 12, marginBottom: 2 },
-  tempCard: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '12px 14px', marginBottom: 8 },
-  tempNome: { color: '#fff', fontSize: 14, fontWeight: 700 },
-  tempDatas: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 },
+  desafioNome:   { color: '#fff', fontSize: 14, fontWeight: 700 },
+  desafioInfo:   { color: 'rgba(255,255,255,0.45)', fontSize: 12, marginBottom: 2 },
+  // Config
+  tempCard:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '12px 14px', marginBottom: 8 },
+  tempNome:    { color: '#fff', fontSize: 14, fontWeight: 700 },
+  tempDatas:   { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 },
   encerrarBtn: { background: 'rgba(244,67,54,0.12)', border: '1px solid #f44336', color: '#f44336', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
-  encerradaTag: { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 },
-  membroCard: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '10px 12px', marginBottom: 6 },
-  membroInfo: { flex: 1, minWidth: 0 },
-  membroNome: { color: '#fff', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  encerradaTag:{ color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 },
+  membroCard:  { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '10px 12px', marginBottom: 6 },
+  membroInfo:  { flex: 1, minWidth: 0 },
+  membroNome:  { color: '#fff', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   membroEmail: { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
-  classeSelect: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', padding: '5px 8px', fontSize: 11, flexShrink: 0 },
-  removeBtn: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 16, cursor: 'pointer', padding: '0 4px', flexShrink: 0 },
+  classeSelect:{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', padding: '5px 8px', fontSize: 11, flexShrink: 0 },
+  removeBtn:   { background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 16, cursor: 'pointer', padding: '0 4px', flexShrink: 0 },
 };
