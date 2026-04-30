@@ -108,10 +108,14 @@ function tempoRelativo(ts: number): string {
   return `há ${Math.floor(h / 24)}d`;
 }
 function isExpired(jogo: Jogo): boolean {
-  const now = new Date(); const today = now.toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const endDate = jogo.dataFim || jogo.dataInicio;
   if (endDate < today) return true;
-  if (endDate === today) { const [h, m] = jogo.horarioFim.split(':').map(Number); return now.getHours() * 60 + now.getMinutes() > h * 60 + m; }
+  if (endDate === today) {
+    const [h, m] = jogo.horarioFim.split(':').map(Number);
+    return now.getHours() * 60 + now.getMinutes() > h * 60 + m;
+  }
   return false;
 }
 function jogoIsOnDate(jogo: Jogo, dateStr: string): boolean { return dateStr >= jogo.dataInicio && dateStr <= (jogo.dataFim || jogo.dataInicio); }
