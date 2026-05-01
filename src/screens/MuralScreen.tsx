@@ -162,14 +162,6 @@ function fmtData(iso: string): string {
   return `${DIAS_SEMANA[dt.getDay()]}, ${d}/${m}`;
 }
 
-function fmtDataRange(jogo: Jogo): string {
-  if (!jogo.dataFim || jogo.dataFim === jogo.dataInicio) {
-    return fmtData(jogo.dataInicio);
-  }
-
-  return `${fmtData(jogo.dataInicio)} – ${fmtData(jogo.dataFim)}`;
-}
-
 function tempoRelativo(ts: number): string {
   const diff = Math.floor((Date.now() - ts) / 60000);
 
@@ -215,6 +207,22 @@ function amanhaStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function getCardDateInfo(dateIso: string) {
+  const dt = new Date(`${dateIso}T12:00:00`);
+  const today = hojeStr();
+  const tomorrow = amanhaStr();
+
+  let label = DIAS_SEMANA[dt.getDay()].toUpperCase();
+  if (dateIso === today) label = 'HOJE';
+  if (dateIso === tomorrow) label = 'AMANHÃ';
+
+  return {
+    label,
+    day: String(dt.getDate()).padStart(2, '0'),
+    month: MESES[dt.getMonth()].toUpperCase(),
+  };
+}
+
 function nomeDoPublicador(jogo: Jogo): string {
   return jogo.nomePublicador?.trim()
     || jogo.emailPublicador?.split('@')[0]
@@ -231,7 +239,7 @@ function classeColor(classe: string): string {
     'Classe 1': '#ef5350',
   };
 
-  return map[classe] ?? '#c66b4d';
+  return map[classe] ?? '#d35720';
 }
 
 function buildWhatsAppUrl(jogo: Jogo): string {
@@ -285,6 +293,88 @@ async function detectarCidade(): Promise<string> {
       { timeout: 10000, maximumAge: 300_000 }
     );
   });
+}
+
+function LevelBarsIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 12V9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M6.5 12V6.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M10 12V4.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M13.5 12V7.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CalendarLineIcon({ size = 26 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="5.5" width="16" height="14" rx="2.4" stroke="currentColor" strokeWidth="1.9" />
+      <path d="M8 4v3.4M16 4v3.4M4.7 10h14.6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ClockLineIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.9" />
+      <path d="M12 7.6v4.6l3 1.8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PinLineIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 20s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z" stroke="currentColor" strokeWidth="1.9" />
+      <circle cx="12" cy="10" r="2.2" stroke="currentColor" strokeWidth="1.9" />
+    </svg>
+  );
+}
+
+function UsersLineIcon({ size = 27 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="9" cy="9" r="2.8" stroke="currentColor" strokeWidth="1.9" />
+      <circle cx="16.8" cy="10" r="2.2" stroke="currentColor" strokeWidth="1.9" />
+      <path d="M4.6 18.2c.8-2.8 2.5-4.2 4.4-4.2s3.6 1.4 4.4 4.2M14.4 15.6c1.7.2 2.9 1.1 3.7 2.6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BookmarkLineIcon({ size = 25 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 4.8c0-.9.7-1.6 1.6-1.6h6.8c.9 0 1.6.7 1.6 1.6v15.4l-5-3.1-5 3.1V4.8Z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MenuDotsIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="12" cy="5" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="12" cy="19" r="2" />
+    </svg>
+  );
+}
+
+function RacketPremiumArt({ size = 116 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 140 120" fill="none" aria-hidden="true">
+      <g transform="translate(50 5) rotate(28 45 45)">
+        <ellipse cx="48" cy="32" rx="18" ry="30" fill="none" stroke="#2a2624" strokeWidth="4" />
+        <ellipse cx="48" cy="32" rx="13" ry="24" fill="none" stroke="#d9d3ce" strokeWidth="1.2" />
+        <path d="M37 13c8 8 15 20 22 39M59 13c-8 8-15 20-22 39M31 28h34M32 39h32M36 50h24" stroke="#e9e2dc" strokeWidth="1" />
+        <path d="M39 59 21 95" stroke="#24211f" strokeWidth="6" strokeLinecap="round" />
+        <path d="M39 59 21 95" stroke="#f3eee8" strokeWidth="3" strokeLinecap="round" />
+      </g>
+      <circle cx="43" cy="96" r="13" fill="#d7db3f" stroke="#bdc331" strokeWidth="2" />
+      <path d="M32 89c6 3.5 10.5 9 12.8 19M54 101c-6-3.5-10.5-9-12.8-19" stroke="#f0f2a6" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void; onBack: () => void }) {
@@ -1014,6 +1104,7 @@ function JogoCard({
   const isOwner = jogo.emailPublicador === emailUsuario;
   const isConfirmada = jogo.status === 'confirmada';
   const autorNome = nomeDoPublicador(jogo);
+  const dateInfo = getCardDateInfo(jogo.dataInicio);
 
   const [reportado, setReportado] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -1071,8 +1162,8 @@ function JogoCard({
       )}
 
       <div style={sc.card}>
-        <div style={sc.topRow}>
-          <div style={sc.author}>
+        <div style={sc.header}>
+          <div style={sc.authorWrap}>
             {jogo.fotoPublicador ? (
               <img src={jogo.fotoPublicador} alt={autorNome} style={sc.avatar} />
             ) : (
@@ -1081,50 +1172,117 @@ function JogoCard({
 
             <div style={sc.authorInfo}>
               <div style={sc.authorName}>{autorNome}</div>
-              <div style={sc.postTime}>{tempoRelativo(jogo.publicadoEm)}</div>
+
+              <div style={sc.authorMeta}>
+                <span style={{ ...sc.levelIcon, color: cor }}>
+                  <LevelBarsIcon size={16} />
+                </span>
+                <span>Nível {jogo.classe}</span>
+              </div>
             </div>
           </div>
 
-          <div style={sc.badges}>
-            {isOwner && <span style={sc.ownerBadge}>Seu post</span>}
-            {isConfirmada && <span style={sc.confirmadaBadge}>Confirmada</span>}
+          <div style={sc.headerRight}>
+            <span style={sc.postTime}>{tempoRelativo(jogo.publicadoEm)}</span>
+            <span style={sc.dots}>
+              <MenuDotsIcon size={22} />
+            </span>
           </div>
         </div>
 
-        <div style={sc.mainInfo}>
-          <span style={{ ...sc.classeBadge, color: cor, borderColor: `${cor}55`, background: `${cor}18` }}>
-            {jogo.classe}
-          </span>
+        <div style={sc.matchPanel}>
+          <div style={sc.dateArea}>
+            <span style={sc.dateIcon}>
+              <CalendarLineIcon size={25} />
+            </span>
+            <span style={sc.dateLabel}>{dateInfo.label}</span>
+            <strong style={sc.dateDay}>{dateInfo.day}</strong>
+            <span style={sc.dateMonth}>{dateInfo.month}</span>
+          </div>
 
-          <div style={sc.infoGrid}>
-            <InfoItem icon="📅" text={fmtDataRange(jogo)} />
-            <InfoItem icon="🕐" text={`${jogo.horarioInicio.replace(':', 'h')} – ${jogo.horarioFim.replace(':', 'h')}`} />
-            <InfoItem icon="📍" text={jogo.local} />
-            <InfoItem icon="👥" text={`${jogo.interessados ?? 0} interessado${(jogo.interessados ?? 0) === 1 ? '' : 's'}`} />
+          <div style={sc.divider} />
+
+          <div style={sc.centerInfo}>
+            <div style={sc.infoLine}>
+              <span style={sc.infoIcon}>
+                <ClockLineIcon size={25} />
+              </span>
+              <strong style={sc.timeText}>
+                {jogo.horarioInicio} - {jogo.horarioFim}
+              </strong>
+            </div>
+
+            <div style={sc.infoLine}>
+              <span style={sc.infoIcon}>
+                <PinLineIcon size={25} />
+              </span>
+              <div style={sc.locationText}>
+                <span>{jogo.local}</span>
+                <span>{jogo.cidade}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={sc.divider} />
+
+          <div style={sc.playersArea}>
+            <div style={sc.playersTop}>
+              <span style={sc.playersIcon}>
+                <UsersLineIcon size={28} />
+              </span>
+              <strong style={sc.playersNumber}>
+                {jogo.interessados ?? 0}
+              </strong>
+            </div>
+            <span style={sc.playersText}>
+              interessado{(jogo.interessados ?? 0) === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <div style={sc.racketArea}>
+            <RacketPremiumArt size={108} />
           </div>
         </div>
 
-        {furosReportados >= 3 && (
-          <span style={sc.furoBadge}>⚠️ {furosReportados} furos reportados</span>
-        )}
+        <div style={sc.chipRow}>
+          <span style={sc.gameChip}>Jogo amigável</span>
 
-        {!isConfirmada && (
-          <div style={sc.btnRow}>
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={sc.waBtn}
-              onClick={handleWaClick}
-            >
-              <WaIcon /> Entrar em contato
-            </a>
+          {isOwner && <span style={sc.ownerChip}>Seu post</span>}
+          {isConfirmada && <span style={sc.confirmedChip}>Confirmada</span>}
+          {furosReportados >= 3 && <span style={sc.warningChip}>{furosReportados} furos</span>}
+        </div>
 
-            <a href={calUrl} target="_blank" rel="noopener noreferrer" style={sc.calBtn}>
-              📅
-            </a>
+        <p style={sc.description}>
+          Vamos bater uma bola! Nível {jogo.classe}. Bora jogar!
+        </p>
+
+        <div style={sc.actionArea}>
+          <div style={sc.leftStatus}>
+            {jogo.dataFim && jogo.dataFim !== jogo.dataInicio ? (
+              <span>Disponível até {fmtData(jogo.dataFim)}</span>
+            ) : (
+              <span>{jogo.local}</span>
+            )}
           </div>
-        )}
+
+          {!isConfirmada && (
+            <div style={sc.actions}>
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={sc.contactBtn}
+                onClick={handleWaClick}
+              >
+                <WaIcon /> Entrar em contato
+              </a>
+
+              <a href={calUrl} target="_blank" rel="noopener noreferrer" style={sc.saveBtn}>
+                <BookmarkLineIcon size={25} />
+              </a>
+            </div>
+          )}
+        </div>
 
         {isOwner && !isConfirmada && (jogo.interessados ?? 0) > 0 && (
           <div style={sc.ownerPanel}>
@@ -1169,29 +1327,31 @@ function JogoCard({
 
         {isConfirmada && isOwner && (
           <div style={sc.confirmadaInfo}>
-            ✓ Confirmado com <strong>{jogo.confirmado_com?.split('@')[0]}</strong>
+            Confirmado com <strong>{jogo.confirmado_com?.split('@')[0]}</strong>
           </div>
         )}
 
         <div style={sc.reportRow}>
           {jaJogou && jogo.emailPublicador && jogo.emailPublicador !== emailUsuario && (
-            <button onClick={() => setShowResult(true)} style={sc.rankBtn}>🏆 Registrar resultado</button>
+            <button onClick={() => setShowResult(true)} style={sc.rankBtn}>
+              Registrar resultado
+            </button>
           )}
 
           {!isOwner && (
-            reportado
-              ? <span style={sc.reportadoTxt}>✓ Furo registrado</span>
-              : (
-                <button
-                  onClick={() => {
-                    onReportarFuro();
-                    setReportado(true);
-                  }}
-                  style={sc.reportBtn}
-                >
-                  Denunciar furo
-                </button>
-              )
+            reportado ? (
+              <span style={sc.reportadoTxt}>Furo registrado</span>
+            ) : (
+              <button
+                onClick={() => {
+                  onReportarFuro();
+                  setReportado(true);
+                }}
+                style={sc.reportBtn}
+              >
+                Denunciar furo
+              </button>
+            )
           )}
         </div>
       </div>
@@ -1597,15 +1757,6 @@ function MiniCalendar({
           × Mostrar todos os dias
         </button>
       )}
-    </div>
-  );
-}
-
-function InfoItem({ icon, text }: { icon: string; text: string }) {
-  return (
-    <div style={sc.infoItem}>
-      <span style={sc.infoIcon}>{icon}</span>
-      <span style={sc.infoText}>{text}</span>
     </div>
   );
 }
@@ -2040,184 +2191,353 @@ const s: Record<string, React.CSSProperties> = {
 const sc: Record<string, React.CSSProperties> = {
   card: {
     background: '#fff',
-    border: '1px solid rgba(130,82,62,0.08)',
+    border: '1px solid rgba(130,82,62,0.06)',
     borderRadius: 24,
-    padding: 14,
+    padding: 16,
     display: 'flex',
     flexDirection: 'column',
-    gap: 13,
-    boxShadow: '0 10px 30px rgba(117,76,56,0.08)',
+    gap: 14,
+    boxShadow: '0 12px 32px rgba(57,37,28,0.08)',
   },
 
-  topRow: {
+  header: {
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 12,
   },
 
-  author: {
+  authorWrap: {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     minWidth: 0,
   },
 
   avatar: {
-    width: 44,
-    height: 44,
+    width: 56,
+    height: 56,
     borderRadius: '50%',
     objectFit: 'cover',
-    border: '2px solid #fff',
-    boxShadow: '0 8px 18px rgba(90,54,39,0.12)',
+    flexShrink: 0,
   },
 
   avatarFallback: {
-    width: 44,
-    height: 44,
+    width: 56,
+    height: 56,
     borderRadius: '50%',
     background: 'linear-gradient(135deg, #c6714e, #8f4635)',
     color: '#fff',
-    fontSize: 17,
-    fontWeight: 950,
+    fontSize: 22,
+    fontWeight: 900,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    border: '2px solid #fff',
-    boxShadow: '0 8px 18px rgba(90,54,39,0.12)',
+    flexShrink: 0,
   },
 
   authorInfo: {
-    minWidth: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: 2,
+    gap: 5,
+    minWidth: 0,
   },
 
   authorName: {
-    color: '#2d2521',
-    fontSize: 15,
+    color: '#232428',
+    fontSize: 22,
     fontWeight: 950,
-    lineHeight: 1.15,
+    lineHeight: 1.05,
+    letterSpacing: -0.5,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
 
-  postTime: {
-    color: '#a29186',
-    fontSize: 11,
-    fontWeight: 750,
-  },
-
-  badges: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-  },
-
-  classeBadge: {
-    alignSelf: 'flex-start',
-    fontSize: 12,
-    fontWeight: 950,
-    padding: '6px 11px',
-    borderRadius: 999,
-    border: '1px solid',
-  },
-
-  ownerBadge: {
-    fontSize: 10,
-    fontWeight: 950,
-    padding: '5px 8px',
-    borderRadius: 999,
-    background: '#fff0e8',
-    color: '#a54f3d',
-  },
-
-  confirmadaBadge: {
-    fontSize: 10,
-    fontWeight: 950,
-    padding: '5px 8px',
-    borderRadius: 999,
-    background: '#edf8ef',
-    color: '#3f8f5b',
-  },
-
-  mainInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 11,
-  },
-
-  infoGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 8,
-  },
-
-  infoItem: {
+  authorMeta: {
     display: 'flex',
     alignItems: 'center',
     gap: 7,
+    color: '#6f7178',
+    fontSize: 14,
+    fontWeight: 700,
+  },
+
+  levelIcon: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 14,
+    flexShrink: 0,
+    paddingTop: 6,
+  },
+
+  postTime: {
+    color: '#6f7178',
+    fontSize: 14,
+    fontWeight: 650,
+    whiteSpace: 'nowrap',
+  },
+
+  dots: {
+    color: '#2e2e2e',
+    display: 'flex',
+    alignItems: 'center',
+  },
+
+  matchPanel: {
+    position: 'relative',
+    minHeight: 132,
+    borderRadius: 18,
+    background: 'linear-gradient(90deg, #fff7f2 0%, #fffaf8 58%, #fff6f1 100%)',
+    border: '1px solid rgba(210,111,73,0.10)',
+    overflow: 'hidden',
+    display: 'grid',
+    gridTemplateColumns: '82px 1px minmax(0, 1fr) 1px 82px 112px',
+    alignItems: 'center',
+    padding: '16px 12px',
+    boxSizing: 'border-box',
+  },
+
+  dateArea: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    color: '#d35720',
+    zIndex: 2,
+  },
+
+  dateIcon: {
+    display: 'flex',
+    color: '#d35720',
+    marginBottom: 2,
+  },
+
+  dateLabel: {
+    color: '#d35720',
+    fontSize: 13,
+    fontWeight: 900,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+  },
+
+  dateDay: {
+    color: '#232428',
+    fontSize: 34,
+    lineHeight: 0.95,
+    fontWeight: 950,
+    letterSpacing: -0.8,
+  },
+
+  dateMonth: {
+    color: '#70737b',
+    fontSize: 14,
+    fontWeight: 850,
+    textTransform: 'uppercase' as const,
+  },
+
+  divider: {
+    width: 1,
+    alignSelf: 'stretch',
+    background: 'rgba(213,87,32,0.13)',
+    zIndex: 2,
+  },
+
+  centerInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    padding: '0 20px',
+    minWidth: 0,
+    zIndex: 2,
+  },
+
+  infoLine: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 11,
     minWidth: 0,
   },
 
   infoIcon: {
-    fontSize: 14,
+    color: '#d35720',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
   },
 
-  infoText: {
-    color: '#55463f',
-    fontSize: 12.5,
-    fontWeight: 800,
+  timeText: {
+    color: '#232428',
+    fontSize: 20,
+    fontWeight: 950,
+    lineHeight: 1.1,
+    whiteSpace: 'nowrap',
+  },
+
+  locationText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    color: '#6f7178',
+    fontSize: 15,
+    fontWeight: 750,
     lineHeight: 1.2,
     minWidth: 0,
   },
 
-  furoBadge: {
-    alignSelf: 'flex-start',
-    fontSize: 11,
-    fontWeight: 850,
-    padding: '6px 10px',
+  playersArea: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    gap: 7,
+    paddingLeft: 16,
+    zIndex: 2,
+  },
+
+  playersTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  playersIcon: {
+    color: '#d35720',
+    display: 'flex',
+    alignItems: 'center',
+  },
+
+  playersNumber: {
+    color: '#232428',
+    fontSize: 21,
+    fontWeight: 950,
+  },
+
+  playersText: {
+    color: '#6f7178',
+    fontSize: 14,
+    fontWeight: 750,
+    paddingLeft: 38,
+  },
+
+  racketArea: {
+    position: 'absolute',
+    right: 4,
+    bottom: -3,
+    width: 112,
+    height: 112,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.98,
+    zIndex: 1,
+  },
+
+  chipRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+
+  gameChip: {
+    background: '#fde9df',
+    color: '#d35720',
+    padding: '8px 14px',
     borderRadius: 999,
+    fontSize: 14,
+    fontWeight: 900,
+  },
+
+  ownerChip: {
+    background: '#fff1eb',
+    color: '#b65b43',
+    padding: '8px 12px',
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 900,
+  },
+
+  confirmedChip: {
+    background: '#edf8ef',
+    color: '#3f8f5b',
+    padding: '8px 12px',
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 900,
+  },
+
+  warningChip: {
     background: '#fff0ec',
     color: '#c95441',
+    padding: '8px 12px',
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 900,
   },
 
-  btnRow: {
+  description: {
+    margin: 0,
+    color: '#232428',
+    fontSize: 15,
+    fontWeight: 650,
+    lineHeight: 1.35,
+  },
+
+  actionArea: {
     display: 'grid',
-    gridTemplateColumns: '1fr 48px',
-    gap: 9,
+    gridTemplateColumns: '1fr auto',
+    alignItems: 'center',
+    gap: 14,
   },
 
-  waBtn: {
+  leftStatus: {
+    color: '#6f7178',
+    fontSize: 13,
+    fontWeight: 700,
+    minWidth: 0,
+  },
+
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  contactBtn: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: '13px 12px',
-    borderRadius: 16,
-    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    gap: 10,
+    padding: '15px 26px',
+    borderRadius: 999,
+    background: 'linear-gradient(135deg, #d85a20, #b04f38)',
     color: '#fff',
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: 950,
     textDecoration: 'none',
-    boxShadow: '0 10px 20px rgba(147,72,54,0.2)',
+    boxShadow: '0 10px 20px rgba(191,82,42,0.20)',
+    whiteSpace: 'nowrap',
   },
 
-  calBtn: {
+  saveBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: '50%',
+    border: '1px solid rgba(44,44,44,0.15)',
+    background: '#fff',
+    color: '#333',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
-    background: '#f5ebe4',
-    color: '#8f4a39',
-    fontSize: 18,
-    fontWeight: 900,
     textDecoration: 'none',
+    boxShadow: '0 8px 16px rgba(44,30,24,0.05)',
   },
 
   ownerPanel: {
@@ -2297,16 +2617,16 @@ const sc: Record<string, React.CSSProperties> = {
   reportBtn: {
     background: 'none',
     border: 'none',
-    padding: '4px 2px',
-    color: '#b09a8e',
-    fontSize: 11,
+    padding: 0,
+    color: '#8b7c73',
+    fontSize: 12,
     cursor: 'pointer',
     textDecoration: 'underline',
     textUnderlineOffset: 2,
   },
 
   reportadoTxt: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#3f8f5b',
     fontWeight: 800,
   },
