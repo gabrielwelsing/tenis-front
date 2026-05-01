@@ -118,6 +118,8 @@ export interface JogoRecord {
   whatsapp:         string;
   publicadoEm:      number;
   emailPublicador?: string | null;
+  nomePublicador?: string | null;
+  fotoPublicador?: string | null;
   status?:          'aberta' | 'confirmada' | 'encerrada';
   interessados?:    number;
   confirmado_com?:  string | null;
