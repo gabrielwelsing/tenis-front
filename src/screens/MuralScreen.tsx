@@ -1099,23 +1099,24 @@ function JogoCard({
 
             <div style={sc.authorInfo}>
               <div style={sc.authorName}>{autorNome}</div>
-              <div style={sc.authorMeta}>Nível {jogo.classe}</div>
+
+              <div style={sc.authorMetaRow}>
+                <div style={sc.authorMeta}>Nível {jogo.classe}</div>
+
+                <div style={sc.interestCompactInline}>
+                  <span style={sc.interestCompactIcon}>
+                    <UsersLineIcon size={14} />
+                  </span>
+                  <span style={sc.interestCompactText}>
+                    {jogo.interessados ?? 0} interessado{(jogo.interessados ?? 0) === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
           <div style={sc.headerRight}>
             <span style={sc.postTime}>{tempoRelativo(jogo.publicadoEm)}</span>
-          </div>
-        </div>
-
-        <div style={sc.topCompactRow}>
-          <div style={sc.interestCompact}>
-            <span style={sc.interestCompactIcon}>
-              <UsersLineIcon size={16} />
-            </span>
-            <span style={sc.interestCompactText}>
-              {jogo.interessados ?? 0} interessado{(jogo.interessados ?? 0) === 1 ? '' : 's'}
-            </span>
           </div>
         </div>
 
@@ -1154,15 +1155,10 @@ function JogoCard({
         </div>
 
         <div style={sc.chipRow}>
-          <span style={sc.gameChip}>Jogo amigável</span>
           {isOwner && <span style={sc.ownerChip}>Seu post</span>}
           {isConfirmada && <span style={sc.confirmedChip}>Confirmada</span>}
           {furosReportados >= 3 && <span style={sc.warningChip}>{furosReportados} furos</span>}
         </div>
-
-        <p style={sc.description}>
-          Vamos bater uma bola! Nível {jogo.classe}. Bora jogar!
-        </p>
 
         {!isConfirmada && (
           <div style={sc.actionArea}>
@@ -2116,6 +2112,7 @@ const sc: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 10,
     minWidth: 0,
+    flex: 1,
   },
 
   avatar: {
@@ -2145,6 +2142,7 @@ const sc: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: 3,
     minWidth: 0,
+    flex: 1,
   },
 
   authorName: {
@@ -2158,11 +2156,20 @@ const sc: Record<string, React.CSSProperties> = {
     textOverflow: 'ellipsis',
   },
 
+  authorMetaRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+    flexWrap: 'wrap',
+  },
+
   authorMeta: {
     color: '#6f7178',
     fontSize: 13,
     fontWeight: 500,
     lineHeight: 1.2,
+    whiteSpace: 'nowrap',
   },
 
   headerRight: {
@@ -2180,27 +2187,22 @@ const sc: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
   },
 
-  topCompactRow: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    marginTop: -2,
-    marginBottom: -4,
-  },
-
-  interestCompact: {
+  interestCompactInline: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 5,
-    padding: '5px 9px',
+    padding: '4px 8px',
     borderRadius: 999,
     background: '#fff7f2',
     border: '1px solid rgba(211,87,32,0.10)',
+    maxWidth: '100%',
   },
 
   interestCompactIcon: {
     display: 'flex',
     alignItems: 'center',
     color: '#d35720',
+    flexShrink: 0,
   },
 
   interestCompactText: {
@@ -2208,6 +2210,7 @@ const sc: Record<string, React.CSSProperties> = {
     fontSize: 11.5,
     fontWeight: 600,
     lineHeight: 1,
+    whiteSpace: 'nowrap',
   },
 
   matchPanel: {
@@ -2315,15 +2318,6 @@ const sc: Record<string, React.CSSProperties> = {
     flexWrap: 'wrap',
   },
 
-  gameChip: {
-    background: '#fde9df',
-    color: '#d35720',
-    padding: '7px 12px',
-    borderRadius: 999,
-    fontSize: 12.5,
-    fontWeight: 700,
-  },
-
   ownerChip: {
     background: '#fff1eb',
     color: '#b65b43',
@@ -2349,14 +2343,6 @@ const sc: Record<string, React.CSSProperties> = {
     borderRadius: 999,
     fontSize: 11.5,
     fontWeight: 700,
-  },
-
-  description: {
-    margin: 0,
-    color: '#232428',
-    fontSize: 13.5,
-    fontWeight: 500,
-    lineHeight: 1.35,
   },
 
   actionArea: {
