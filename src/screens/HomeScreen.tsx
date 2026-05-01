@@ -146,6 +146,7 @@ export default function HomeScreen({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [configView, setConfigView] = useState<'menu' | 'dados' | 'assinatura'>('menu');
 
   const [cfgNome, setCfgNome] = useState(username ?? '');
   const [cfgLocalidade, setCfgLocalidade] = useState(localidade ?? '');
@@ -188,6 +189,7 @@ export default function HomeScreen({
       setTimeout(() => {
         setCfgMsg('');
         setShowConfig(false);
+        setConfigView('menu');
       }, 1500);
     } catch {
       setCfgMsg('Erro ao salvar. Tente novamente.');
@@ -221,77 +223,220 @@ export default function HomeScreen({
       />
 
       {showConfig && (
-        <div style={cfg.overlay} onClick={e => e.target === e.currentTarget && setShowConfig(false)}>
+        <div
+          style={cfg.overlay}
+          onClick={e => {
+            if (e.target === e.currentTarget) {
+              setShowConfig(false);
+              setConfigView('menu');
+              setCfgMsg('');
+            }
+          }}
+        >
           <div style={cfg.sheet}>
-            <div style={cfg.headerRow}>
-              <div>
-                <h2 style={cfg.title}>Perfil</h2>
-                <p style={cfg.subtitle}>Atualize seus dados do app</p>
-              </div>
-              <button onClick={() => setShowConfig(false)} style={cfg.closeBtn}>✕</button>
-            </div>
+            <div style={cfg.topBar}>
+              {configView === 'menu' ? (
+                <div style={cfg.backPlaceholder} />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfigView('menu');
+                    setCfgMsg('');
+                  }}
+                  style={cfg.backBtn}
+                >
+                  ‹
+                </button>
+              )}
 
-            <div style={cfg.fieldGroup}>
-              <span style={cfg.label}>Nome</span>
-              <input
-                style={cfg.input}
-                type="text"
-                value={cfgNome}
-                onChange={e => setCfgNome(e.target.value)}
-                autoCapitalize="words"
-              />
-            </div>
+              <h2 style={cfg.pageTitle}>
+                {configView === 'menu' && 'Perfil & Configurações'}
+                {configView === 'dados' && 'Dados'}
+                {configView === 'assinatura' && 'Gerenciar assinatura'}
+              </h2>
 
-            <div style={cfg.fieldGroup}>
-              <span style={cfg.label}>Cidade / Localidade</span>
-              <input
-                style={cfg.input}
-                type="text"
-                value={cfgLocalidade}
-                onChange={e => setCfgLocalidade(e.target.value)}
-                autoCapitalize="words"
-              />
-            </div>
-
-            <div style={cfg.fieldGroup}>
-              <span style={cfg.label}>Telefone / WhatsApp *</span>
-              <input
-                style={{
-                  ...cfg.input,
-                  borderColor: cfgTelefone.replace(/\D/g, '').length !== 11 ? '#d86c56' : '#eadfd6',
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfig(false);
+                  setConfigView('menu');
+                  setCfgMsg('');
                 }}
-                type="tel"
-                inputMode="numeric"
-                placeholder="(11) 91234-5678"
-                value={cfgTelefone}
-                onChange={handleTelefoneChange}
-              />
-            </div>
-
-            {cfgMsg && (
-              <p
-                style={{
-                  color: cfgMsg.startsWith('✅') ? '#3f8f5b' : '#c95441',
-                  fontSize: 13,
-                  margin: 0,
-                  textAlign: 'center',
-                }}
+                style={cfg.closeBtn}
               >
-                {cfgMsg}
-              </p>
+                ✕
+              </button>
+            </div>
+
+            {configView === 'menu' && (
+              <>
+                <div style={cfg.profileCard}>
+                  <div style={cfg.profileOverlay} />
+
+                  <div style={cfg.profileContent}>
+                    <div style={cfg.profileAvatarWrap}>
+                      {fotoUrl ? (
+                        <img src={fotoUrl} alt={displayName} style={cfg.profileAvatar} />
+                      ) : (
+                        <div style={cfg.profileAvatarFallback}>
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={cfg.profileInfo}>
+                      <strong style={cfg.profileName}>{displayName}</strong>
+                      <span style={cfg.profileLevel}>
+                        {role === 'user' ? 'Jogador iniciante' : role === 'aluno' ? 'Jogador Pro' : 'Administrador'}
+                      </span>
+                      <button
+                        type="button"
+                        style={cfg.editProfileBtn}
+                        onClick={() => setConfigView('dados')}
+                      >
+                        Editar perfil
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={cfg.menuGroup}>
+                  <button type="button" style={cfg.menuItem} onClick={() => setConfigView('dados')}>
+                    <div style={cfg.menuIcon}>♡</div>
+                    <div style={cfg.menuText}>
+                      <strong>Dados</strong>
+                      <span>Nome, telefone e cidade</span>
+                    </div>
+                    <div style={cfg.menuArrow}>›</div>
+                  </button>
+
+                  <button type="button" style={cfg.menuItem} onClick={() => setConfigView('assinatura')}>
+                    <div style={cfg.menuIcon}>♕</div>
+                    <div style={cfg.menuText}>
+                      <strong>Gerenciar assinatura</strong>
+                      <span>Plano atual, assinar e cancelar</span>
+                    </div>
+                    <div style={cfg.menuArrow}>›</div>
+                  </button>
+
+                  <button type="button" style={{ ...cfg.menuItem, ...cfg.logoutItem }} onClick={onLogout}>
+                    <div style={cfg.menuIcon}>↪</div>
+                    <div style={cfg.menuText}>
+                      <strong>Sair da conta</strong>
+                      <span>Voltar para a tela de login</span>
+                    </div>
+                    <div style={cfg.menuArrow}>›</div>
+                  </button>
+                </div>
+              </>
             )}
 
-            <button
-              style={{ ...cfg.saveBtn, opacity: cfgLoading ? 0.6 : 1 }}
-              onClick={handleSalvarConfig}
-              disabled={cfgLoading}
-            >
-              {cfgLoading ? 'Salvando...' : 'Salvar perfil'}
-            </button>
+            {configView === 'dados' && (
+              <>
+                <div style={cfg.infoBox}>
+                  <strong>Dados pessoais</strong>
+                  <span>Atualize as informações principais do seu perfil.</span>
+                </div>
 
-            <button style={cfg.logoutBtn} onClick={onLogout}>
-              Sair da conta
-            </button>
+                <div style={cfg.fieldGroup}>
+                  <span style={cfg.label}>Nome</span>
+                  <input
+                    style={cfg.input}
+                    type="text"
+                    value={cfgNome}
+                    onChange={e => setCfgNome(e.target.value)}
+                    autoCapitalize="words"
+                  />
+                </div>
+
+                <div style={cfg.fieldGroup}>
+                  <span style={cfg.label}>Telefone</span>
+                  <input
+                    style={{
+                      ...cfg.input,
+                      borderColor: cfgTelefone.replace(/\D/g, '').length !== 11 ? '#d86c56' : '#eadfd6',
+                    }}
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="(11) 91234-5678"
+                    value={cfgTelefone}
+                    onChange={handleTelefoneChange}
+                  />
+                </div>
+
+                <div style={cfg.fieldGroup}>
+                  <span style={cfg.label}>Cidade</span>
+                  <input
+                    style={cfg.input}
+                    type="text"
+                    value={cfgLocalidade}
+                    onChange={e => setCfgLocalidade(e.target.value)}
+                    autoCapitalize="words"
+                  />
+                </div>
+
+                {cfgMsg && (
+                  <p
+                    style={{
+                      color: cfgMsg.startsWith('✅') ? '#3f8f5b' : '#c95441',
+                      fontSize: 13,
+                      margin: 0,
+                      textAlign: 'center',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {cfgMsg}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  style={{ ...cfg.saveBtn, opacity: cfgLoading ? 0.6 : 1 }}
+                  onClick={handleSalvarConfig}
+                  disabled={cfgLoading}
+                >
+                  {cfgLoading ? 'Salvando...' : 'Salvar dados'}
+                </button>
+              </>
+            )}
+
+            {configView === 'assinatura' && (
+              <>
+                <div style={cfg.planCard}>
+                  <span style={cfg.planLabel}>Plano atual</span>
+                  <strong style={cfg.planName}>
+                    {role === 'user' ? 'Plano gratuito' : 'Plano Pro'}
+                  </strong>
+                  <p style={cfg.planDesc}>
+                    {role === 'user'
+                      ? 'Você está usando os recursos gratuitos do app.'
+                      : 'Seu perfil possui acesso liberado aos recursos avançados.'}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  style={cfg.saveBtn}
+                  onClick={() => {
+                    setShowConfig(false);
+                    setConfigView('menu');
+                    setCfgMsg('');
+                    onAssinar();
+                  }}
+                >
+                  Assinar
+                </button>
+
+                <button type="button" style={cfg.cancelPlanBtn}>
+                  Cancelar
+                </button>
+
+                <p style={cfg.planHint}>
+                  As ações de assinatura e cancelamento serão conectadas depois no Mercado Pago.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1040,49 +1185,226 @@ const cfg: Record<string, React.CSSProperties> = {
     background: '#fffaf5',
     border: '1px solid rgba(130,82,62,0.12)',
     borderRadius: '28px 28px 0 0',
-    padding: '26px 22px 34px',
+    padding: '18px 16px 34px',
     maxWidth: 480,
     width: '100%',
+    maxHeight: '92dvh',
+    overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    gap: 15,
+    gap: 14,
     boxShadow: '0 -16px 44px rgba(55,35,26,0.22)',
+    boxSizing: 'border-box',
   },
 
-  headerRow: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
+  topBar: {
+    display: 'grid',
+    gridTemplateColumns: '42px 1fr 42px',
+    alignItems: 'center',
+    gap: 8,
   },
 
-  title: {
+  pageTitle: {
     margin: 0,
-    fontSize: 21,
-    fontWeight: 900,
     color: '#2d2521',
-    letterSpacing: -0.4,
+    fontSize: 17,
+    fontWeight: 900,
+    textAlign: 'center',
+    letterSpacing: -0.25,
   },
 
-  subtitle: {
-    margin: '3px 0 0',
-    fontSize: 12,
-    fontWeight: 650,
-    color: '#9b8a7f',
+  backPlaceholder: {
+    width: 42,
+    height: 42,
   },
 
-  closeBtn: {
-    background: '#f4ebe3',
-    border: 'none',
-    color: '#8b6657',
-    fontSize: 18,
-    cursor: 'pointer',
-    width: 38,
-    height: 38,
+  backBtn: {
+    width: 42,
+    height: 42,
     borderRadius: '50%',
+    border: 'none',
+    background: '#f7eee7',
+    color: '#9a5a45',
+    fontSize: 30,
+    lineHeight: 1,
+    cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  closeBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: '50%',
+    border: 'none',
+    background: '#f7eee7',
+    color: '#9a5a45',
+    fontSize: 18,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  profileCard: {
+    position: 'relative',
+    minHeight: 132,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundImage: 'url(/tela_inicial.png)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center right',
+    boxShadow: '0 12px 30px rgba(126,76,55,0.11)',
+    border: '1px solid rgba(130,82,62,0.08)',
+  },
+
+  profileOverlay: {
+    position: 'absolute',
+    inset: 0,
+    background: 'linear-gradient(90deg, rgba(255,250,245,0.96) 0%, rgba(255,250,245,0.86) 48%, rgba(255,250,245,0.28) 100%)',
+    zIndex: 1,
+  },
+
+  profileContent: {
+    position: 'relative',
+    zIndex: 2,
+    minHeight: 132,
+    padding: 18,
+    boxSizing: 'border-box',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 14,
+  },
+
+  profileAvatarWrap: {
+    width: 62,
+    height: 62,
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+
+  profileAvatar: {
+    width: 62,
+    height: 62,
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '3px solid #fff',
+    boxShadow: '0 10px 24px rgba(90,54,39,0.15)',
+  },
+
+  profileAvatarFallback: {
+    width: 62,
+    height: 62,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #c6714e, #8f4635)',
+    color: '#fff',
+    fontSize: 23,
+    fontWeight: 900,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '3px solid #fff',
+    boxShadow: '0 10px 24px rgba(90,54,39,0.15)',
+  },
+
+  profileInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    minWidth: 0,
+  },
+
+  profileName: {
+    color: '#2d2521',
+    fontSize: 18,
+    fontWeight: 900,
+    lineHeight: 1.1,
+  },
+
+  profileLevel: {
+    color: '#c26348',
+    fontSize: 12,
+    fontWeight: 800,
+  },
+
+  editProfileBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    padding: '8px 13px',
+    borderRadius: 11,
+    border: '1px solid rgba(196,94,68,0.35)',
+    background: 'rgba(255,250,245,0.72)',
+    color: '#a54f3d',
+    fontSize: 12,
+    fontWeight: 850,
+    cursor: 'pointer',
+  },
+
+  menuGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+
+  menuItem: {
+    width: '100%',
+    minHeight: 72,
+    borderRadius: 18,
+    border: '1px solid rgba(130,82,62,0.08)',
+    background: '#fff',
+    boxShadow: '0 10px 26px rgba(123,72,52,0.06)',
+    padding: '12px 12px',
+    boxSizing: 'border-box',
+    display: 'grid',
+    gridTemplateColumns: '42px 1fr 22px',
+    alignItems: 'center',
+    gap: 10,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textAlign: 'left',
+  },
+
+  logoutItem: {
+    background: '#fff6f1',
+  },
+
+  menuIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: '50%',
+    background: '#fff1e9',
+    color: '#c26348',
+    fontSize: 20,
+    fontWeight: 900,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  menuText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    minWidth: 0,
+  },
+
+  menuArrow: {
+    color: '#c8917d',
+    fontSize: 23,
+    fontWeight: 300,
+    textAlign: 'right',
+  },
+
+  infoBox: {
+    borderRadius: 18,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    padding: 14,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    boxShadow: '0 10px 26px rgba(123,72,52,0.06)',
   },
 
   fieldGroup: {
@@ -1125,15 +1447,57 @@ const cfg: Record<string, React.CSSProperties> = {
     boxShadow: '0 12px 24px rgba(147,72,54,0.22)',
   },
 
-  logoutBtn: {
-    width: '100%',
-    padding: '13px',
-    borderRadius: 16,
-    background: '#f5ebe4',
-    border: '1px solid rgba(130,82,62,0.12)',
-    color: '#8f4a39',
-    fontSize: 14,
+  planCard: {
+    borderRadius: 20,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    padding: 16,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    boxShadow: '0 10px 26px rgba(123,72,52,0.06)',
+  },
+
+  planLabel: {
+    color: '#9b8a7f',
+    fontSize: 11,
     fontWeight: 850,
-    cursor: 'pointer',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.8,
+  },
+
+  planName: {
+    color: '#2d2521',
+    fontSize: 20,
+    fontWeight: 950,
+  },
+
+  planDesc: {
+    margin: 0,
+    color: '#8d7b70',
+    fontSize: 13,
+    fontWeight: 600,
+    lineHeight: 1.45,
+  },
+
+  cancelPlanBtn: {
+    width: '100%',
+    padding: '14px',
+    borderRadius: 16,
+    background: '#fff',
+    border: '1px solid rgba(196,94,68,0.28)',
+    color: '#a54f3d',
+    fontSize: 15,
+    fontWeight: 900,
+    cursor: 'default',
+  },
+
+  planHint: {
+    margin: 0,
+    color: '#9b8a7f',
+    fontSize: 12,
+    fontWeight: 600,
+    lineHeight: 1.4,
+    textAlign: 'center',
   },
 };
