@@ -340,25 +340,64 @@ function App() {
       {(() => {
         switch (screen) {
           case 'home':
-            return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} telefone={user.telefone} localidade={user.localidade} onLogout={handleLogout} onNavigate={handleNavigate} onFotoUpload={handleFotoUpload} onAssinar={() => setShowPagamento(true)} onSalvarPerfil={handleSalvarPerfil} />;
+            return (
+              <HomeScreen
+                saveMode={saveMode}
+                username={username}
+                emailUsuario={user.email}
+                role={user.role}
+                fotoUrl={user.foto_url}
+                telefone={user.telefone}
+                localidade={user.localidade}
+                onLogout={handleLogout}
+                onNavigate={handleNavigate}
+                onFotoUpload={handleFotoUpload}
+                onAssinar={() => setShowPagamento(true)}
+                onSalvarPerfil={handleSalvarPerfil}
+              />
+            );
+
           case 'camera':
             return <CameraScreen saveMode={saveMode} username={username} onGoHistory={() => setScreen('history')} onLogout={() => setScreen('home')} />;
+
           case 'history':
             return <HistoryScreen saveMode={saveMode} onBack={() => setScreen('home')} />;
+
           case 'biomechanics':
             return <BiomechanicsScreen onBack={() => setScreen('home')} />;
+
           case 'comparison':
             return <ComparisonScreen onBack={() => setScreen('home')} />;
+
           case 'instagram':
             return <InstagramScreen onBack={() => setScreen('home')} />;
+
           case 'mural':
             return <MuralScreen onBack={() => setScreen('home')} emailUsuario={user.email} userId={user.id} username={username} telefone={user.telefone} localidade={user.localidade} />;
+
           case 'agenda':
             return <AgendaScreen onBack={() => setScreen('home')} emailUsuario={user.email} role={user.role} username={username} />;
+
           case 'ranking':
             return <RankingScreen onBack={() => setScreen('home')} userId={user.id} role={user.role} username={username} fotoUrl={user.foto_url} />;
+
           default:
-            return <HomeScreen saveMode={saveMode} username={username} role={user.role} fotoUrl={user.foto_url} telefone={user.telefone} localidade={user.localidade} onLogout={handleLogout} onNavigate={handleNavigate} onFotoUpload={handleFotoUpload} onAssinar={() => setShowPagamento(true)} onSalvarPerfil={handleSalvarPerfil} />;
+            return (
+              <HomeScreen
+                saveMode={saveMode}
+                username={username}
+                emailUsuario={user.email}
+                role={user.role}
+                fotoUrl={user.foto_url}
+                telefone={user.telefone}
+                localidade={user.localidade}
+                onLogout={handleLogout}
+                onNavigate={handleNavigate}
+                onFotoUpload={handleFotoUpload}
+                onAssinar={() => setShowPagamento(true)}
+                onSalvarPerfil={handleSalvarPerfil}
+              />
+            );
         }
       })()}
     </>
