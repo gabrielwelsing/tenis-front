@@ -118,11 +118,16 @@ export interface JogoRecord {
   whatsapp:         string;
   publicadoEm:      number;
   emailPublicador?: string | null;
-  nomePublicador?: string | null;
-  fotoPublicador?: string | null;
+  nomePublicador?:  string | null;
+  fotoPublicador?:  string | null;
   status?:          'aberta' | 'confirmada' | 'encerrada';
   interessados?:    number;
   confirmado_com?:  string | null;
+}
+
+export interface ProximaAtividadeRecord extends JogoRecord {
+  adversarioNome:  string;
+  adversarioEmail: string | null;
 }
 
 export interface InteressadoRecord {
@@ -135,6 +140,12 @@ export async function getJogos(cidade?: string): Promise<JogoRecord[]> {
   const qs  = cidade ? `?cidade=${encodeURIComponent(cidade)}` : '';
   const res = await fetch(`${BASE_URL}/jogos${qs}`);
   if (!res.ok) throw new Error(`Erro ao carregar mural: ${res.status}`);
+  return res.json();
+}
+
+export async function getProximaAtividade(emailUsuario: string): Promise<ProximaAtividadeRecord | null> {
+  const res = await fetch(`${BASE_URL}/jogos/proxima?email=${encodeURIComponent(emailUsuario)}`);
+  if (!res.ok) throw new Error(`Erro ao carregar próxima atividade: ${res.status}`);
   return res.json();
 }
 
