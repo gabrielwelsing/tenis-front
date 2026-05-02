@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { getJogos, postJogo, type JogoRecord } from '@services/apiService';
+import { getJogos, postJogo, deleteJogo, updateJogoDatas, type JogoRecord, type UpdateJogoDatasPayload } from '@services/apiService';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'https://tenis-back-production-9f72.up.railway.app';
 const TOKEN_KEY = 'tenis_token';
@@ -637,6 +637,21 @@ export default function MuralScreen({
     ));
   }, [emailUsuario]);
 
+  const handleExcluirJogo = useCallback(async (jogoId: string) => {
+    await deleteJogo(jogoId, emailUsuario);
+    setJogos(prev => prev.filter(j => j.id !== jogoId));
+  }, [emailUsuario]);
+
+  const handleEditarDatasJogo = useCallback(async (jogoId: string, dados: UpdateJogoDatasPayload) => {
+    const atualizado = await updateJogoDatas(jogoId, emailUsuario, dados);
+
+    setJogos(prev => prev.map(j =>
+      j.id === jogoId
+        ? { ...j, ...atualizado }
+        : j
+    ));
+  }, [emailUsuario]);
+
   const hojeFiltro = hojeStr();
   const amanhaFiltro = amanhaStr();
 
@@ -802,6 +817,8 @@ export default function MuralScreen({
                     onReportarFuro={() => handleReportarFuro(jogo)}
                     onInteressado={() => handleInteressado(jogo.id)}
                     onConfirmarSala={(email) => handleConfirmarSala(jogo.id, email)}
+                    onDelete={() => handleExcluirJogo(jogo.id)}
+                    onUpdateDatas={(dados) => handleEditarDatasJogo(jogo.id, dados)}
                     emailUsuario={emailUsuario}
                     userId={userId}
                   />
@@ -1016,6 +1033,8 @@ function JogoCard({
   onReportarFuro,
   onInteressado,
   onConfirmarSala,
+  onDelete,
+  onUpdateDatas,
   emailUsuario,
   userId,
 }: {
@@ -1024,6 +1043,8 @@ function JogoCard({
   onReportarFuro: () => void;
   onInteressado: () => void;
   onConfirmarSala: (email: string) => void;
+  onDelete: () => Promise<void>;
+  onUpdateDatas: (dados: UpdateJogoDatasPayload) => Promise<void>;
   emailUsuario: string;
   userId: number;
 }) {
@@ -1040,6 +1061,8 @@ function JogoCard({
   const [showInteress, setShowInteress] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState('');
   const [confirmando, setConfirmando] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [ownerActionMsg, setOwnerActionMsg] = useState('');
 
   const handleWaClick = () => {
     if (!isOwner) onInteressado();
@@ -1075,6 +1098,24 @@ function JogoCard({
     setShowInteress(false);
   };
 
+  const handleExcluir = async () => {
+    if (!window.confirm('Deseja excluir esta publicação?')) return;
+
+    setOwnerActionMsg('');
+
+    try {
+      await onDelete();
+    } catch (e) {
+      setOwnerActionMsg(e instanceof Error ? e.message : 'Erro ao excluir publicação.');
+    }
+  };
+
+  const handleSalvarEdicao = async (dados: UpdateJogoDatasPayload) => {
+    setOwnerActionMsg('');
+    await onUpdateDatas(dados);
+    setShowEdit(false);
+  };
+
   const jaJogou = isExpired(jogo);
 
   return (
@@ -1085,6 +1126,14 @@ function JogoCard({
           emailUsuario={emailUsuario}
           userId={userId}
           onClose={() => setShowResult(false)}
+        />
+      )}
+
+      {showEdit && (
+        <EditJogoModal
+          jogo={jogo}
+          onClose={() => setShowEdit(false)}
+          onSave={handleSalvarEdicao}
         />
       )}
 
@@ -1160,7 +1209,7 @@ function JogoCard({
           {furosReportados >= 3 && <span style={sc.warningChip}>{furosReportados} furos</span>}
         </div>
 
-        {!isConfirmada && (
+        {!isConfirmada && !isOwner && (
           <div style={sc.actionArea}>
             <div style={sc.leftStatus}>
               {jogo.dataFim && jogo.dataFim !== jogo.dataInicio ? (
@@ -1183,6 +1232,20 @@ function JogoCard({
             </div>
           </div>
         )}
+
+        {isOwner && !isConfirmada && (
+          <div style={sc.ownerActions}>
+            <button type="button" style={sc.editBtn} onClick={() => setShowEdit(true)}>
+              Editar data/horário
+            </button>
+
+            <button type="button" style={sc.deleteBtn} onClick={handleExcluir}>
+              Excluir
+            </button>
+          </div>
+        )}
+
+        {ownerActionMsg && <p style={sc.ownerActionMsg}>{ownerActionMsg}</p>}
 
         {isOwner && !isConfirmada && (jogo.interessados ?? 0) > 0 && (
           <div style={sc.ownerPanel}>
@@ -1256,6 +1319,145 @@ function JogoCard({
         </div>
       </div>
     </>
+  );
+}
+
+
+function EditJogoModal({
+  jogo,
+  onClose,
+  onSave,
+}: {
+  jogo: Jogo;
+  onClose: () => void;
+  onSave: (dados: UpdateJogoDatasPayload) => Promise<void>;
+}) {
+  const hoje = new Date().toISOString().split('T')[0];
+  const [dataInicio, setDataInicio] = useState(jogo.dataInicio);
+  const [dataFim, setDataFim] = useState(jogo.dataFim ?? '');
+  const [horarioInicio, setHorarioInicio] = useState(jogo.horarioInicio);
+  const [horarioFim, setHorarioFim] = useState(jogo.horarioFim);
+  const [erro, setErro] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
+    setErro('');
+
+    if (!dataInicio) {
+      setErro('Escolha a data de início.');
+      return;
+    }
+
+    if (dataFim && dataFim < dataInicio) {
+      setErro('Data final deve ser maior ou igual à data inicial.');
+      return;
+    }
+
+    if (!horarioInicio) {
+      setErro('Informe o horário de início.');
+      return;
+    }
+
+    if (!horarioFim) {
+      setErro('Informe o horário final.');
+      return;
+    }
+
+    if (horarioFim <= horarioInicio) {
+      setErro('Horário final deve ser após o inicial.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await onSave({
+        dataInicio,
+        dataFim: dataFim || null,
+        horarioInicio,
+        horarioFim,
+      });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao salvar alteração.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={pm.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={pm.sheet}>
+        <div style={pm.handle} />
+
+        <div style={pm.header}>
+          <div>
+            <h2 style={pm.title}>Editar publicação</h2>
+            <p style={pm.sub}>Altere apenas datas e horários da partida.</p>
+          </div>
+
+          <button type="button" onClick={onClose} style={pm.closeBtn}>✕</button>
+        </div>
+
+        <div style={pm.row}>
+          <div style={pm.col}>
+            <span style={pm.subLabel}>Data início</span>
+            <input
+              type="date"
+              value={dataInicio}
+              min={hoje}
+              onChange={e => setDataInicio(e.target.value)}
+              style={pm.input}
+            />
+          </div>
+
+          <div style={pm.col}>
+            <span style={pm.subLabel}>Data fim</span>
+            <input
+              type="date"
+              value={dataFim}
+              min={dataInicio || hoje}
+              onChange={e => setDataFim(e.target.value)}
+              style={pm.input}
+            />
+          </div>
+        </div>
+
+        <FieldGroup label="Janela de horários">
+          <div style={pm.timeStack}>
+            <div style={pm.timeRow}>
+              <span style={pm.timeLabel}>Das</span>
+              <input
+                type="time"
+                value={horarioInicio}
+                onChange={e => setHorarioInicio(e.target.value)}
+                style={pm.timeInput}
+              />
+            </div>
+
+            <div style={pm.timeRow}>
+              <span style={pm.timeLabel}>Às</span>
+              <input
+                type="time"
+                value={horarioFim}
+                onChange={e => setHorarioFim(e.target.value)}
+                style={pm.timeInput}
+              />
+            </div>
+          </div>
+        </FieldGroup>
+
+        {erro && <p style={pm.erro}>{erro}</p>}
+
+        <button
+          type="button"
+          onClick={handleSave}
+          style={{ ...pm.publishBtn, opacity: loading ? 0.6 : 1 }}
+          disabled={loading}
+        >
+          {loading ? 'Salvando...' : 'Salvar alteração'}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -2379,6 +2581,42 @@ const sc: Record<string, React.CSSProperties> = {
     textDecoration: 'none',
     boxShadow: '0 8px 16px rgba(191,82,42,0.18)',
     whiteSpace: 'nowrap',
+  },
+
+  ownerActions: {
+    display: 'grid',
+    gridTemplateColumns: '1fr auto',
+    gap: 8,
+    alignItems: 'center',
+  },
+
+  editBtn: {
+    border: '1px solid rgba(198,107,77,0.22)',
+    background: '#fff4ec',
+    color: '#a54f3d',
+    borderRadius: 14,
+    padding: '11px 12px',
+    fontSize: 12.5,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+
+  deleteBtn: {
+    border: '1px solid rgba(201,84,65,0.18)',
+    background: '#fff',
+    color: '#c95441',
+    borderRadius: 14,
+    padding: '11px 12px',
+    fontSize: 12.5,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+
+  ownerActionMsg: {
+    margin: '-4px 0 0',
+    color: '#c95441',
+    fontSize: 12,
+    fontWeight: 700,
   },
 
   ownerPanel: {
