@@ -1298,6 +1298,162 @@ const s: Record<string, React.CSSProperties> = {
   },
 };
 
+
+// ---------------------------------------------------------------------------
+// AnalysisModal — Painel de comparação biomecânica
+// ---------------------------------------------------------------------------
+
+const LOCAL_GABARITO_IMAGES: Record<string, string> = {
+  saque_preparacao:    '/gabarito/saque_preparacao.png',
+  saque_contato:       '/gabarito/saque_contato.png',
+  forehand_preparacao: '/gabarito/forehand_preparacao.png',
+  forehand_contato:    '/gabarito/forehand_contato.png',
+  backhand_preparacao: '/gabarito/backhand_preparacao.png',
+  backhand_contato:    '/gabarito/backhand_contato.png',
+};
+
+function scoreBadgeStyle(pct: number | null): React.CSSProperties {
+  if (pct === null) return { background: '#f1e9e4', color: '#94857a', border: '1px solid #e5d8cf' };
+  if (pct >= 90)   return { background: '#edf8ef', color: '#3f8f5b', border: '1px solid rgba(63,143,91,0.28)' };
+  if (pct >= 75)   return { background: '#fff4df', color: '#a7671e', border: '1px solid rgba(196,139,58,0.30)' };
+  return             { background: '#fff4f0', color: '#c95441', border: '1px solid rgba(201,84,65,0.24)' };
+}
+
+function scoreLabel(pct: number): string {
+  if (pct >= 90) return '🟢';
+  if (pct >= 75) return '🟡';
+  return '🔴';
+}
+
+function AnalysisModal({
+  result,
+  snapshotUrl,
+  golpeFaseId,
+  onClose,
+}: {
+  result: PerformanceResult;
+  snapshotUrl: string | null;
+  golpeFaseId: string;
+  onClose: () => void;
+}) {
+  const { golpeLabel, nivelLabel, imageUrl, imageCredit, joints, scorePonderado } = result;
+  const localImg = LOCAL_GABARITO_IMAGES[golpeFaseId];
+  const displayImageUrl = localImg ?? imageUrl;
+  const displayCredit   = localImg ? '' : imageCredit;
+  const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
+
+  return (
+    <div style={sm.overlay}>
+      {lightboxUrl && (
+        <div style={sm.lightboxOverlay} onClick={() => setLightboxUrl(null)}>
+          <img src={lightboxUrl} alt="Ampliado" style={sm.lightboxImg} />
+          <span style={sm.lightboxHint}>Toque para fechar</span>
+        </div>
+      )}
+
+      <div style={sm.sheet}>
+        <div style={sm.header}>
+          <button onClick={onClose} style={sm.closeBtn}>← Fechar</button>
+
+          <div style={sm.headerCenter}>
+            <div style={sm.headerTitles}>
+              <span style={sm.golpeLabel}>{golpeLabel}</span>
+              <span style={sm.atletaMeta}>{nivelLabel}</span>
+            </div>
+          </div>
+
+          <div style={{ ...sm.scoreChip, ...scoreBadgeStyle(scorePonderado) }}>
+            {scoreLabel(scorePonderado)} {scorePonderado}%
+          </div>
+        </div>
+
+        <div style={sm.imageRow}>
+          <div style={sm.imageBox}>
+            <p style={sm.imageCaption}>
+              SUA POSIÇÃO <span style={sm.zoomHint}>🔍 toque para ampliar</span>
+            </p>
+
+            {snapshotUrl ? (
+              <img
+                src={snapshotUrl}
+                alt="Snapshot"
+                style={sm.img}
+                onClick={() => setLightboxUrl(snapshotUrl)}
+              />
+            ) : (
+              <div style={sm.imgPlaceholder}><span>Sem frame</span></div>
+            )}
+          </div>
+
+          <div style={sm.imageBox}>
+            <p style={sm.imageCaption}>
+              POSIÇÃO IDEAL {displayImageUrl && <span style={sm.zoomHint}>🔍</span>}
+            </p>
+
+            {displayImageUrl ? (
+              <>
+                <img
+                  src={displayImageUrl}
+                  alt={golpeLabel}
+                  style={sm.img}
+                  onClick={() => setLightboxUrl(displayImageUrl)}
+                />
+                {displayCredit && <p style={sm.imageCredit}>{displayCredit}</p>}
+              </>
+            ) : (
+              <div style={sm.imgPlaceholder}><span>Imagem em breve</span></div>
+            )}
+          </div>
+        </div>
+
+        <div style={sm.tableWrapper}>
+          <table style={sm.table}>
+            <thead>
+              <tr>
+                <th style={sm.th}>Articulação</th>
+                <th style={sm.th}>Esq. sua</th>
+                <th style={sm.th}>Ideal</th>
+                <th style={sm.th}>% Acerto</th>
+                <th style={sm.th}>Dir. sua</th>
+                <th style={sm.th}>Ideal</th>
+                <th style={sm.th}>% Acerto</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {joints.map((j: import('@utils/calcularPerformance').JointResult) => (
+                <tr key={j.label}>
+                  <td style={sm.tdLabel}>{j.label}</td>
+                  <td style={sm.tdVal}>{j.esqVal !== null ? `${j.esqVal}°` : '—'}</td>
+                  <td style={sm.tdIdeal}>{j.ideal}°</td>
+                  <td>
+                    <span style={{ ...sm.pctBadge, ...scoreBadgeStyle(j.esqPct) }}>
+                      {j.esqPct !== null ? `${j.esqPct}%` : '—'}
+                    </span>
+                  </td>
+                  <td style={sm.tdVal}>{j.dirVal !== null ? `${j.dirVal}°` : '—'}</td>
+                  <td style={sm.tdIdeal}>{(j.idealDir ?? j.ideal)}°</td>
+                  <td>
+                    <span style={{ ...sm.pctBadge, ...scoreBadgeStyle(j.dirPct) }}>
+                      {j.dirPct !== null ? `${j.dirPct}%` : '—'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={sm.legend}>
+          <span style={{ color: '#3f8f5b' }}>🟢 ≥ 90%</span>
+          <span style={{ color: '#a7671e' }}>🟡 75–89%</span>
+          <span style={{ color: '#c95441' }}>🔴 &lt; 75%</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const sm: Record<string, React.CSSProperties> = {
   overlay: {
     position: 'fixed',
