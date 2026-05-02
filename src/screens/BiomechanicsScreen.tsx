@@ -780,67 +780,82 @@ const s: Record<string, React.CSSProperties> = {
     position: 'fixed',
     inset: 0,
     overflow: 'hidden',
-    background: '#0d0d1a',
-    color: '#fff',
+    background: '#fbf7f1',
+    color: '#2d2521',
     display: 'flex',
     flexDirection: 'column',
-    fontFamily: 'system-ui, sans-serif',
+    fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
 
   header: {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: '88px 1fr 76px',
     alignItems: 'center',
-    padding: '12px 16px',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-    gap: 12,
-    background: 'rgba(0,0,0,0.4)',
+    gap: 10,
+    padding: 'max(16px, env(safe-area-inset-top, 16px)) 16px 12px',
+    background: '#fbf7f1',
+    borderBottom: '1px solid rgba(130,82,62,0.08)',
     flexShrink: 0,
+    position: 'relative',
+    zIndex: 10,
   },
+
   backBtn: {
-    background: 'none',
-    border: '1px solid rgba(255,255,255,0.25)',
-    color: '#cce0ff',
-    padding: '8px 14px',
-    borderRadius: 10,
-    fontSize: 14,
+    background: '#f3e8de',
+    border: 'none',
+    color: '#7a5142',
+    padding: '10px 12px',
+    borderRadius: 999,
+    fontSize: 13,
     cursor: 'pointer',
-    fontWeight: 600,
+    fontWeight: 850,
     flexShrink: 0,
+    boxShadow: '0 8px 18px rgba(117,76,56,0.06)',
   },
+
   headerTitleBlock: {
-    flex: 1,
+    minWidth: 0,
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
   },
+
   headerTitle: {
     textAlign: 'center',
-    fontSize: 15,
-    fontWeight: 700,
-    color: '#fff',
+    fontSize: 17,
+    fontWeight: 950,
+    color: '#2d2521',
+    letterSpacing: -0.35,
   },
+
   headerSub: {
     textAlign: 'center' as const,
-    fontSize: 10,
-    fontWeight: 500,
-    color: 'rgba(79,195,247,0.75)',
-    letterSpacing: 0.2,
-    lineHeight: 1.3,
+    fontSize: 10.5,
+    fontWeight: 650,
+    color: '#94857a',
+    letterSpacing: 0.1,
+    lineHeight: 1.25,
+    maxWidth: 240,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
+
   trophyHeaderBtn: {
-    background: 'rgba(255,215,0,0.12)',
-    border: '1.5px solid rgba(255,215,0,0.5)',
-    color: '#ffd700',
-    padding: '7px 12px',
-    borderRadius: 10,
-    fontSize: 13,
-    fontWeight: 700,
+    background: '#fff4df',
+    border: '1px solid rgba(196,139,58,0.30)',
+    color: '#a7671e',
+    padding: '9px 10px',
+    borderRadius: 999,
+    fontSize: 12.5,
+    fontWeight: 900,
     cursor: 'pointer',
     flexShrink: 0,
-    minWidth: 44,
-    minHeight: 36,
+    minWidth: 46,
+    minHeight: 38,
     whiteSpace: 'nowrap',
+    boxShadow: '0 8px 20px rgba(167,103,30,0.10)',
   },
 
   centeredBox: {
@@ -849,53 +864,65 @@ const s: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: 14,
     padding: 32,
+    textAlign: 'center',
   },
+
   spinner: {
     width: 48,
     height: 48,
-    border: '4px solid rgba(255,255,255,0.15)',
-    borderTop: '4px solid #4fc3f7',
+    border: '4px solid rgba(198,107,77,0.18)',
+    borderTop: '4px solid #c66b4d',
     borderRadius: '50%',
     animation: 'spin 0.9s linear infinite',
   },
-  loadingText: { fontSize: 18, fontWeight: 700, margin: 0, color: '#fff' },
-  loadingSub:  { fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: 0 },
-  errorText:   { fontSize: 18, fontWeight: 700, margin: 0, color: '#ff6b6b' },
-  errorSub:    { fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: 0, textAlign: 'center' },
+
+  loadingText: { fontSize: 18, fontWeight: 900, margin: 0, color: '#2d2521' },
+  loadingSub:  { fontSize: 13, color: '#94857a', margin: 0, fontWeight: 650 },
+  errorText:   { fontSize: 18, fontWeight: 900, margin: 0, color: '#c95441' },
+  errorSub:    { fontSize: 13, color: '#94857a', margin: 0, textAlign: 'center', fontWeight: 650 },
+
   retryBtn: {
-    padding: '12px 28px',
-    borderRadius: 12,
-    background: '#4fc3f7',
+    padding: '13px 26px',
+    borderRadius: 16,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
     border: 'none',
-    color: '#000',
+    color: '#fff',
     fontSize: 15,
-    fontWeight: 700,
+    fontWeight: 900,
     cursor: 'pointer',
+    boxShadow: '0 12px 24px rgba(147,72,54,0.22)',
   },
+
   backBtnSmall: {
-    padding: '10px 20px',
-    borderRadius: 12,
-    background: 'none',
-    border: '1px solid rgba(255,255,255,0.2)',
-    color: '#cce0ff',
+    padding: '11px 20px',
+    borderRadius: 14,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.10)',
+    color: '#7a5142',
     fontSize: 14,
+    fontWeight: 850,
     cursor: 'pointer',
   },
 
   videoWrapper: {
     position: 'relative',
-    width: '100%',
-    background: '#000',
+    width: 'calc(100% - 28px)',
+    margin: '10px auto 0',
+    background: '#15100e',
     flexShrink: 0,
-    minHeight: 180,
+    minHeight: 190,
     maxHeight: '48dvh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    borderRadius: 24,
+    border: '1px solid rgba(130,82,62,0.12)',
+    boxShadow: '0 14px 34px rgba(57,37,28,0.14)',
   },
+
   zoomInner: {
     position: 'relative',
     width: '100%',
@@ -905,19 +932,24 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   video: {
     width: '100%',
     height: '100%',
     objectFit: 'contain',
     display: 'block',
+    background: '#111',
   },
+
   canvas: {
     position: 'absolute',
-    top: 0, left: 0,
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
     pointerEvents: 'none',
   },
+
   emptyVideo: {
     width: '100%',
     height: '100%',
@@ -925,22 +957,24 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'rgba(255,255,255,0.03)',
+    background: 'linear-gradient(135deg, #251a15, #120e0c)',
   },
-  emptyText: { color: 'rgba(255,255,255,0.35)', fontSize: 15 },
+
+  emptyText: { color: 'rgba(255,248,239,0.64)', fontSize: 15, fontWeight: 750 },
 
   pickBtn: {
-    margin: '8px 16px',
-    padding: '12px 20px',
-    borderRadius: 14,
-    background: 'rgba(79,195,247,0.12)',
-    border: '1.5px solid #4fc3f7',
-    color: '#4fc3f7',
+    margin: '10px 16px 0',
+    padding: '13px 18px',
+    borderRadius: 18,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    border: 'none',
+    color: '#fff',
     fontSize: 15,
-    fontWeight: 700,
+    fontWeight: 900,
     cursor: 'pointer',
     width: 'calc(100% - 32px)',
     flexShrink: 0,
+    boxShadow: '0 12px 24px rgba(147,72,54,0.22)',
   },
 
   dropZone: {
@@ -951,109 +985,124 @@ const s: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: 16,
     border: '2px dashed',
-    borderRadius: 16,
+    borderRadius: 26,
     minHeight: 300,
     margin: 16,
     transition: 'border-color 0.15s, background 0.15s',
+    color: '#7a5142',
+    boxShadow: '0 14px 34px rgba(57,37,28,0.08)',
   },
-  dropText: { color: 'rgba(255,255,255,0.6)', fontSize: 16, margin: 0 },
+
+  dropText: { color: '#6f625b', fontSize: 16, margin: 0, fontWeight: 750 },
 
   controls: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    padding: '8px 12px',
-    background: 'rgba(0,0,0,0.3)',
-    borderTop: '1px solid rgba(255,255,255,0.08)',
-    borderBottom: '1px solid rgba(255,255,255,0.08)',
+    padding: '10px 12px',
+    background: '#fbf7f1',
+    borderTop: 'none',
+    borderBottom: 'none',
     flexShrink: 0,
+    flexWrap: 'wrap',
   },
+
   ctrlBtn: {
     padding: '10px 14px',
-    borderRadius: 10,
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.15)',
-    color: '#fff',
+    borderRadius: 14,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.10)',
+    color: '#7a5142',
     fontSize: 16,
     cursor: 'pointer',
     minWidth: 44,
     minHeight: 44,
+    boxShadow: '0 8px 18px rgba(117,76,56,0.06)',
   },
+
   ctrlBtnMain: {
     padding: '10px 18px',
-    borderRadius: 12,
-    background: '#4fc3f7',
+    borderRadius: 16,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
     border: 'none',
-    color: '#000',
+    color: '#fff',
     fontSize: 20,
-    fontWeight: 700,
+    fontWeight: 900,
     cursor: 'pointer',
-    minWidth: 56,
+    minWidth: 58,
     minHeight: 44,
+    boxShadow: '0 10px 20px rgba(147,72,54,0.20)',
   },
+
   rateBtn: {
     padding: '10px 12px',
-    borderRadius: 10,
-    background: 'rgba(174,243,89,0.15)',
-    border: '1.5px solid #aef359',
-    color: '#aef359',
+    borderRadius: 14,
+    background: '#eef8ef',
+    border: '1px solid rgba(63,143,91,0.22)',
+    color: '#3f8f5b',
     fontSize: 13,
-    fontWeight: 700,
+    fontWeight: 900,
     cursor: 'pointer',
     minWidth: 46,
     minHeight: 44,
   },
+
   zoomBtn: {
     padding: '8px 12px',
-    borderRadius: 10,
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.2)',
-    color: '#fff',
+    borderRadius: 14,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.10)',
+    color: '#7a5142',
     fontSize: 16,
-    fontWeight: 700,
+    fontWeight: 900,
     cursor: 'pointer',
     minWidth: 40,
     minHeight: 44,
     lineHeight: 1,
   },
+
   zoomLabel: {
-    color: '#4fc3f7',
+    color: '#b65b43',
     fontSize: 13,
-    fontWeight: 700,
+    fontWeight: 900,
     minWidth: 28,
     textAlign: 'center' as const,
   },
+
   panControls: {
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
     gap: 4,
     padding: '6px 0 8px',
-    background: 'rgba(0,0,0,0.3)',
+    background: '#fbf7f1',
     flexShrink: 0,
   },
+
   panRow: { display: 'flex', gap: 4, alignItems: 'center' },
+
   panBtn: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    background: 'rgba(79,195,247,0.15)',
-    border: '1px solid rgba(79,195,247,0.4)',
-    color: '#4fc3f7',
+    borderRadius: 14,
+    background: '#fff1eb',
+    border: '1px solid rgba(198,107,77,0.20)',
+    color: '#b65b43',
     fontSize: 20,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   panCenterBtn: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.2)',
-    color: 'rgba(255,255,255,0.6)',
+    borderRadius: 14,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.10)',
+    color: '#8f7769',
     fontSize: 18,
     cursor: 'pointer',
     display: 'flex',
@@ -1062,159 +1111,184 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   anglePanel: {
-    padding: '16px',
-    background: 'rgba(0,0,0,0.25)',
+    margin: '0 14px 18px',
+    padding: 14,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 24,
     flex: 1,
     overflow: 'auto',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+    boxShadow: '0 10px 28px rgba(117,76,56,0.07)',
   },
+
   anglePanelTitle: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontWeight: 900,
+    color: '#6f625b',
     margin: '0 0 12px 0',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
+
   angleTable: { width: '100%', borderCollapse: 'collapse' },
+
   th: {
-    padding: '6px 10px',
+    padding: '7px 8px',
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: 900,
     textAlign: 'center',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-    color: 'rgba(255,255,255,0.5)',
+    borderBottom: '1px solid #efe4db',
+    color: '#94857a',
   },
+
   td: {
-    padding: '10px 10px',
+    padding: '11px 8px',
     fontSize: 14,
-    fontWeight: 600,
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    fontWeight: 800,
+    borderBottom: '1px solid #f0e7df',
   },
+
   tdVal: {
-    padding: '10px 10px',
+    padding: '11px 8px',
     fontSize: 18,
-    fontWeight: 700,
+    fontWeight: 900,
     textAlign: 'center',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-    color: '#fff',
+    borderBottom: '1px solid #f0e7df',
+    color: '#2d2521',
     fontVariantNumeric: 'tabular-nums',
     fontFeatureSettings: '"tnum"',
   },
 
-  // Analysis strip
   analysisStrip: {
-    padding: '12px 0 16px',
-    borderBottom: '1px solid rgba(255,255,255,0.08)',
+    padding: '0 0 15px',
+    borderBottom: '1px solid #efe4db',
     marginBottom: 16,
     display: 'flex',
     flexDirection: 'column' as const,
     gap: 10,
   },
+
   analysisHint: {
     margin: 0,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
-    lineHeight: 1.5,
+    fontSize: 12.5,
+    color: '#8f7769',
+    lineHeight: 1.45,
+    fontWeight: 650,
   },
+
   selectsCol: {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: 8,
   },
+
   select: {
     width: '100%',
-    padding: '11px 14px',
-    borderRadius: 12,
-    background: '#1e2235',
-    border: '1px solid rgba(255,255,255,0.18)',
-    color: '#fff',
+    padding: '12px 14px',
+    borderRadius: 15,
+    background: '#fffaf7',
+    border: '1px solid #eadfd6',
+    color: '#332a25',
     fontSize: 14,
-    fontWeight: 600,
+    fontWeight: 750,
     cursor: 'pointer',
     appearance: 'auto' as const,
+    colorScheme: 'light' as React.CSSProperties['colorScheme'],
   },
+
   nivelRow: {
     display: 'flex',
-    gap: 6,
+    gap: 7,
   },
+
   nivelBtn: {
     flex: 1,
     padding: '10px 8px',
-    borderRadius: 10,
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.15)',
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 13,
-    fontWeight: 600,
+    borderRadius: 14,
+    background: '#fffaf7',
+    border: '1px solid #eadfd6',
+    color: '#8f7769',
+    fontSize: 12.5,
+    fontWeight: 850,
     cursor: 'pointer',
     transition: 'background 0.15s, color 0.15s',
   },
+
   nivelBtnActive: {
-    background: 'rgba(174,243,89,0.18)',
-    border: '1.5px solid #aef359',
-    color: '#aef359',
+    background: '#fff1eb',
+    border: '1.5px solid rgba(198,107,77,0.48)',
+    color: '#b65b43',
   },
+
   seekBar: {
-    width: '100%',
+    width: 'calc(100% - 32px)',
     height: 4,
-    accentColor: '#4fc3f7',
+    accentColor: '#c66b4d',
     cursor: 'pointer',
-    margin: '4px 0 0',
+    margin: '2px 16px 6px',
+    flexShrink: 0,
   },
+
   analyzeBtn: {
     padding: '14px 20px',
-    borderRadius: 14,
-    background: 'linear-gradient(135deg, #4a148c, #7b1fa2)',
+    borderRadius: 16,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
     border: 'none',
     color: '#fff',
     fontSize: 15,
-    fontWeight: 800,
+    fontWeight: 900,
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
     width: '100%',
     minHeight: 48,
+    boxShadow: '0 12px 24px rgba(147,72,54,0.22)',
   },
+
   retryGabaritoBtn: {
     width: '100%',
     padding: '13px 14px',
-    borderRadius: 12,
-    background: 'rgba(255,100,100,0.12)',
-    border: '1px solid rgba(255,100,100,0.4)',
-    color: '#ff8a80',
+    borderRadius: 14,
+    background: '#fff4f0',
+    border: '1px solid rgba(201,84,65,0.22)',
+    color: '#c95441',
     fontSize: 13,
-    fontWeight: 600,
+    fontWeight: 800,
     cursor: 'pointer',
     textAlign: 'left' as const,
   },
 
   trophyBtn: {
     padding: '10px 13px',
-    borderRadius: 10,
-    background: 'rgba(255,215,0,0.15)',
-    border: '1.5px solid rgba(255,215,0,0.5)',
-    color: '#ffd700',
+    borderRadius: 14,
+    background: '#fff4df',
+    border: '1px solid rgba(196,139,58,0.30)',
+    color: '#a7671e',
     fontSize: 18,
-    fontWeight: 800,
+    fontWeight: 900,
     cursor: 'pointer',
     minWidth: 48,
     lineHeight: 1,
   },
+
   trophyScore: {
-    color: '#ffd700',
+    color: '#a7671e',
     fontSize: 13,
-    fontWeight: 800,
+    fontWeight: 900,
     minWidth: 36,
     textAlign: 'center' as const,
   },
-  desktopBody: { flex: 1, display: 'flex', minHeight: 0 },
+
+  desktopBody: { flex: 1, display: 'flex', minHeight: 0, background: '#fbf7f1' },
+
   desktopLeft: {
     flex: '0 0 65%',
     display: 'flex',
     flexDirection: 'column',
-    borderRight: '1px solid rgba(255,255,255,0.1)',
+    borderRight: '1px solid rgba(130,82,62,0.08)',
     overflow: 'hidden',
   },
+
   desktopRight: {
     flex: '0 0 35%',
     display: 'flex',
@@ -1224,165 +1298,20 @@ const s: Record<string, React.CSSProperties> = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// AnalysisModal — Painel de comparação biomecânica
-// ---------------------------------------------------------------------------
-
-const LOCAL_GABARITO_IMAGES: Record<string, string> = {
-  saque_preparacao:    '/gabarito/saque_preparacao.png',
-  saque_contato:       '/gabarito/saque_contato.png',
-  forehand_preparacao: '/gabarito/forehand_preparacao.png',
-  forehand_contato:    '/gabarito/forehand_contato.png',
-  backhand_preparacao: '/gabarito/backhand_preparacao.png',
-  backhand_contato:    '/gabarito/backhand_contato.png',
-};
-
-function scoreBadgeStyle(pct: number | null): React.CSSProperties {
-  if (pct === null) return { background: 'rgba(255,255,255,0.15)', color: '#aaa' };
-  if (pct >= 90)   return { background: 'rgba(76,175,80,0.25)',  color: '#81c784', border: '1px solid rgba(76,175,80,0.4)'  };
-  if (pct >= 75)   return { background: 'rgba(255,179,0,0.25)',  color: '#ffd54f', border: '1px solid rgba(255,179,0,0.4)'  };
-  return             { background: 'rgba(244,67,54,0.25)',   color: '#ef9a9a', border: '1px solid rgba(244,67,54,0.4)'  };
-}
-
-function scoreLabel(pct: number): string {
-  if (pct >= 90) return '🟢';
-  if (pct >= 75) return '🟡';
-  return '🔴';
-}
-
-function AnalysisModal({
-  result,
-  snapshotUrl,
-  golpeFaseId,
-  onClose,
-}: {
-  result: PerformanceResult;
-  snapshotUrl: string | null;
-  golpeFaseId: string;
-  onClose: () => void;
-}) {
-  const { golpeLabel, nivelLabel, imageUrl, imageCredit, joints, scorePonderado } = result;
-  const localImg = LOCAL_GABARITO_IMAGES[golpeFaseId];
-  const displayImageUrl = localImg ?? imageUrl;
-  const displayCredit   = localImg ? '' : imageCredit;
-  const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null);
-
-  return (
-    <div style={sm.overlay}>
-      {lightboxUrl && (
-        <div style={sm.lightboxOverlay} onClick={() => setLightboxUrl(null)}>
-          <img src={lightboxUrl} alt="Ampliado" style={sm.lightboxImg} />
-          <span style={sm.lightboxHint}>Toque para fechar</span>
-        </div>
-      )}
-
-      <div style={sm.sheet}>
-        {/* Header */}
-        <div style={sm.header}>
-          <button onClick={onClose} style={sm.closeBtn}>← Fechar</button>
-          <div style={sm.headerCenter}>
-            <div style={sm.headerTitles}>
-              <span style={sm.golpeLabel}>{golpeLabel}</span>
-              <span style={sm.atletaMeta}>{nivelLabel}</span>
-            </div>
-          </div>
-          <div style={{ ...sm.scoreChip, ...scoreBadgeStyle(scorePonderado) }}>
-            {scoreLabel(scorePonderado)} {scorePonderado}%
-          </div>
-        </div>
-
-        {/* Side-by-side images */}
-        <div style={sm.imageRow}>
-          <div style={sm.imageBox}>
-            <p style={sm.imageCaption}>
-              SUA POSIÇÃO <span style={sm.zoomHint}>🔍 toque para ampliar</span>
-            </p>
-            {snapshotUrl
-              ? <img src={snapshotUrl} alt="Snapshot" style={sm.img} onClick={() => setLightboxUrl(snapshotUrl)} />
-              : <div style={sm.imgPlaceholder}><span>Sem frame</span></div>
-            }
-          </div>
-          <div style={sm.imageBox}>
-            <p style={sm.imageCaption}>
-              POSIÇÃO IDEAL {displayImageUrl && <span style={sm.zoomHint}>🔍</span>}
-            </p>
-            {displayImageUrl ? (
-              <>
-                <img
-                  src={displayImageUrl}
-                  alt={golpeLabel}
-                  style={sm.img}
-                  onClick={() => setLightboxUrl(displayImageUrl)}
-                />
-                {displayCredit && <p style={sm.imageCredit}>{displayCredit}</p>}
-              </>
-            ) : (
-              <div style={sm.imgPlaceholder}>
-                <span>Imagem em breve</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Comparison table */}
-        <div style={sm.tableWrapper}>
-          <table style={sm.table}>
-            <thead>
-              <tr>
-                <th style={sm.th}>Articulação</th>
-                <th style={{ ...sm.th, color: '#aef359' }}>Esq (Sua)</th>
-                <th style={sm.th}>Ideal</th>
-                <th style={sm.th}>% Acerto</th>
-                <th style={{ ...sm.th, color: '#4fc3f7' }}>Dir (Sua)</th>
-                <th style={sm.th}>Ideal</th>
-                <th style={sm.th}>% Acerto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {joints.map((j: import('@utils/calcularPerformance').JointResult) => (
-                <tr key={j.label}>
-                  <td style={sm.tdLabel}>{j.label}</td>
-                  <td style={sm.tdVal}>{j.esqVal !== null ? `${j.esqVal}°` : '—'}</td>
-                  <td style={sm.tdIdeal}>{j.ideal}°</td>
-                  <td>
-                    <span style={{ ...sm.pctBadge, ...scoreBadgeStyle(j.esqPct) }}>
-                      {j.esqPct !== null ? `${j.esqPct}%` : '—'}
-                    </span>
-                  </td>
-                  <td style={sm.tdVal}>{j.dirVal !== null ? `${j.dirVal}°` : '—'}</td>
-                  <td style={sm.tdIdeal}>{(j.idealDir ?? j.ideal)}°</td>
-                  <td>
-                    <span style={{ ...sm.pctBadge, ...scoreBadgeStyle(j.dirPct) }}>
-                      {j.dirPct !== null ? `${j.dirPct}%` : '—'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Legend */}
-        <div style={sm.legend}>
-          <span style={{ color: '#81c784' }}>🟢 ≥ 90%</span>
-          <span style={{ color: '#ffd54f' }}>🟡 75–89%</span>
-          <span style={{ color: '#ef9a9a' }}>🔴 &lt; 75%</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const sm: Record<string, React.CSSProperties> = {
   overlay: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(0,0,0,0.85)',
+    background: 'rgba(44,30,24,0.42)',
     zIndex: 200,
     display: 'flex',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'center',
+    padding: 16,
+    boxSizing: 'border-box',
+    backdropFilter: 'blur(6px)',
   },
+
   lightboxOverlay: {
     position: 'fixed',
     inset: 0,
@@ -1396,72 +1325,87 @@ const sm: Record<string, React.CSSProperties> = {
     cursor: 'zoom-out',
     padding: 16,
   },
+
   lightboxImg: {
     maxWidth: '100%',
     maxHeight: '85dvh',
     objectFit: 'contain',
-    borderRadius: 12,
+    borderRadius: 16,
   },
-  lightboxHint: { color: 'rgba(255,255,255,0.4)', fontSize: 13, flexShrink: 0 },
+
+  lightboxHint: { color: 'rgba(255,255,255,0.58)', fontSize: 13, flexShrink: 0 },
+
   zoomHint: {
     fontSize: 9,
-    color: 'rgba(255,255,255,0.3)',
+    color: '#b59c8c',
     marginLeft: 4,
-    fontWeight: 400,
+    fontWeight: 700,
   },
+
   sheet: {
-    background: '#0f1221',
-    border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: '28px 28px 0 0',
+    background: '#fffaf5',
+    border: '1px solid rgba(130,82,62,0.12)',
+    borderRadius: 28,
     width: '100%',
-    maxWidth: 720,
+    maxWidth: 740,
     maxHeight: '92dvh',
     overflowY: 'auto',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
     display: 'flex',
     flexDirection: 'column',
     paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))',
+    boxShadow: '0 24px 70px rgba(44,36,31,0.28)',
   },
+
   header: {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: '96px 1fr auto',
     alignItems: 'center',
     gap: 10,
-    padding: '20px 16px 14px',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
+    padding: '18px 16px 14px',
+    borderBottom: '1px solid #efe4db',
     flexShrink: 0,
     position: 'sticky',
     top: 0,
-    background: '#0f1221',
+    background: '#fffaf5',
     zIndex: 10,
   },
+
   closeBtn: {
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.18)',
-    color: '#cce0ff',
-    padding: '9px 14px',
-    borderRadius: 12,
+    background: '#f3e8de',
+    border: 'none',
+    color: '#7a5142',
+    padding: '10px 12px',
+    borderRadius: 999,
     fontSize: 13,
-    fontWeight: 600,
+    fontWeight: 850,
     cursor: 'pointer',
     flexShrink: 0,
   },
-  headerCenter: { flex: 1, display: 'flex', justifyContent: 'center' },
+
+  headerCenter: { flex: 1, display: 'flex', justifyContent: 'center', minWidth: 0 },
+
   headerTitles: {
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
     gap: 3,
+    minWidth: 0,
   },
-  golpeLabel: { fontSize: 16, fontWeight: 800, color: '#fff', letterSpacing: -0.3 },
-  atletaMeta: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 500 },
+
+  golpeLabel: { fontSize: 16, fontWeight: 950, color: '#2d2521', letterSpacing: -0.3, textAlign: 'center' as const },
+  atletaMeta: { fontSize: 12, color: '#94857a', fontWeight: 700 },
+
   scoreChip: {
-    padding: '8px 16px',
-    borderRadius: 20,
-    fontSize: 16,
-    fontWeight: 800,
+    padding: '8px 14px',
+    borderRadius: 999,
+    fontSize: 15,
+    fontWeight: 950,
     flexShrink: 0,
   },
+
   imageRow: { display: 'flex', gap: 12, padding: '14px 16px', flexShrink: 0 },
+
   imageBox: {
     flex: 1,
     display: 'flex',
@@ -1469,95 +1413,112 @@ const sm: Record<string, React.CSSProperties> = {
     gap: 6,
     alignItems: 'center',
   },
+
   imageCaption: {
     margin: 0,
-    fontSize: 11,
-    fontWeight: 800,
-    letterSpacing: 1.5,
-    color: 'rgba(255,255,255,0.65)',
+    fontSize: 10.5,
+    fontWeight: 950,
+    letterSpacing: 1.1,
+    color: '#8f7769',
     textTransform: 'uppercase' as const,
   },
+
   img: {
     width: '100%',
     aspectRatio: '4/3',
     objectFit: 'cover',
-    borderRadius: 12,
-    background: '#000',
+    borderRadius: 16,
+    background: '#111',
     cursor: 'zoom-in',
+    boxShadow: '0 10px 26px rgba(57,37,28,0.08)',
   },
+
   imgPlaceholder: {
     width: '100%',
     aspectRatio: '4/3',
-    background: 'rgba(255,255,255,0.05)',
-    borderRadius: 12,
+    background: '#f4ebe3',
+    borderRadius: 16,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: 'rgba(255,255,255,0.3)',
+    color: '#94857a',
     fontSize: 13,
-    border: '1px dashed rgba(255,255,255,0.12)',
+    fontWeight: 750,
+    border: '1px dashed #e3d5ca',
   },
+
   imageCredit: {
     margin: 0,
     fontSize: 9,
-    color: 'rgba(255,255,255,0.25)',
+    color: '#b59c8c',
     textAlign: 'center' as const,
     lineHeight: 1.4,
   },
+
   tableWrapper: { overflowX: 'auto', padding: '0 16px', flexShrink: 0 },
   table: { width: '100%', borderCollapse: 'collapse', minWidth: 420 },
+
   th: {
     padding: '10px 8px',
     fontSize: 12,
-    fontWeight: 700,
-    letterSpacing: 0.3,
-    color: 'rgba(255,255,255,0.55)',
+    fontWeight: 900,
+    letterSpacing: 0.2,
+    color: '#8f7769',
     textAlign: 'center' as const,
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
+    borderBottom: '1px solid #efe4db',
     whiteSpace: 'nowrap' as const,
   },
+
   tdLabel: {
-    padding: '10px 8px',
+    padding: '11px 8px',
     fontSize: 14,
-    fontWeight: 700,
-    color: '#e0e0e0',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    fontWeight: 900,
+    color: '#2d2521',
+    borderBottom: '1px solid #f0e7df',
     whiteSpace: 'nowrap' as const,
   },
+
   tdVal: {
-    padding: '10px 8px',
+    padding: '11px 8px',
     fontSize: 16,
-    fontWeight: 800,
+    fontWeight: 950,
     textAlign: 'center' as const,
-    color: '#fff',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    color: '#2d2521',
+    borderBottom: '1px solid #f0e7df',
     fontVariantNumeric: 'tabular-nums',
   },
+
   tdIdeal: {
-    padding: '10px 8px',
+    padding: '11px 8px',
     fontSize: 13,
     textAlign: 'center' as const,
-    color: 'rgba(255,255,255,0.45)',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    color: '#94857a',
+    borderBottom: '1px solid #f0e7df',
+    fontWeight: 750,
   },
+
   pctBadge: {
     display: 'inline-block',
-    padding: '5px 12px',
-    borderRadius: 20,
-    fontSize: 14,
-    fontWeight: 800,
+    padding: '6px 11px',
+    borderRadius: 999,
+    fontSize: 13,
+    fontWeight: 950,
     textAlign: 'center' as const,
   },
+
   legend: {
     display: 'flex',
     justifyContent: 'center',
-    gap: 20,
-    padding: '12px 16px 0',
+    gap: 16,
+    padding: '14px 16px 0',
     fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
+    color: '#8f7769',
+    fontWeight: 750,
     flexShrink: 0,
+    flexWrap: 'wrap',
   },
 };
+
 
 // Inject keyframe animation for spinner
 if (typeof document !== 'undefined') {
