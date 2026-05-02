@@ -588,7 +588,6 @@ export default function HomeScreen({
           <section style={s.section}>
             <div style={s.sectionHeader}>
               <h3 style={s.sectionTitle}>Acesso rápido</h3>
-              <span style={s.sectionLink}>Ver tudo ›</span>
             </div>
 
             <div style={s.quickGrid}>
