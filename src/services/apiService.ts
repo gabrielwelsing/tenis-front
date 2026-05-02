@@ -136,6 +136,13 @@ export interface InteressadoRecord {
   created_at:    string;
 }
 
+export interface UpdateJogoDatasPayload {
+  dataInicio:    string;
+  dataFim?:      string | null;
+  horarioInicio: string;
+  horarioFim:    string;
+}
+
 export async function getJogos(cidade?: string): Promise<JogoRecord[]> {
   const qs  = cidade ? `?cidade=${encodeURIComponent(cidade)}` : '';
   const res = await fetch(`${BASE_URL}/jogos${qs}`);
@@ -151,13 +158,49 @@ export async function getProximaAtividade(emailUsuario: string): Promise<Proxima
 
 export async function postJogo(jogo: JogoRecord): Promise<JogoRecord> {
   const res = await fetch(`${BASE_URL}/jogos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(jogo) });
-  if (!res.ok) throw new Error(`Erro ao publicar: ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Erro ao publicar: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateJogoDatas(
+  id: string,
+  emailPublicador: string,
+  dados: UpdateJogoDatasPayload
+): Promise<JogoRecord> {
+  const res = await fetch(`${BASE_URL}/jogos/${id}/datas`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      emailPublicador,
+      dataInicio: dados.dataInicio,
+      dataFim: dados.dataFim ?? null,
+      horarioInicio: dados.horarioInicio,
+      horarioFim: dados.horarioFim,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Erro ao editar publicação: ${res.status}`);
+  }
+
   return res.json();
 }
 
 export async function deleteJogo(id: string, emailPublicador: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/jogos/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emailPublicador }) });
-  if (!res.ok) throw new Error(`Erro ao remover: ${res.status}`);
+  const res = await fetch(`${BASE_URL}/jogos/${id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emailPublicador }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Erro ao remover: ${res.status}`);
+  }
 }
 
 export async function registrarInteresse(jogoId: string, email_usuario: string, nome_usuario: string): Promise<{ interessados: number }> {
@@ -173,11 +216,29 @@ export async function getInteressados(jogoId: string, email_publicador: string):
 }
 
 export async function confirmarSala(jogoId: string, email_publicador: string, confirmado_com: string): Promise<void> {
-  await fetch(`${BASE_URL}/jogos/${jogoId}/confirmar`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email_publicador, confirmado_com }) });
+  const res = await fetch(`${BASE_URL}/jogos/${jogoId}/confirmar`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email_publicador, confirmado_com }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Erro ao confirmar partida.');
+  }
 }
 
 export async function encerrarSala(jogoId: string, email_publicador: string): Promise<void> {
-  await fetch(`${BASE_URL}/jogos/${jogoId}/encerrar`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email_publicador }) });
+  const res = await fetch(`${BASE_URL}/jogos/${jogoId}/encerrar`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email_publicador }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Erro ao encerrar partida.');
+  }
 }
 
 // ---------------------------------------------------------------------------
