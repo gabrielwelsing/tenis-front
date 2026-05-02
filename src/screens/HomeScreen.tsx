@@ -2,13 +2,15 @@
 // HOME SCREEN — Hub principal pós-login
 // =============================================================================
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
+import { getProximaAtividade, type ProximaAtividadeRecord } from '@services/apiService';
 
 interface Props {
   saveMode:       SaveMode;
   username:       string;
+  emailUsuario:   string;
   role:           'user' | 'aluno' | 'admin';
   fotoUrl?:       string | null;
   telefone?:      string | null;
@@ -18,6 +20,17 @@ interface Props {
   onFotoUpload:   (file: File) => Promise<void>;
   onAssinar:      () => void;
   onSalvarPerfil: (dados: { nome: string; localidade: string; telefone: string }) => Promise<void>;
+}
+
+const DIAS_CARD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+function formatarDataAtividade(dataIso: string, horaInicio: string, horaFim: string): string {
+  const dt = new Date(`${dataIso}T12:00:00`);
+  const diaSemana = DIAS_CARD[dt.getDay()];
+  const dia = String(dt.getDate()).padStart(2, '0');
+  const mes = String(dt.getMonth() + 1).padStart(2, '0');
+
+  return `${diaSemana}, ${dia}/${mes} • ${horaInicio} - ${horaFim}`;
 }
 
 function UserOutlineIcon({ size = 22 }: { size?: number }) {
@@ -135,7 +148,7 @@ function TargetIcon({ size = 24 }: { size?: number }) {
 }
 
 export default function HomeScreen({
-  saveMode, username, role, fotoUrl, telefone, localidade,
+  saveMode, username, emailUsuario, role, fotoUrl, telefone, localidade,
   onLogout, onNavigate, onFotoUpload, onAssinar, onSalvarPerfil,
 }: Props) {
   const displayName = username
@@ -153,6 +166,26 @@ export default function HomeScreen({
   const [cfgTelefone, setCfgTelefone] = useState(telefone ?? '');
   const [cfgLoading, setCfgLoading] = useState(false);
   const [cfgMsg, setCfgMsg] = useState('');
+
+  const [proximaAtividade, setProximaAtividade] = useState<ProximaAtividadeRecord | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+
+    if (!emailUsuario) return;
+
+    getProximaAtividade(emailUsuario)
+      .then(data => {
+        if (ativo) setProximaAtividade(data);
+      })
+      .catch(() => {
+        if (ativo) setProximaAtividade(null);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [emailUsuario]);
 
   const handleAvatarClick = () => fileInputRef.current?.click();
 
@@ -494,19 +527,61 @@ export default function HomeScreen({
             <div style={s.heroOverlay} />
 
             <div style={s.heroContent}>
-              <div style={s.heroKicker}>SEM ATIVIDADE AGENDADA</div>
-              <h1 style={s.heroTitle}>Agende sua próxima atividade!</h1>
+              {proximaAtividade ? (
+                <>
+                  <div style={s.heroKicker}>PRÓXIMA PARTIDA</div>
 
-              <div style={s.heroMeta}>
-                <div style={s.heroMetaLine}>
-                  <CalendarIcon size={14} />
-                  <span>Partidas, aulas e treinos em um só lugar</span>
-                </div>
-                <div style={s.heroMetaLine}>
-                  <TargetIcon size={14} />
-                  <span>Use o mural para encontrar parceiros</span>
-                </div>
-              </div>
+                  <h1 style={s.heroTitle}>
+                    {displayName} x {proximaAtividade.adversarioNome || 'Adversário'}
+                  </h1>
+
+                  <div style={s.heroMeta}>
+                    <div style={s.heroMetaLine}>
+                      <CalendarIcon size={14} />
+                      <span>
+                        {formatarDataAtividade(
+                          proximaAtividade.dataInicio,
+                          proximaAtividade.horarioInicio,
+                          proximaAtividade.horarioFim
+                        )}
+                      </span>
+                    </div>
+
+                    <div style={s.heroMetaLine}>
+                      <TargetIcon size={14} />
+                      <span>{proximaAtividade.local}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    style={s.heroDetailsBtn}
+                    onClick={() => onNavigate('mural')}
+                  >
+                    Ver detalhes ›
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={s.heroKicker}>SEM ATIVIDADE AGENDADA</div>
+
+                  <h1 style={s.heroTitle}>
+                    Agende sua próxima atividade!
+                  </h1>
+
+                  <div style={s.heroMeta}>
+                    <div style={s.heroMetaLine}>
+                      <CalendarIcon size={14} />
+                      <span>Partidas, aulas e treinos em um só lugar</span>
+                    </div>
+
+                    <div style={s.heroMetaLine}>
+                      <TargetIcon size={14} />
+                      <span>Use o mural para encontrar parceiros</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </section>
 
@@ -929,6 +1004,20 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 10.5,
     fontWeight: 650,
     lineHeight: 1.3,
+  },
+
+  heroDetailsBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 2,
+    padding: '8px 12px',
+    borderRadius: 12,
+    border: 'none',
+    background: '#fff8ef',
+    color: '#9a4f39',
+    fontSize: 11.5,
+    fontWeight: 850,
+    cursor: 'pointer',
+    boxShadow: '0 8px 18px rgba(70,30,20,0.16)',
   },
 
   section: {
