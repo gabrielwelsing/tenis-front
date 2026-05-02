@@ -684,7 +684,14 @@ export default function HomeScreen({
           </section>
 
           <div style={s.footer}>
-            <span style={s.footerText}>@jogartenisto</span>
+            <a
+              href="https://www.instagram.com/jogartenisto"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={s.footerText}
+            >
+              @jogartenisto
+            </a>
           </div>
 
         </div>
@@ -1182,6 +1189,8 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 11,
     letterSpacing: 0.8,
     fontWeight: 700,
+    textDecoration: 'none',
+    cursor: 'pointer',
   },
 
   bottomNav: {
