@@ -439,13 +439,28 @@ export default function ComparisonScreen({ onBack }: Props) {
   if (phase === 'setup') {
     return (
       <div style={s.page}>
+        <div style={s.bgGlow1} />
+        <div style={s.bgGlow2} />
+
         <div style={s.topBar}>
-          <button onClick={onBack} style={s.backBtn}>← Voltar</button>
-          <h1 style={s.pageTitle}>Comparativo de Vídeos</h1>
+          <button onClick={onBack} style={s.backBtn}>‹</button>
+          <div style={s.titleBlock}>
+            <h1 style={s.pageTitle}>Comparativo de Vídeos</h1>
+            <p style={s.pageSub}>Sincronize dois vídeos e analise o movimento lado a lado</p>
+          </div>
+          <div style={s.headerSpacer} />
+        </div>
+
+        <div style={s.heroCard}>
+          <span style={s.heroKicker}>PASSO 1</span>
+          <h2 style={s.heroTitle}>Escolha os dois vídeos</h2>
+          <p style={s.heroText}>
+            Use um vídeo do aluno e outro de referência. Depois marque o mesmo gesto nos dois vídeos.
+          </p>
         </div>
 
         <div style={s.infoBanner}>
-          💡 Dica: Para comparar corretamente, marque o mesmo momento nos dois vídeos (ex: o início do movimento do saque). Os vídeos vão tocar em sincronia a partir desse ponto.
+          Para comparar corretamente, marque o mesmo momento nos dois vídeos, como o início do movimento do saque.
         </div>
 
         <div style={s.slotRow}>
@@ -464,10 +479,10 @@ export default function ComparisonScreen({ onBack }: Props) {
         <div style={s.setupFooter}>
           <button
             disabled={!bothLoaded}
-            style={{ ...s.primaryBtn, opacity: bothLoaded ? 1 : 0.4 }}
+            style={{ ...s.primaryBtn, opacity: bothLoaded ? 1 : 0.42 }}
             onClick={() => setPhase('trim')}
           >
-            ✂️ Marcar pontos de início
+            Marcar pontos de início
           </button>
         </div>
       </div>
@@ -477,13 +492,28 @@ export default function ComparisonScreen({ onBack }: Props) {
   if (phase === 'trim') {
     return (
       <div style={s.page}>
+        <div style={s.bgGlow1} />
+        <div style={s.bgGlow2} />
+
         <div style={s.topBar}>
-          <button onClick={() => setPhase('setup')} style={s.backBtn}>← Voltar</button>
-          <h1 style={s.pageTitle}>Sincronizar Vídeos</h1>
+          <button onClick={() => setPhase('setup')} style={s.backBtn}>‹</button>
+          <div style={s.titleBlock}>
+            <h1 style={s.pageTitle}>Sincronizar Vídeos</h1>
+            <p style={s.pageSub}>Defina início e fim do trecho de comparação</p>
+          </div>
+          <div style={s.headerSpacer} />
+        </div>
+
+        <div style={s.heroCard}>
+          <span style={s.heroKicker}>PASSO 2</span>
+          <h2 style={s.heroTitle}>Marque o mesmo gesto</h2>
+          <p style={s.heroText}>
+            Ajuste o início e o fim dos dois vídeos para que a comparação fique sincronizada.
+          </p>
         </div>
 
         <div style={s.infoBanner}>
-          📌 Marque o mesmo gesto nos dois vídeos. Ex: ambos no momento em que a raquete começa a subir.
+          Exemplo: marque os dois vídeos no momento em que a raquete começa a subir.
         </div>
 
         <div style={s.trimRow}>
@@ -510,10 +540,10 @@ export default function ComparisonScreen({ onBack }: Props) {
         <div style={s.setupFooter}>
           <button
             disabled={!bothMarked}
-            style={{ ...s.primaryBtn, opacity: bothMarked ? 1 : 0.4 }}
+            style={{ ...s.primaryBtn, opacity: bothMarked ? 1 : 0.42 }}
             onClick={() => { pauseSync(); setPhase('compare'); }}
           >
-            ▶ Comparar
+            Comparar vídeos
           </button>
         </div>
       </div>
@@ -525,10 +555,13 @@ export default function ComparisonScreen({ onBack }: Props) {
     <div style={s.comparePage}>
       {/* Header */}
       <div style={s.compareHeader}>
-        <button onClick={() => { pauseSync(); setPhase('trim'); }} style={s.backBtn}>← Voltar</button>
-        <span style={s.pageTitle}>Comparativo</span>
+        <button onClick={() => { pauseSync(); setPhase('trim'); }} style={s.compareBackBtn}>‹</button>
+        <div style={s.compareTitleBlock}>
+          <span style={s.compareTitle}>Comparativo</span>
+          <span style={s.compareSub}>Aluno x Referência</span>
+        </div>
         <div style={s.rateToggle}>
-          <button onClick={toggleRate} style={s.controlBtn}>
+          <button onClick={toggleRate} style={s.rateBtn}>
             {playbackRate === 1 ? '1x' : '0.5x'}
           </button>
         </div>
@@ -566,21 +599,21 @@ export default function ComparisonScreen({ onBack }: Props) {
           {isPlaying ? '⏸' : '▶'}
         </button>
         <button onClick={() => seekBoth(5)} style={s.controlBtn}>▶▶</button>
-        <button onClick={handleRestart} style={s.controlBtn}>🔄</button>
+        <button onClick={handleRestart} style={s.controlBtn}>↺</button>
         <button
           onClick={toggleDrawMode}
-          style={{ ...s.controlBtn, background: drawActive ? '#7b1fa2' : 'rgba(255,255,255,0.12)' }}
+          style={{ ...s.controlBtn, ...(drawActive ? s.controlBtnActive : {}) }}
         >
           ✏️
         </button>
         <button
           onClick={handleNarrate}
-          style={{ ...s.controlBtn, background: isNarrating ? '#c62828' : 'rgba(255,255,255,0.12)' }}
+          style={{ ...s.controlBtn, ...(isNarrating ? s.recordingBtn : {}) }}
         >
           🎙
         </button>
         {narrationUrl && (
-          <a href={narrationUrl} download="narracao.webm" style={s.controlBtn}>⬇️🎙</a>
+          <a href={narrationUrl} download="narracao.webm" style={s.controlBtn}>⬇️</a>
         )}
       </div>
 
@@ -591,7 +624,7 @@ export default function ComparisonScreen({ onBack }: Props) {
             <button
               key={tool}
               onClick={() => setDrawTool(tool)}
-              style={{ ...s.drawToolBtn, border: drawTool === tool ? '2px solid #fff' : '2px solid transparent' }}
+              style={{ ...s.drawToolBtn, border: drawTool === tool ? '2px solid #fff8ef' : '2px solid transparent' }}
             >
               {tool === 'pencil' ? '✏️' : tool === 'circle' ? '⭕' : '🧹'}
             </button>
@@ -603,7 +636,7 @@ export default function ComparisonScreen({ onBack }: Props) {
               style={{
                 ...s.colorBtn,
                 background: c,
-                border: drawColor === c ? '3px solid #fff' : '3px solid transparent',
+                border: drawColor === c ? '3px solid #fff8ef' : '3px solid transparent',
               }}
             />
           ))}
@@ -631,15 +664,21 @@ function VideoPickSlot({
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div style={sp.slotBox}>
-      <p style={sp.slotLabel}>{label}</p>
+      <div style={sp.slotTop}>
+        <p style={sp.slotLabel}>{label}</p>
+        {url && <span style={sp.readyPill}>Pronto</span>}
+      </div>
+
       {url ? (
         <video src={url} style={sp.previewVideo} controls playsInline />
       ) : (
         <div style={sp.emptyBox} onClick={() => inputRef.current?.click()}>
-          <span style={{ fontSize: 36 }}>📹</span>
-          <span style={{ color: '#888', fontSize: 13 }}>Toque para escolher</span>
+          <div style={sp.emptyIcon}>📹</div>
+          <span style={sp.emptyTitle}>Selecionar vídeo</span>
+          <span style={sp.emptySub}>Toque para escolher um arquivo</span>
         </div>
       )}
+
       <input
         ref={inputRef}
         type="file"
@@ -647,8 +686,9 @@ function VideoPickSlot({
         style={{ display: 'none' }}
         onChange={onChange}
       />
+
       <button style={sp.pickBtn} onClick={() => inputRef.current?.click()}>
-        {url ? '🔄 Trocar vídeo' : '📁 Escolher vídeo'}
+        {url ? 'Trocar vídeo' : 'Escolher vídeo'}
       </button>
     </div>
   );
@@ -688,6 +728,7 @@ function TrimSlot({
   return (
     <div style={sp.trimBox}>
       <p style={sp.slotLabel}>{label}</p>
+
       <video
         ref={videoRef}
         src={url}
@@ -700,7 +741,11 @@ function TrimSlot({
 
       {duration > 0 && (
         <>
-          <p style={sp.trimLabel}>Início: {fmtTime(start)}</p>
+          <div style={sp.trimLine}>
+            <span style={sp.trimLabel}>Início</span>
+            <strong style={sp.trimTime}>{fmtTime(start)}</strong>
+          </div>
+
           <input
             type="range"
             min={0}
@@ -714,7 +759,12 @@ function TrimSlot({
               if (videoRef.current) videoRef.current.currentTime = t;
             }}
           />
-          <p style={sp.trimLabel}>Fim: {fmtTime(end)}</p>
+
+          <div style={sp.trimLine}>
+            <span style={sp.trimLabel}>Fim</span>
+            <strong style={sp.trimTime}>{fmtTime(end)}</strong>
+          </div>
+
           <input
             type="range"
             min={0}
@@ -728,6 +778,7 @@ function TrimSlot({
               if (videoRef.current) videoRef.current.currentTime = t;
             }}
           />
+
           <p style={sp.timeInfo}>
             {fmtTime(start)} → {fmtTime(end)}{clip > 0 ? ` (${clip.toFixed(1)}s)` : ''}
           </p>
@@ -746,106 +797,259 @@ const s: Record<string, React.CSSProperties> = {
     position: 'fixed',
     inset: 0,
     overflow: 'hidden',
-    background: '#0d0d1a',
+    background: '#fbf7f1',
     display: 'flex',
     flexDirection: 'column',
-    color: '#fff',
+    color: '#2d2521',
+    fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
+
+  bgGlow1: {
+    position: 'absolute',
+    top: -110,
+    right: -90,
+    width: 260,
+    height: 260,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(191,102,72,0.16) 0%, transparent 68%)',
+    pointerEvents: 'none',
+    zIndex: 0,
+  },
+
+  bgGlow2: {
+    position: 'absolute',
+    bottom: -130,
+    left: -100,
+    width: 280,
+    height: 280,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(116,80,58,0.12) 0%, transparent 70%)',
+    pointerEvents: 'none',
+    zIndex: 0,
+  },
+
   topBar: {
+    position: 'relative',
+    zIndex: 2,
+    display: 'grid',
+    gridTemplateColumns: '44px 1fr 44px',
+    alignItems: 'center',
+    gap: 10,
+    padding: 'max(16px, env(safe-area-inset-top, 16px)) 16px 12px',
+    background: '#fbf7f1',
+    flexShrink: 0,
+  },
+
+  titleBlock: {
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 2,
+  },
+
+  pageTitle: {
+    fontSize: 21,
+    fontWeight: 950,
+    margin: 0,
+    color: '#2d2521',
+    letterSpacing: -0.7,
+    textAlign: 'center',
+  },
+
+  pageSub: {
+    margin: 0,
+    fontSize: 11.5,
+    fontWeight: 650,
+    color: '#94857a',
+    textAlign: 'center',
+    lineHeight: 1.25,
+  },
+
+  headerSpacer: {
+    width: 42,
+    height: 42,
+  },
+
+  backBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: '50%',
+    background: '#f3e8de',
+    border: 'none',
+    color: '#7a5142',
+    fontSize: 30,
+    lineHeight: 1,
+    cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
-    padding: '16px 16px 8px',
-    paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
+    justifyContent: 'center',
   },
-  pageTitle: {
-    fontSize: 20,
-    fontWeight: 800,
+
+  heroCard: {
+    position: 'relative',
+    zIndex: 2,
+    margin: '0 16px 12px',
+    padding: '18px',
+    borderRadius: 24,
+    background: 'linear-gradient(135deg, #c66b4d, #8f4635)',
+    boxShadow: '0 16px 34px rgba(134,72,50,0.20)',
+    overflow: 'hidden',
+  },
+
+  heroKicker: {
+    display: 'block',
+    color: 'rgba(255,245,235,0.82)',
+    fontSize: 10,
+    fontWeight: 900,
+    letterSpacing: 1.4,
+    marginBottom: 7,
+  },
+
+  heroTitle: {
     margin: 0,
-    flex: 1,
-    letterSpacing: -0.4,
+    color: '#fff8ef',
+    fontSize: 22,
+    fontWeight: 950,
+    letterSpacing: -0.6,
+    lineHeight: 1.1,
   },
-  backBtn: {
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.18)',
-    color: '#cce0ff',
-    padding: '10px 16px',
-    borderRadius: 14,
-    cursor: 'pointer',
-    fontSize: 14,
-    fontWeight: 600,
-    minHeight: 44,
+
+  heroText: {
+    margin: '7px 0 0',
+    color: 'rgba(255,248,239,0.88)',
+    fontSize: 12.8,
+    fontWeight: 650,
+    lineHeight: 1.42,
+    maxWidth: 360,
   },
+
   infoBanner: {
-    margin: '12px 16px',
-    padding: '12px 16px',
-    background: 'rgba(79,195,247,0.08)',
-    border: '1px solid rgba(79,195,247,0.25)',
-    borderRadius: 14,
-    color: '#b3e5fc',
-    fontSize: 13,
-    lineHeight: 1.5,
+    position: 'relative',
+    zIndex: 2,
+    margin: '0 16px 12px',
+    padding: '12px 14px',
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 18,
+    color: '#7b675d',
+    fontSize: 12.5,
+    fontWeight: 650,
+    lineHeight: 1.45,
+    boxShadow: '0 10px 24px rgba(117,76,56,0.06)',
   },
+
   slotRow: {
+    position: 'relative',
+    zIndex: 2,
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
+    gap: 14,
     padding: '0 16px',
     flex: 1,
     overflowY: 'auto',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
+
   trimRow: {
+    position: 'relative',
+    zIndex: 2,
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
+    gap: 14,
     padding: '0 16px',
     flex: 1,
     overflowY: 'auto',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
+
   setupFooter: {
-    padding: '16px',
-    borderTop: '1px solid rgba(255,255,255,0.1)',
+    position: 'relative',
+    zIndex: 3,
+    padding: '14px 16px max(16px, env(safe-area-inset-bottom, 16px))',
+    background: 'rgba(251,247,241,0.94)',
+    borderTop: '1px solid rgba(130,82,62,0.08)',
+    backdropFilter: 'blur(14px)',
   },
+
   primaryBtn: {
     width: '100%',
-    padding: '16px',
-    borderRadius: 16,
-    background: '#1565c0',
+    padding: '15px',
+    borderRadius: 17,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
     border: 'none',
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 700,
+    fontSize: 15,
+    fontWeight: 950,
     cursor: 'pointer',
     minHeight: 52,
+    boxShadow: '0 12px 24px rgba(147,72,54,0.22)',
   },
 
   // Compare phase
   comparePage: {
     height: '100dvh',
-    background: '#000',
+    background: '#0d0907',
     display: 'flex',
     flexDirection: 'column',
     color: '#fff',
     overflow: 'hidden',
+    fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
+
   compareHeader: {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: '44px 1fr 52px',
     alignItems: 'center',
-    gap: 12,
-    padding: '8px 12px',
-    paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
-    background: 'rgba(0,0,0,0.6)',
+    gap: 10,
+    padding: 'max(10px, env(safe-area-inset-top, 10px)) 12px 10px',
+    background: 'rgba(28,20,16,0.88)',
+    borderBottom: '1px solid rgba(255,248,239,0.08)',
+    backdropFilter: 'blur(14px)',
     zIndex: 20,
     flexShrink: 0,
   },
+
+  compareBackBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: '50%',
+    border: '1px solid rgba(255,248,239,0.12)',
+    background: 'rgba(255,248,239,0.08)',
+    color: '#fff8ef',
+    fontSize: 30,
+    lineHeight: 1,
+    cursor: 'pointer',
+  },
+
+  compareTitleBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 2,
+    minWidth: 0,
+  },
+
+  compareTitle: {
+    color: '#fff8ef',
+    fontSize: 17,
+    fontWeight: 950,
+    letterSpacing: -0.35,
+  },
+
+  compareSub: {
+    color: 'rgba(255,248,239,0.52)',
+    fontSize: 11,
+    fontWeight: 700,
+  },
+
   compareArea: {
     flex: 1,
     position: 'relative',
     overflow: 'hidden',
+    background: '#000',
   },
+
   hiddenVideo: {
     position: 'absolute',
     inset: 0,
@@ -855,6 +1059,7 @@ const s: Record<string, React.CSSProperties> = {
     pointerEvents: 'none',
     zIndex: 0,
   },
+
   displayCanvas: {
     position: 'absolute',
     inset: 0,
@@ -863,11 +1068,13 @@ const s: Record<string, React.CSSProperties> = {
     background: '#000',
     zIndex: 1,
   },
+
   drawCanvas: {
     position: 'absolute',
     inset: 0,
     zIndex: 10,
   },
+
   controls: {
     display: 'flex',
     alignItems: 'center',
@@ -875,60 +1082,96 @@ const s: Record<string, React.CSSProperties> = {
     gap: 8,
     padding: '10px 12px',
     paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))',
-    background: 'rgba(0,0,0,0.7)',
+    background: 'rgba(28,20,16,0.92)',
+    borderTop: '1px solid rgba(255,248,239,0.08)',
     flexShrink: 0,
     flexWrap: 'wrap',
+    backdropFilter: 'blur(14px)',
   },
+
   controlBtn: {
-    background: 'rgba(255,255,255,0.12)',
-    border: '1px solid rgba(255,255,255,0.18)',
-    color: '#fff',
+    background: 'rgba(255,248,239,0.10)',
+    border: '1px solid rgba(255,248,239,0.13)',
+    color: '#fff8ef',
     width: 44,
     height: 44,
     borderRadius: 22,
-    fontSize: 18,
-    fontWeight: 700,
+    fontSize: 17,
+    fontWeight: 800,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     textDecoration: 'none',
   },
-  playBtn: {
-    background: '#1565c0',
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    fontSize: 22,
+
+  controlBtnActive: {
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    borderColor: 'rgba(255,248,239,0.18)',
+    boxShadow: '0 8px 18px rgba(147,72,54,0.28)',
   },
-  rateToggle: {},
+
+  recordingBtn: {
+    background: 'linear-gradient(135deg, #c95441, #922f28)',
+    borderColor: 'rgba(255,248,239,0.18)',
+  },
+
+  playBtn: {
+    background: 'linear-gradient(135deg, #d0704e, #974735)',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    fontSize: 22,
+    boxShadow: '0 10px 22px rgba(147,72,54,0.30)',
+  },
+
+  rateToggle: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+
+  rateBtn: {
+    width: 48,
+    height: 38,
+    borderRadius: 999,
+    border: '1px solid rgba(255,248,239,0.14)',
+    background: 'rgba(255,248,239,0.09)',
+    color: '#fff8ef',
+    fontSize: 13,
+    fontWeight: 900,
+    cursor: 'pointer',
+  },
+
   drawTools: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
     padding: '10px 16px',
-    background: 'rgba(0,0,0,0.85)',
+    background: 'rgba(18,12,10,0.94)',
+    borderTop: '1px solid rgba(255,248,239,0.08)',
     flexShrink: 0,
     flexWrap: 'wrap',
   },
+
   drawToolBtn: {
-    background: 'rgba(255,255,255,0.1)',
+    background: 'rgba(255,248,239,0.10)',
     border: '2px solid transparent',
-    color: '#fff',
+    color: '#fff8ef',
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 14,
     fontSize: 20,
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   colorBtn: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: '50%',
     cursor: 'pointer',
     border: '3px solid transparent',
@@ -937,82 +1180,159 @@ const s: Record<string, React.CSSProperties> = {
 
 const sp: Record<string, React.CSSProperties> = {
   slotBox: {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: 16,
-    padding: 16,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 22,
+    padding: 14,
     display: 'flex',
     flexDirection: 'column',
+    gap: 11,
+    boxShadow: '0 10px 24px rgba(117,76,56,0.06)',
+  },
+
+  slotTop: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 10,
   },
+
   slotLabel: {
-    color: '#cce0ff',
+    color: '#2d2521',
     fontSize: 14,
-    fontWeight: 700,
+    fontWeight: 900,
     margin: 0,
+    letterSpacing: -0.15,
   },
+
+  readyPill: {
+    background: '#edf8ef',
+    color: '#3f8f5b',
+    border: '1px solid rgba(63,143,91,0.16)',
+    borderRadius: 999,
+    padding: '5px 9px',
+    fontSize: 11,
+    fontWeight: 850,
+    flexShrink: 0,
+  },
+
   emptyBox: {
     height: 160,
-    borderRadius: 12,
-    border: '2px dashed rgba(255,255,255,0.2)',
+    borderRadius: 18,
+    border: '1.5px dashed rgba(130,82,62,0.18)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     cursor: 'pointer',
-    background: 'rgba(0,0,0,0.3)',
+    background: '#fffaf7',
   },
+
+  emptyIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: '50%',
+    background: '#fff1eb',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 26,
+    marginBottom: 2,
+  },
+
+  emptyTitle: {
+    color: '#4b3d36',
+    fontSize: 14,
+    fontWeight: 850,
+  },
+
+  emptySub: {
+    color: '#9b8a7f',
+    fontSize: 12,
+    fontWeight: 650,
+  },
+
   previewVideo: {
     width: '100%',
-    maxHeight: 200,
-    borderRadius: 10,
+    maxHeight: 210,
+    borderRadius: 16,
     objectFit: 'contain',
     background: '#000',
+    overflow: 'hidden',
   },
+
   pickBtn: {
-    padding: '12px 0',
+    padding: '13px 0',
     borderRadius: 16,
-    background: 'rgba(255,255,255,0.1)',
-    border: '1px solid rgba(255,255,255,0.2)',
-    color: '#fff',
+    background: '#fff4ed',
+    border: '1px solid rgba(198,107,77,0.18)',
+    color: '#a65440',
     fontSize: 14,
+    fontWeight: 900,
     cursor: 'pointer',
     width: '100%',
-    minHeight: 44,
+    minHeight: 46,
   },
+
   trimBox: {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: 16,
-    padding: 16,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 22,
+    padding: 14,
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
+    boxShadow: '0 10px 24px rgba(117,76,56,0.06)',
   },
+
   trimVideo: {
     width: '100%',
-    maxHeight: 200,
-    borderRadius: 10,
+    maxHeight: 210,
+    borderRadius: 16,
     background: '#000',
     objectFit: 'contain',
   },
-  trimLabel: {
-    color: '#cce0ff',
-    fontSize: 14,
-    margin: 0,
-    fontWeight: 700,
+
+  trimLine: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 2,
   },
+
+  trimLabel: {
+    color: '#8f7769',
+    fontSize: 12,
+    margin: 0,
+    fontWeight: 850,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase' as const,
+  },
+
+  trimTime: {
+    color: '#2d2521',
+    fontSize: 13,
+    fontWeight: 900,
+    fontVariantNumeric: 'tabular-nums',
+  },
+
   slider: {
     width: '100%',
-    accentColor: '#1565c0',
+    accentColor: '#c66b4d',
     height: 32,
   },
+
   timeInfo: {
-    color: '#b3e5fc',
-    fontSize: 13,
-    margin: 0,
+    color: '#8b5b49',
+    background: '#fff4ed',
+    border: '1px solid rgba(198,107,77,0.14)',
+    borderRadius: 999,
+    padding: '8px 10px',
+    fontSize: 12.5,
+    margin: '2px 0 0',
     textAlign: 'center',
-    fontWeight: 600,
+    fontWeight: 850,
   },
 };
