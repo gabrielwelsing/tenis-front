@@ -41,10 +41,10 @@ const TIPO_LABELS: Record<string, string>   = { melhor_de_3: 'Melhor de 3', '2se
 
 // ─── Classe color palette ─────────────────────────────────────────────────────
 const CLASSE_COLORS: Record<string, { color: string; bg: string; border: string; glow: string }> = {
-  avancado:     { color: '#ffd700', bg: 'rgba(255,215,0,0.04)',   border: 'rgba(255,215,0,0.25)',   glow: 'rgba(255,215,0,0.2)'   },
-  intermediario:{ color: '#4fc3f7', bg: 'rgba(79,195,247,0.04)',  border: 'rgba(79,195,247,0.25)',  glow: 'rgba(79,195,247,0.2)'  },
-  iniciante:    { color: '#81c784', bg: 'rgba(129,199,132,0.04)', border: 'rgba(129,199,132,0.25)', glow: 'rgba(129,199,132,0.2)' },
-  geral:        { color: 'rgba(255,255,255,0.7)', bg: 'rgba(255,255,255,0.02)', border: 'rgba(255,255,255,0.1)', glow: 'rgba(255,255,255,0.1)' },
+  avancado:      { color: '#b98718', bg: '#fff8e6', border: '#f0d58a', glow: 'rgba(185,135,24,0.18)' },
+  intermediario: { color: '#c66b4d', bg: '#fff1eb', border: '#efc7b8', glow: 'rgba(198,107,77,0.18)' },
+  iniciante:     { color: '#3f8f5b', bg: '#edf8ef', border: '#bee0c8', glow: 'rgba(63,143,91,0.16)' },
+  geral:         { color: '#8d7b70', bg: '#fffaf7', border: '#eadfd6', glow: 'rgba(117,76,56,0.10)' },
 };
 
 function getClasseColor(classe: string) {
@@ -54,7 +54,7 @@ function getClasseColor(classe: string) {
 function avatar(nome: string, foto: string | null, size = 36) {
   if (foto) return <img src={foto} alt={nome} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />;
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'linear-gradient(135deg, #1b5e20, #2e7d32)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'linear-gradient(135deg, #c6714e, #8f4635)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
       {nome.charAt(0).toUpperCase()}
     </div>
   );
@@ -62,11 +62,11 @@ function avatar(nome: string, foto: string | null, size = 36) {
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 const MEDAL_BG = [
-  'linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,193,7,0.06))',
-  'linear-gradient(135deg, rgba(192,192,192,0.12), rgba(158,158,158,0.06))',
-  'linear-gradient(135deg, rgba(205,127,50,0.12), rgba(188,100,30,0.06))',
+  'linear-gradient(135deg, #fff8e6, #ffffff)',
+  'linear-gradient(135deg, #f5f2ef, #ffffff)',
+  'linear-gradient(135deg, #fff1e8, #ffffff)',
 ];
-const MEDAL_BORDER = ['rgba(255,215,0,0.35)', 'rgba(192,192,192,0.35)', 'rgba(205,127,50,0.35)'];
+const MEDAL_BORDER = ['#f0d58a', '#d9d3cf', '#e5b184'];
 
 // ─── API helpers ─────────────────────────────────────────────────────────────
 async function api(method: string, path: string, body?: unknown) {
@@ -396,7 +396,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     if (!rodadaAtiva) {
       if (isLigaAdmin) return (
         <div>
-          <div style={{ textAlign: 'center', padding: '32px 16px 16px', color: 'rgba(255,255,255,.35)' }}>
+          <div style={{ textAlign: 'center', padding: '32px 16px 16px', color: '#9b8a7f' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>⚔️</div>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Nenhuma rodada ativa</div>
             <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>Selecione os participantes e o sistema emparelhará automaticamente por posição no ranking.</div>
@@ -405,16 +405,16 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
             {membros.map(m => (
               <div key={m.user_id} onClick={() => togglePartSel(m.user_id)}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12,
-                  border: `1.5px solid ${partSel.has(m.user_id) ? 'rgba(255,215,0,.5)' : 'rgba(255,255,255,.08)'}`,
-                  background: partSel.has(m.user_id) ? 'rgba(255,215,0,.06)' : 'rgba(255,255,255,.03)', cursor: 'pointer' }}>
-                <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${partSel.has(m.user_id) ? '#ffd700' : 'rgba(255,255,255,.2)'}`,
-                  background: partSel.has(m.user_id) ? '#ffd700' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#000', flexShrink: 0 }}>
+                  border: `1.5px solid ${partSel.has(m.user_id) ? 'rgba(255,215,0,.5)' : '#f4ebe3'}`,
+                  background: partSel.has(m.user_id) ? 'rgba(255,215,0,.06)' : '#fff', cursor: 'pointer' }}>
+                <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${partSel.has(m.user_id) ? '#b98718' : '#dfc8bb'}`,
+                  background: partSel.has(m.user_id) ? '#b98718' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#000', flexShrink: 0 }}>
                   {partSel.has(m.user_id) ? '✓' : ''}
                 </div>
                 {avatar(m.nome, m.foto_url, 30)}
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{m.nome}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>{CLASSE_LABELS[m.classe] ?? m.classe}</div>
+                  <div style={{ fontSize: 10, color: '#9b8a7f' }}>{CLASSE_LABELS[m.classe] ?? m.classe}</div>
                 </div>
               </div>
             ))}
@@ -428,7 +428,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
         </div>
       );
       return (
-        <div style={{ textAlign: 'center', padding: '48px 24px', color: 'rgba(255,255,255,.35)' }}>
+        <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9b8a7f' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>⏳</div>
           <div style={{ fontSize: 14, fontWeight: 700 }}>Nenhuma rodada no momento</div>
           <div style={{ fontSize: 12, marginTop: 8, lineHeight: 1.6 }}>Aguarde o professor criar a próxima rodada.</div>
@@ -442,7 +442,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px 6px' }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 800 }}>⚔️ Rodada {rodadaAtiva.numero}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>{rodadaAtiva.total_matchups} partidas</div>
+            <div style={{ fontSize: 11, color: '#94857a', marginTop: 2 }}>{rodadaAtiva.total_matchups} partidas</div>
           </div>
           {isLigaAdmin && (
             <button onClick={() => encerrarRodada(rodadaAtiva.id)}
@@ -460,19 +460,19 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                 <span style={s.partidaDate}>Jogo {i + 1}</span>
                 <span style={{ ...s.statusPill,
                   background: pt.status === 'confirmada' ? 'rgba(76,175,80,.15)' : 'rgba(255,167,38,.15)',
-                  color: pt.status === 'confirmada' ? '#4caf50' : '#ffa726',
-                  border: `1px solid ${pt.status === 'confirmada' ? '#4caf50' : '#ffa726'}` }}>
+                  color: pt.status === 'confirmada' ? '#3f8f5b' : '#ffa726',
+                  border: `1px solid ${pt.status === 'confirmada' ? '#3f8f5b' : '#ffa726'}` }}>
                   {pt.status === 'confirmada' ? 'Confirmada' : 'Pendente'}
                 </span>
               </div>
               <div style={s.partidaVs}>
-                <span style={{ color: pt.vencedor_id === pt.jogador_a_id ? '#4caf50' : 'rgba(255,255,255,.7)', fontWeight: 800 }}>
+                <span style={{ color: pt.vencedor_id === pt.jogador_a_id ? '#3f8f5b' : '#3d332e', fontWeight: 800 }}>
                   {pt.jogador_a_nome}
                 </span>
                 <span style={{ fontSize: 10, color: 'rgba(79,195,247,.7)', fontWeight: 700 }}>Desafiante</span>
                 <span style={s.vs}>VS</span>
                 <span style={{ fontSize: 10, color: 'rgba(255,183,77,.7)', fontWeight: 700 }}>Desafiado</span>
-                <span style={{ color: pt.vencedor_id === pt.jogador_b_id ? '#4caf50' : 'rgba(255,255,255,.7)', fontWeight: 800 }}>
+                <span style={{ color: pt.vencedor_id === pt.jogador_b_id ? '#3f8f5b' : '#3d332e', fontWeight: 800 }}>
                   {pt.jogador_b_nome}
                 </span>
               </div>
@@ -515,8 +515,8 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
             {CLASSE_FILTER_OPTIONS.map(opt => {
               const isActive = classeFilter === opt.value;
               const palette  = opt.value ? getClasseColor(opt.value) : null;
-              const activeBg     = palette ? palette.bg    : 'rgba(255,255,255,0.08)';
-              const activeBorder = palette ? palette.border: 'rgba(255,255,255,0.3)';
+              const activeBg     = palette ? palette.bg    : '#f4ebe3';
+              const activeBorder = palette ? palette.border: '#b5a69d';
               const activeColor  = palette ? palette.color : '#fff';
               return (
                 <button
@@ -525,9 +525,9 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                   style={{
                     padding: '6px 14px',
                     borderRadius: 20,
-                    border: `1px solid ${isActive ? activeBorder : 'rgba(255,255,255,0.12)'}`,
+                    border: `1px solid ${isActive ? activeBorder : '#eadfd6'}`,
                     background: isActive ? activeBg : 'transparent',
-                    color: isActive ? activeColor : 'rgba(255,255,255,0.45)',
+                    color: isActive ? activeColor : '#8f7769',
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -563,7 +563,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                     <span style={{ fontSize: 13, color: palette.color, fontWeight: 800, whiteSpace: 'nowrap', letterSpacing: 0.5 }}>
                       {CLASS_ICONS[cl]} {(CLASSE_LABELS[cl] ?? cl).toUpperCase()}
                     </span>
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 11, color: '#b5a69d', whiteSpace: 'nowrap' }}>
                       · {entries.length} {entries.length === 1 ? 'jogador' : 'jogadores'}
                     </span>
                     <div style={{ flex: 1, height: 1, background: `linear-gradient(to left, ${palette.border}, transparent)` }} />
@@ -585,28 +585,28 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                         gap: 12,
                         padding: '12px 14px 12px 12px',
                         borderRadius: 14,
-                        border: `1px solid ${isSelf ? '#2e7d32' : cardBorder}`,
+                        border: `1px solid ${isSelf ? '#c66b4d' : cardBorder}`,
                         borderLeft: `3px solid ${palette.color}`,
                         background: cardBg,
                         backdropFilter: 'blur(4px)',
                         marginBottom: 8,
                         ...(isTop3 ? { boxShadow: cardGlow } : {}),
-                        ...(isSelf && !isTop3 ? { boxShadow: '0 0 0 2px #2e7d32' } : {}),
+                        ...(isSelf && !isTop3 ? { boxShadow: '0 0 0 2px #c66b4d' } : {}),
                       }}>
                         {/* Posição */}
                         <div style={{ width: 32, textAlign: 'center', flexShrink: 0 }}>
                           {isTop3
                             ? <span style={{ fontSize: 20 }}>{MEDAL[idx]}</span>
-                            : <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14, fontWeight: 700 }}>#{idx + 1}</span>}
+                            : <span style={{ color: '#9b8a7f', fontSize: 14, fontWeight: 700 }}>#{idx + 1}</span>}
                         </div>
 
                         {avatar(entry.nome, entry.foto_url)}
 
                         {/* Info */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div style={{ color: '#2d2521', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {entry.nome}
-                            {isSelf && <span style={{ color: '#4caf50', fontSize: 11 }}> (você)</span>}
+                            {isSelf && <span style={{ color: '#3f8f5b', fontSize: 11 }}> (você)</span>}
                           </div>
                           {/* Stats como pills */}
                           <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
@@ -615,24 +615,24 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                               { label: 'V', val: entry.vitorias },
                               { label: 'D', val: entry.derrotas },
                             ].map(stat => (
-                              <span key={stat.label} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: '2px 7px', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 700 }}>
+                              <span key={stat.label} style={{ background: '#f7eee7', borderRadius: 6, padding: '2px 7px', fontSize: 11, color: '#6f625b', fontWeight: 700 }}>
                                 {stat.label} {stat.val}
                               </span>
                             ))}
                           </div>
                           {/* Barra de aproveitamento */}
                           <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <div style={{ width: 80, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', flexShrink: 0 }}>
+                            <div style={{ width: 80, height: 3, borderRadius: 2, background: '#f4ebe3', overflow: 'hidden', flexShrink: 0 }}>
                               <div style={{ width: `${aprov}%`, height: '100%', background: palette.color, borderRadius: 2, transition: 'width .3s' }} />
                             </div>
-                            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{aprov}%</span>
+                            <span style={{ fontSize: 10, color: '#9b8a7f' }}>{aprov}%</span>
                           </div>
                         </div>
 
                         {/* Pontos — badge colorido */}
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ color: palette.color, fontSize: 22, fontWeight: 900, lineHeight: 1 }}>{entry.total_pontos}</div>
-                          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: 600, marginTop: 2 }}>pts</div>
+                          <div style={{ color: '#9b8a7f', fontSize: 10, fontWeight: 600, marginTop: 2 }}>pts</div>
                         </div>
                       </div>
                     );
@@ -677,22 +677,22 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                       Confirmar
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', marginBottom: 8, lineHeight: 1.5 }}>
-                    Vencedor: <strong style={{ color: '#4caf50' }}>{vencedor}</strong>
+                  <div style={{ fontSize: 12, color: '#6f625b', marginBottom: 8, lineHeight: 1.5 }}>
+                    Vencedor: <strong style={{ color: '#3f8f5b' }}>{vencedor}</strong>
                   </div>
                   {pt.placar && (
                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                       {pt.placar.map((set, i) => (
-                        <span key={i} style={{ background: 'rgba(255,255,255,.08)', borderRadius: 6, padding: '3px 10px', fontSize: 13, fontWeight: 800 }}>
+                        <span key={i} style={{ background: '#f4ebe3', borderRadius: 6, padding: '3px 10px', fontSize: 13, fontWeight: 800 }}>
                           {set.setA}–{set.setB}
                         </span>
                       ))}
                     </div>
                   )}
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginBottom: 10 }}>
-                    {pt.jogador_a_nome}: <strong style={{ color: '#ffd700' }}>{pt.pontos_a + pt.bonus_a} pts</strong>
+                  <div style={{ fontSize: 11, color: '#94857a', marginBottom: 10 }}>
+                    {pt.jogador_a_nome}: <strong style={{ color: '#b98718' }}>{pt.pontos_a + pt.bonus_a} pts</strong>
                     &nbsp;·&nbsp;
-                    {pt.jogador_b_nome}: <strong style={{ color: '#ffd700' }}>{pt.pontos_b + pt.bonus_b} pts</strong>
+                    {pt.jogador_b_nome}: <strong style={{ color: '#b98718' }}>{pt.pontos_b + pt.bonus_b} pts</strong>
                   </div>
                   <div style={s.confirmBtns}>
                     <button style={s.okBtn} onClick={() => confirmarPartida(pt.id, true)}>✓ Confirmar resultado</button>
@@ -713,12 +713,12 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
             <div key={pt.id} style={{ ...s.partidaCard, border: '1px solid rgba(79,195,247,.25)', background: 'rgba(79,195,247,.04)', marginBottom: 10 }}>
               <div style={s.partidaHeader}>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>📤 Resultado enviado</span>
-                <span style={{ ...s.statusPill, background: 'rgba(79,195,247,.15)', color: '#4fc3f7', border: '1px solid #4fc3f7' }}>⏳ Aguardando</span>
+                <span style={{ ...s.statusPill, background: 'rgba(79,195,247,.15)', color: '#c66b4d', border: '1px solid #c66b4d' }}>⏳ Aguardando</span>
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 12, color: '#8d7b70', lineHeight: 1.5 }}>
                 {pt.jogador_a_nome} vs {pt.jogador_b_nome}<br/>
                 Aguardando confirmação de <strong>{euSouA ? pt.jogador_b_nome : pt.jogador_a_nome}</strong>.<br/>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,.3)' }}>Após 48h sem contestação é aceito automaticamente.</span>
+                <span style={{ fontSize: 11, color: '#b5a69d' }}>Após 48h sem contestação é aceito automaticamente.</span>
               </div>
             </div>
           );
@@ -774,7 +774,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                       <input style={s.setInp} type="number" min={0} max={99} placeholder="A"
                         value={fp.sets[i].setA}
                         onChange={e => setFormPartida(f => { const ns = [...f.sets]; ns[i] = { ...ns[i], setA: e.target.value }; return { ...f, sets: ns }; })} />
-                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>×</span>
+                      <span style={{ color: '#94857a' }}>×</span>
                       <input style={s.setInp} type="number" min={0} max={99} placeholder="B"
                         value={fp.sets[i].setB}
                         onChange={e => setFormPartida(f => { const ns = [...f.sets]; ns[i] = { ...ns[i], setB: e.target.value }; return { ...f, sets: ns }; })} />
@@ -813,14 +813,14 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                 <div key={pt.id} style={s.partidaCard}>
                   <div style={s.partidaHeader}>
                     <span style={s.partidaDate}>{pt.data_partida?.slice(0, 10)}</span>
-                    <span style={{ ...s.statusPill, background: pt.status === 'confirmada' ? 'rgba(76,175,80,0.15)' : pt.status === 'disputada_admin' ? 'rgba(244,67,54,0.15)' : 'rgba(255,167,38,0.15)', color: pt.status === 'confirmada' ? '#4caf50' : pt.status === 'disputada_admin' ? '#f44336' : '#ffa726', border: `1px solid ${pt.status === 'confirmada' ? '#4caf50' : pt.status === 'disputada_admin' ? '#f44336' : '#ffa726'}` }}>
+                    <span style={{ ...s.statusPill, background: pt.status === 'confirmada' ? 'rgba(76,175,80,0.15)' : pt.status === 'disputada_admin' ? 'rgba(244,67,54,0.15)' : 'rgba(255,167,38,0.15)', color: pt.status === 'confirmada' ? '#3f8f5b' : pt.status === 'disputada_admin' ? '#f44336' : '#ffa726', border: `1px solid ${pt.status === 'confirmada' ? '#3f8f5b' : pt.status === 'disputada_admin' ? '#f44336' : '#ffa726'}` }}>
                       {pt.status === 'confirmada' ? 'Confirmada' : pt.status === 'disputada_admin' ? 'Em disputa' : 'Pendente'}
                     </span>
                   </div>
                   <div style={s.partidaVs}>
-                    <span style={{ color: pt.vencedor_id === pt.jogador_a_id ? '#4caf50' : 'rgba(255,255,255,0.7)', fontWeight: pt.vencedor_id === pt.jogador_a_id ? 800 : 500 }}>{pt.jogador_a_nome}</span>
+                    <span style={{ color: pt.vencedor_id === pt.jogador_a_id ? '#3f8f5b' : '#3d332e', fontWeight: pt.vencedor_id === pt.jogador_a_id ? 800 : 500 }}>{pt.jogador_a_nome}</span>
                     <span style={s.vs}>vs</span>
-                    <span style={{ color: pt.vencedor_id === pt.jogador_b_id ? '#4caf50' : 'rgba(255,255,255,0.7)', fontWeight: pt.vencedor_id === pt.jogador_b_id ? 800 : 500 }}>{pt.jogador_b_nome}</span>
+                    <span style={{ color: pt.vencedor_id === pt.jogador_b_id ? '#3f8f5b' : '#3d332e', fontWeight: pt.vencedor_id === pt.jogador_b_id ? 800 : 500 }}>{pt.jogador_b_nome}</span>
                   </div>
                   {pt.placar && (
                     <div style={s.placarRow}>
@@ -897,7 +897,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
           <div key={d.id} style={s.desafioCard}>
             <div style={s.desafioHeader}>
               <span style={s.desafioNome}>{recebido ? `De: ${d.desafiante_nome}` : `Para: ${d.desafiado_nome}`}</span>
-              <span style={{ ...s.statusPill, background: d.status === 'aceito' ? 'rgba(76,175,80,0.15)' : d.status === 'recusado' ? 'rgba(244,67,54,0.15)' : 'rgba(255,167,38,0.15)', color: d.status === 'aceito' ? '#4caf50' : d.status === 'recusado' ? '#f44336' : '#ffa726', border: `1px solid ${d.status === 'aceito' ? '#4caf50' : d.status === 'recusado' ? '#f44336' : '#ffa726'}` }}>
+              <span style={{ ...s.statusPill, background: d.status === 'aceito' ? 'rgba(76,175,80,0.15)' : d.status === 'recusado' ? 'rgba(244,67,54,0.15)' : 'rgba(255,167,38,0.15)', color: d.status === 'aceito' ? '#3f8f5b' : d.status === 'recusado' ? '#f44336' : '#ffa726', border: `1px solid ${d.status === 'aceito' ? '#3f8f5b' : d.status === 'recusado' ? '#f44336' : '#ffa726'}` }}>
                 {d.status}
               </span>
             </div>
@@ -1079,74 +1079,594 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
 }
 
 // =============================================================================
+
 const s: Record<string, React.CSSProperties> = {
-  page:      { position: 'fixed', inset: 0, background: '#0d0d1a', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  bgGlow:    { position: 'absolute', top: '-20%', left: '-20%', width: '60vw', height: '60vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(46,125,50,0.06) 0%, transparent 70%)', pointerEvents: 'none' },
-  bgGlow2:   { position: 'absolute', bottom: '-20%', right: '-20%', width: '50vw', height: '50vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(46,125,50,0.03) 0%, transparent 70%)', pointerEvents: 'none' },
-  header:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'max(16px,env(safe-area-inset-top,16px)) 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(13,13,26,0.92)', backdropFilter: 'blur(12px)', position: 'relative', zIndex: 10 },
-  backBtn:   { background: 'rgba(46,125,50,0.1)', border: '1px solid rgba(46,125,50,0.3)', color: '#4caf50', padding: '8px 14px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', minWidth: 64 },
-  title:     { color: '#fff', fontSize: 18, fontWeight: 800, margin: 0, lineHeight: 1.2 },
-  headerSubtitle: { color: 'rgba(255,255,255,0.38)', fontSize: 11, fontWeight: 500, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 },
-  toast:     { position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)', padding: '10px 20px', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', whiteSpace: 'nowrap' },
-  tabBar:    { display: 'flex', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 },
-  tabBtn:    { flex: 1, padding: '11px 2px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700, cursor: 'pointer', borderBottom: '2px solid transparent', transition: 'color .2s', lineHeight: 1.3 },
-  tabActive: { color: '#4caf50', borderBottomColor: '#4caf50' },
-  body:      { flex: 1, overflowY: 'auto', padding: '14px 14px 40px', maxWidth: 540, width: '100%', margin: '0 auto', boxSizing: 'border-box' },
-  // Liga selector
-  ligaRow:   { display: 'flex', gap: 8, marginBottom: 14 },
-  ligaSelect:{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, color: '#fff', padding: '9px 12px', fontSize: 13, appearance: 'none', WebkitAppearance: 'none' },
-  // Filters
-  filterRow: { display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' },
-  // Misc
-  empty:     { color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '24px 0', fontSize: 13 },
-  emptyBig:  { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', gap: 12 },
-  emptyBigText: { color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', lineHeight: 1.6 },
-  // Forms
-  formCard:  { background: 'rgba(46,125,50,0.05)', border: '1px solid rgba(46,125,50,0.2)', borderRadius: 16, padding: 16, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 12 },
-  formTitle: { color: '#4caf50', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
-  formRow:   { display: 'flex', gap: 10 },
-  formGroup: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6 },
-  label:     { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
-  sel:       { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '10px 12px', fontSize: 13, width: '100%' },
-  inp:       { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '10px 12px', fontSize: 13, width: '100%', boxSizing: 'border-box' },
-  woRow:     { display: 'flex', alignItems: 'center' },
-  woLabel:   { color: 'rgba(255,255,255,0.6)', fontSize: 13, display: 'flex', alignItems: 'center', cursor: 'pointer' },
-  setRow:    { display: 'flex', alignItems: 'center', gap: 10 },
-  setLabel:  { color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, width: 40, flexShrink: 0 },
-  setInp:    { width: 56, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', padding: '8px 0', fontSize: 18, fontWeight: 700, textAlign: 'center', boxSizing: 'border-box' },
-  submitBtn: { width: '100%', padding: '13px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b5e20, #2e7d32)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(46,125,50,0.35)' },
-  addBtn:    { width: '100%', padding: '12px 0', borderRadius: 12, marginBottom: 12, background: 'rgba(46,125,50,0.08)', border: '1px dashed rgba(46,125,50,0.4)', color: '#4caf50', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
-  sectionTitle: { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginTop: 16, marginBottom: 8 },
-  // Partidas
-  partidaCard:   { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 14, marginBottom: 8 },
-  partidaHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  partidaDate:   { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
-  statusPill:    { fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 },
-  partidaVs:     { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 6, flexWrap: 'wrap' },
-  vs:            { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 },
-  placarRow:     { display: 'flex', gap: 6, marginBottom: 4 },
-  placarSet:     { background: 'rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 700 },
-  woTag:         { display: 'inline-block', background: 'rgba(255,167,38,0.15)', color: '#ffa726', border: '1px solid #ffa726', borderRadius: 6, padding: '1px 8px', fontSize: 11, fontWeight: 700, marginBottom: 4 },
-  ptsRow:        { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 },
-  ptsTag:        { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
-  confirmBtns:   { display: 'flex', gap: 8, marginTop: 10 },
-  okBtn:         { flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: '#2e7d32', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
-  disputeBtn:    { flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid #f44336', background: 'rgba(244,67,54,0.1)', color: '#f44336', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
-  // Desafios
-  desafioCard:   { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 14, marginBottom: 8 },
-  desafioHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  desafioNome:   { color: '#fff', fontSize: 14, fontWeight: 700 },
-  desafioInfo:   { color: 'rgba(255,255,255,0.45)', fontSize: 12, marginBottom: 2 },
-  // Config
-  tempCard:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '12px 14px', marginBottom: 8 },
-  tempNome:    { color: '#fff', fontSize: 14, fontWeight: 700 },
-  tempDatas:   { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 },
-  encerrarBtn: { background: 'rgba(244,67,54,0.12)', border: '1px solid #f44336', color: '#f44336', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
-  encerradaTag:{ color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700 },
-  membroCard:  { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '10px 12px', marginBottom: 6 },
-  membroInfo:  { flex: 1, minWidth: 0 },
-  membroNome:  { color: '#fff', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  membroEmail: { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
-  classeSelect:{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', padding: '5px 8px', fontSize: 11, flexShrink: 0 },
-  removeBtn:   { background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 16, cursor: 'pointer', padding: '0 4px', flexShrink: 0 },
+  page: {
+    position: 'fixed',
+    inset: 0,
+    background: '#fbf7f1',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    color: '#2d2521',
+    fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+
+  bgGlow: {
+    position: 'absolute',
+    top: -110,
+    right: -90,
+    width: 260,
+    height: 260,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(191,102,72,0.16) 0%, transparent 68%)',
+    pointerEvents: 'none',
+  },
+
+  bgGlow2: {
+    position: 'absolute',
+    bottom: -130,
+    left: -100,
+    width: 280,
+    height: 280,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(116,80,58,0.12) 0%, transparent 70%)',
+    pointerEvents: 'none',
+  },
+
+  header: {
+    display: 'grid',
+    gridTemplateColumns: '76px 1fr 76px',
+    alignItems: 'center',
+    gap: 10,
+    padding: 'max(16px,env(safe-area-inset-top,16px)) 16px 12px',
+    background: '#fbf7f1',
+    position: 'relative',
+    zIndex: 10,
+    flexShrink: 0,
+  },
+
+  backBtn: {
+    background: '#f3e8de',
+    border: 'none',
+    color: '#7a5142',
+    padding: '10px 12px',
+    borderRadius: 14,
+    fontSize: 13,
+    fontWeight: 850,
+    cursor: 'pointer',
+    minWidth: 64,
+  },
+
+  title: {
+    color: '#2d2521',
+    fontSize: 22,
+    fontWeight: 950,
+    margin: 0,
+    lineHeight: 1.12,
+    letterSpacing: -0.7,
+  },
+
+  headerSubtitle: {
+    color: '#94857a',
+    fontSize: 11,
+    fontWeight: 650,
+    marginTop: 3,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    maxWidth: 190,
+  },
+
+  toast: {
+    position: 'fixed',
+    top: 80,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '11px 18px',
+    borderRadius: 999,
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 800,
+    zIndex: 100,
+    boxShadow: '0 10px 28px rgba(70,45,34,0.22)',
+    whiteSpace: 'nowrap',
+  },
+
+  tabBar: {
+    display: 'flex',
+    gap: 7,
+    overflowX: 'auto',
+    padding: '0 14px 12px',
+    background: '#fbf7f1',
+    flexShrink: 0,
+    position: 'relative',
+    zIndex: 8,
+  },
+
+  tabBtn: {
+    flex: '0 0 auto',
+    padding: '10px 13px',
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    color: '#8f7769',
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: 'pointer',
+    borderRadius: 999,
+    boxShadow: '0 8px 20px rgba(117,76,56,0.05)',
+    lineHeight: 1.25,
+    whiteSpace: 'nowrap',
+  },
+
+  tabActive: {
+    background: '#c66b4d',
+    color: '#fff',
+    borderColor: '#c66b4d',
+    boxShadow: '0 10px 20px rgba(198,107,77,0.18)',
+  },
+
+  body: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '4px 14px 40px',
+    maxWidth: 540,
+    width: '100%',
+    margin: '0 auto',
+    boxSizing: 'border-box',
+    position: 'relative',
+    zIndex: 2,
+  },
+
+  ligaRow: {
+    display: 'flex',
+    gap: 8,
+    marginBottom: 14,
+  },
+
+  ligaSelect: {
+    flex: 1,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 14,
+    color: '#332a25',
+    padding: '11px 12px',
+    fontSize: 13,
+    fontWeight: 750,
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    boxShadow: '0 8px 20px rgba(117,76,56,0.05)',
+    colorScheme: 'light',
+  },
+
+  filterRow: {
+    display: 'flex',
+    gap: 7,
+    marginBottom: 14,
+    flexWrap: 'wrap',
+  },
+
+  empty: {
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 22,
+    color: '#94857a',
+    textAlign: 'center',
+    padding: '28px 16px',
+    fontSize: 13,
+    fontWeight: 750,
+    boxShadow: '0 10px 28px rgba(117,76,56,0.07)',
+  },
+
+  emptyBig: {
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 24,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '44px 24px',
+    gap: 12,
+    boxShadow: '0 10px 28px rgba(117,76,56,0.07)',
+  },
+
+  emptyBigText: {
+    color: '#8d7b70',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 1.6,
+    fontWeight: 700,
+  },
+
+  formCard: {
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 14,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    boxShadow: '0 10px 28px rgba(117,76,56,0.07)',
+  },
+
+  formTitle: {
+    color: '#b65b43',
+    fontSize: 13,
+    fontWeight: 950,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+
+  formRow: {
+    display: 'flex',
+    gap: 10,
+  },
+
+  formGroup: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    minWidth: 0,
+  },
+
+  label: {
+    color: '#8f7769',
+    fontSize: 11,
+    fontWeight: 850,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  sel: {
+    background: '#fffaf7',
+    border: '1px solid #eadfd6',
+    borderRadius: 14,
+    color: '#332a25',
+    padding: '12px 12px',
+    fontSize: 13,
+    fontWeight: 650,
+    width: '100%',
+    boxSizing: 'border-box',
+    colorScheme: 'light',
+  },
+
+  inp: {
+    background: '#fffaf7',
+    border: '1px solid #eadfd6',
+    borderRadius: 14,
+    color: '#332a25',
+    padding: '12px 12px',
+    fontSize: 13,
+    fontWeight: 650,
+    width: '100%',
+    boxSizing: 'border-box',
+    colorScheme: 'light',
+  },
+
+  woRow: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+
+  woLabel: {
+    color: '#6f625b',
+    fontSize: 13,
+    display: 'flex',
+    alignItems: 'center',
+    cursor: 'pointer',
+    fontWeight: 700,
+  },
+
+  setRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  setLabel: {
+    color: '#8f7769',
+    fontSize: 12,
+    fontWeight: 850,
+    width: 42,
+    flexShrink: 0,
+  },
+
+  setInp: {
+    width: 58,
+    background: '#fffaf7',
+    border: '1px solid #eadfd6',
+    borderRadius: 12,
+    color: '#332a25',
+    padding: '9px 0',
+    fontSize: 18,
+    fontWeight: 850,
+    textAlign: 'center',
+    boxSizing: 'border-box',
+    colorScheme: 'light',
+  },
+
+  submitBtn: {
+    width: '100%',
+    padding: '14px 0',
+    borderRadius: 16,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 950,
+    cursor: 'pointer',
+    boxShadow: '0 12px 24px rgba(147,72,54,0.22)',
+  },
+
+  addBtn: {
+    width: '100%',
+    padding: '13px 0',
+    borderRadius: 16,
+    marginBottom: 12,
+    background: '#fff1eb',
+    border: '1px dashed rgba(198,107,77,0.35)',
+    color: '#a54f3d',
+    fontSize: 13,
+    fontWeight: 950,
+    cursor: 'pointer',
+  },
+
+  sectionTitle: {
+    color: '#8f7769',
+    fontSize: 11,
+    fontWeight: 950,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+
+  partidaCard: {
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 10,
+    boxShadow: '0 10px 24px rgba(57,37,28,0.06)',
+  },
+
+  partidaHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+
+  partidaDate: {
+    color: '#94857a',
+    fontSize: 12,
+    fontWeight: 700,
+  },
+
+  statusPill: {
+    fontSize: 11,
+    fontWeight: 850,
+    padding: '5px 10px',
+    borderRadius: 999,
+  },
+
+  partidaVs: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 14,
+    marginBottom: 6,
+    flexWrap: 'wrap',
+    color: '#3d332e',
+  },
+
+  vs: {
+    color: '#b5a69d',
+    fontSize: 11,
+    fontWeight: 900,
+  },
+
+  placarRow: {
+    display: 'flex',
+    gap: 6,
+    marginBottom: 4,
+  },
+
+  placarSet: {
+    background: '#f4ebe3',
+    borderRadius: 8,
+    padding: '3px 9px',
+    fontSize: 12,
+    color: '#6f625b',
+    fontWeight: 850,
+  },
+
+  woTag: {
+    display: 'inline-block',
+    background: '#fff4e8',
+    color: '#b36a2f',
+    border: '1px solid rgba(179,106,47,0.22)',
+    borderRadius: 999,
+    padding: '3px 9px',
+    fontSize: 11,
+    fontWeight: 850,
+    marginBottom: 4,
+  },
+
+  ptsRow: {
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginTop: 4,
+  },
+
+  ptsTag: {
+    color: '#8f7769',
+    fontSize: 11,
+    fontWeight: 700,
+  },
+
+  confirmBtns: {
+    display: 'flex',
+    gap: 8,
+    marginTop: 10,
+  },
+
+  okBtn: {
+    flex: 1,
+    padding: '10px 0',
+    borderRadius: 13,
+    border: 'none',
+    background: '#3f8f5b',
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 850,
+    cursor: 'pointer',
+  },
+
+  disputeBtn: {
+    flex: 1,
+    padding: '10px 0',
+    borderRadius: 13,
+    border: '1px solid rgba(201,84,65,0.22)',
+    background: '#fff0ec',
+    color: '#c95441',
+    fontSize: 12,
+    fontWeight: 850,
+    cursor: 'pointer',
+  },
+
+  desafioCard: {
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 10,
+    boxShadow: '0 10px 24px rgba(57,37,28,0.06)',
+  },
+
+  desafioHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+
+  desafioNome: {
+    color: '#2d2521',
+    fontSize: 14,
+    fontWeight: 850,
+  },
+
+  desafioInfo: {
+    color: '#8f7769',
+    fontSize: 12,
+    marginBottom: 2,
+    fontWeight: 650,
+  },
+
+  tempCard: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 18,
+    padding: '13px 14px',
+    marginBottom: 9,
+    gap: 10,
+    boxShadow: '0 10px 24px rgba(57,37,28,0.06)',
+  },
+
+  tempNome: {
+    color: '#2d2521',
+    fontSize: 14,
+    fontWeight: 850,
+  },
+
+  tempDatas: {
+    color: '#94857a',
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: 650,
+  },
+
+  encerrarBtn: {
+    background: '#fff0ec',
+    border: '1px solid rgba(201,84,65,0.22)',
+    color: '#c95441',
+    borderRadius: 12,
+    padding: '7px 12px',
+    fontSize: 12,
+    fontWeight: 850,
+    cursor: 'pointer',
+  },
+
+  encerradaTag: {
+    color: '#9b8a7f',
+    fontSize: 11,
+    fontWeight: 850,
+  },
+
+  membroCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 18,
+    padding: '11px 12px',
+    marginBottom: 8,
+    boxShadow: '0 10px 24px rgba(57,37,28,0.06)',
+  },
+
+  membroInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  membroNome: {
+    color: '#2d2521',
+    fontSize: 13,
+    fontWeight: 850,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+
+  membroEmail: {
+    color: '#94857a',
+    fontSize: 11,
+    fontWeight: 650,
+  },
+
+  classeSelect: {
+    background: '#fffaf7',
+    border: '1px solid #eadfd6',
+    borderRadius: 12,
+    color: '#332a25',
+    padding: '7px 8px',
+    fontSize: 11,
+    fontWeight: 750,
+    flexShrink: 0,
+    colorScheme: 'light',
+  },
+
+  removeBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: '50%',
+    background: '#fff0ec',
+    border: '1px solid rgba(201,84,65,0.16)',
+    color: '#c95441',
+    fontSize: 15,
+    cursor: 'pointer',
+    padding: 0,
+    flexShrink: 0,
+  },
 };
