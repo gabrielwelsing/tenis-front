@@ -703,7 +703,7 @@ export default function HomeScreen({
         </button>
 
         <button style={s.navCenterBtn} onClick={() => onNavigate('mural')} aria-label="Criar atividade no mural">
-          <TennisBallIcon size={38} />
+          <TennisBallIcon size={34} />
         </button>
 
         <button style={s.navItem} onClick={() => setShowConfig(true)}>
@@ -1199,16 +1199,16 @@ const s: Record<string, React.CSSProperties> = {
     transform: 'translateX(-50%)',
     width: 'calc(100% - 28px)',
     maxWidth: 412,
-    height: 66,
-    borderRadius: 26,
+    height: 58,
+    borderRadius: 22,
     background: 'rgba(255,255,255,0.92)',
     border: '1px solid rgba(130,82,62,0.08)',
     boxShadow: '0 18px 42px rgba(91,61,46,0.16)',
     zIndex: 20,
     display: 'grid',
-    gridTemplateColumns: '1fr 86px 1fr',
+    gridTemplateColumns: '1fr 74px 1fr',
     alignItems: 'center',
-    padding: '0 12px',
+    padding: '0 10px',
     boxSizing: 'border-box',
     backdropFilter: 'blur(16px)',
   },
@@ -1218,8 +1218,8 @@ const s: Record<string, React.CSSProperties> = {
     background: 'transparent',
     color: '#a7958a',
     cursor: 'pointer',
-    height: 52,
-    borderRadius: 18,
+    height: 46,
+    borderRadius: 16,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -1241,7 +1241,7 @@ const s: Record<string, React.CSSProperties> = {
 
   navLabel: {
     color: '#9b8b81',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: 800,
   },
 
@@ -1250,15 +1250,15 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   navCenterBtn: {
-    width: 62,
-    height: 62,
+    width: 54,
+    height: 54,
     borderRadius: '50%',
-    border: '5px solid #fff8f0',
+    border: '4px solid #fff8f0',
     background: 'linear-gradient(135deg, #d56d4d, #9d4937)',
     color: '#fff',
     cursor: 'pointer',
     margin: '0 auto',
-    transform: 'translateY(-18px)',
+    transform: 'translateY(-14px)',
     boxShadow: '0 14px 26px rgba(157,73,55,0.32)',
     display: 'flex',
     alignItems: 'center',
