@@ -499,11 +499,11 @@ export default function HomeScreen({
 
               <div style={s.heroMeta}>
                 <div style={s.heroMetaLine}>
-                  <CalendarIcon size={15} />
+                  <CalendarIcon size={14} />
                   <span>Partidas, aulas e treinos em um só lugar</span>
                 </div>
                 <div style={s.heroMetaLine}>
-                  <TargetIcon size={15} />
+                  <TargetIcon size={14} />
                   <span>Use o mural para encontrar parceiros</span>
                 </div>
               </div>
@@ -867,7 +867,7 @@ const s: Record<string, React.CSSProperties> = {
 
   heroCard: {
     position: 'relative',
-    minHeight: 210,
+    minHeight: 160,
     borderRadius: 24,
     overflow: 'hidden',
     backgroundImage: 'url(/tela_inicial.png)',
@@ -875,7 +875,7 @@ const s: Record<string, React.CSSProperties> = {
     backgroundPosition: 'center right',
     backgroundRepeat: 'no-repeat',
     boxShadow: '0 18px 36px rgba(134,72,50,0.22)',
-    padding: '24px 22px',
+    padding: '18px 18px',
     boxSizing: 'border-box',
     isolation: 'isolate',
   },
@@ -891,44 +891,44 @@ const s: Record<string, React.CSSProperties> = {
   heroContent: {
     position: 'relative',
     zIndex: 2,
-    maxWidth: '58%',
+    maxWidth: '56%',
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
+    gap: 9,
   },
 
   heroKicker: {
     color: 'rgba(255,245,235,0.78)',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 900,
-    letterSpacing: 1.7,
+    letterSpacing: 1.5,
   },
 
   heroTitle: {
     margin: 0,
     color: '#fff8ef',
-    fontSize: 27,
+    fontSize: 20,
     lineHeight: 1.08,
     fontWeight: 900,
-    letterSpacing: -0.8,
+    letterSpacing: -0.5,
     textShadow: '0 2px 12px rgba(71,35,26,0.18)',
   },
 
   heroMeta: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
-    marginTop: 2,
+    gap: 6,
+    marginTop: 1,
   },
 
   heroMetaLine: {
     display: 'flex',
     alignItems: 'center',
-    gap: 7,
+    gap: 6,
     color: 'rgba(255,248,239,0.88)',
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: 650,
-    lineHeight: 1.35,
+    lineHeight: 1.3,
   },
 
   section: {
