@@ -551,7 +551,13 @@ export default function Root() {
 // ---------------------------------------------------------------------------
 const s: Record<string, React.CSSProperties> = {
   page: {
-    position: 'relative',
+    position: 'fixed',
+    top: 0,
+    bottom: 0,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: 'min(100vw, 430px)',
+    height: '100dvh',
     minHeight: '100dvh',
     overflow: 'hidden',
     display: 'flex',
@@ -559,10 +565,11 @@ const s: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     background: '#140b06',
     fontFamily: 'Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    boxShadow: '0 0 0 9999px #0d0907, 0 0 34px rgba(0,0,0,0.35)',
   },
 
   bgImage: {
-    position: 'fixed',
+    position: 'absolute',
     inset: 0,
     backgroundImage: 'url(/tela_login.png)',
     backgroundPosition: 'center center',
@@ -573,7 +580,7 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   bgOverlay: {
-    position: 'fixed',
+    position: 'absolute',
     inset: 0,
     background: [
       'linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.06) 28%, rgba(0,0,0,0.18) 52%, rgba(0,0,0,0.42) 78%, rgba(0,0,0,0.62) 100%)',
@@ -621,7 +628,7 @@ const s: Record<string, React.CSSProperties> = {
 
   titleMain: {
     display: 'block',
-    fontSize: 'clamp(34px, 10.4vw, 48px)',
+    fontSize: 'clamp(31px, 9.4vw, 43px)',
     fontWeight: 900,
     color: '#fff',
   },
@@ -630,7 +637,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'block',
     alignSelf: 'flex-end',
     marginTop: 5,
-    fontSize: 'clamp(21px, 6.1vw, 30px)',
+    fontSize: 'clamp(19px, 5.4vw, 26px)',
     fontWeight: 400,
     color: '#fff',
     letterSpacing: -0.25,
@@ -674,7 +681,7 @@ const s: Record<string, React.CSSProperties> = {
   landingBtnTextPrimary: {
     gridColumn: 2,
     textAlign: 'center',
-    fontSize: 25,
+    fontSize: 23,
     fontWeight: 500,
     color: '#fff',
     letterSpacing: -0.25,
@@ -683,7 +690,7 @@ const s: Record<string, React.CSSProperties> = {
   landingBtnTextSecondary: {
     gridColumn: 2,
     textAlign: 'center',
-    fontSize: 25,
+    fontSize: 23,
     fontWeight: 500,
     color: '#9a4d35',
     letterSpacing: -0.25,
@@ -720,7 +727,7 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   authOverlay: {
-    position: 'fixed',
+    position: 'absolute',
     inset: 0,
     zIndex: 40,
     display: 'flex',
@@ -788,7 +795,7 @@ const s: Record<string, React.CSSProperties> = {
 
   sheetTitle: {
     margin: 0,
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 900,
     color: '#2d2521',
     letterSpacing: -0.5,
@@ -796,7 +803,7 @@ const s: Record<string, React.CSSProperties> = {
 
   sheetSub: {
     margin: 0,
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: 500,
     color: '#8f7769',
     lineHeight: 1.35,
@@ -819,7 +826,7 @@ const s: Record<string, React.CSSProperties> = {
     border: 'none',
     background: 'transparent',
     color: '#8f7769',
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: 800,
     cursor: 'pointer',
     fontFamily: 'inherit',
@@ -871,7 +878,7 @@ const s: Record<string, React.CSSProperties> = {
     background: '#fff',
     border: '1px solid #eadfd6',
     color: '#2d2521',
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: 500,
     boxSizing: 'border-box',
     outline: 'none',
@@ -887,7 +894,7 @@ const s: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #c66b4d, #934836)',
     border: 'none',
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15.5,
     fontWeight: 900,
     cursor: 'pointer',
     boxShadow: '0 12px 24px rgba(147,72,54,0.24)',
