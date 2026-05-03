@@ -154,18 +154,9 @@ function ModalPagamento({ user, onClose, onSuccess }: {
 // ---------------------------------------------------------------------------
 // LoginScreen
 // ---------------------------------------------------------------------------
-function InstaIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <rect x="2" y="2" width="20" height="20" rx="6" stroke="white" strokeWidth="2"/>
-      <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="2"/>
-      <circle cx="17.5" cy="6.5" r="1.2" fill="white"/>
-    </svg>
-  );
-}
-
 function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) => void }) {
   const [mode,       setMode]       = useState<'login' | 'register'>('login');
+  const [authOpen,   setAuthOpen]   = useState(false);
   const [nome,       setNome]       = useState('');
   const [email,      setEmail]      = useState('');
   const [pass,       setPass]       = useState('');
@@ -174,6 +165,31 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
   const [error,      setError]      = useState('');
   const [info,       setInfo]       = useState('');
   const [loading,    setLoading]    = useState(false);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('tenis-roboto-font')) return;
+
+    const link = document.createElement('link');
+    link.id = 'tenis-roboto-font';
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap';
+    document.head.appendChild(link);
+  }, []);
+
+  const openAuth = (nextMode: 'login' | 'register') => {
+    setMode(nextMode);
+    setError('');
+    setInfo('');
+    setAuthOpen(true);
+  };
+
+  const closeAuth = () => {
+    if (loading) return;
+    setAuthOpen(false);
+    setError('');
+    setInfo('');
+  };
 
   const handleSubmit = async () => {
     setError(''); setInfo('');
@@ -214,46 +230,164 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
     <div style={s.page}>
       <div style={s.bgImage} />
       <div style={s.bgOverlay} />
-      <div style={s.bgSides} />
-      <a href="https://www.instagram.com/jogartenisto/" target="_blank" rel="noopener noreferrer" style={s.instaCorner}>
-        <InstaIcon />
-      </a>
-      <div style={s.card}>
-        <h1 style={s.title}>Tenis Coach com Carlão</h1>
-        <p style={s.sub}>Entre com seu perfil</p>
-        <div style={s.modeToggle}>
-          <button onClick={() => { setMode('login'); setError(''); }} style={{ ...s.modeBtn, ...(mode === 'login' ? s.modeBtnActive : {}) }}>Entrar</button>
-          <button onClick={() => { setMode('register'); setError(''); }} style={{ ...s.modeBtn, ...(mode === 'register' ? s.modeBtnActive : {}) }}>Cadastrar</button>
+
+      <main style={s.welcomeLayer}>
+        <div style={s.brandBlock}>
+          <h1 style={s.title}>
+            <span style={s.titleMain}>Tênis Coach</span>
+            <span style={s.titleSub}>com Carlão</span>
+          </h1>
         </div>
-        <div style={s.googleWrap}>
-          <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError('Falha ao entrar com Google.')} text={mode === 'login' ? 'signin_with' : 'signup_with'} shape="rectangular" theme="filled_black" width="312" />
-        </div>
-        <div style={s.divider}>
-          <div style={s.dividerLine} />
-          <span style={s.dividerText}>ou</span>
-          <div style={s.dividerLine} />
-        </div>
-        <div style={s.admForm}>
-          {mode === 'register' && (
-            <>
-              <input style={s.input} placeholder="Seu nome *" type="text" value={nome} onChange={e => setNome(e.target.value)} autoCapitalize="words" />
-              <input style={s.input} placeholder="Cidade / Localidade" type="text" value={localidade} onChange={e => setLocalidade(e.target.value)} autoCapitalize="words" />
-              <input style={s.input} placeholder="Telefone / WhatsApp" type="tel" inputMode="numeric" value={telefone} onChange={e => setTelefone(e.target.value)} />
-            </>
-          )}
-          <input style={s.input} placeholder="seu@email.com *" type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} autoCapitalize="none" autoCorrect="off" />
-          <input style={s.input} placeholder="Senha *" type="password" value={pass} onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
-          {error && <p style={s.error}>{error}</p>}
-          {info  && <p style={s.infoMsg}>{info}</p>}
-          <button onClick={handleSubmit} style={{ ...s.admBtn, opacity: loading ? 0.6 : 1 }} disabled={loading}>
-            {loading ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Criar conta'}
+
+        <div style={s.landingActions}>
+          <button
+            type="button"
+            onClick={() => openAuth('login')}
+            style={{ ...s.landingBtn, ...s.landingBtnPrimary }}
+          >
+            <span style={s.landingBtnTextPrimary}>Entrar</span>
+            <span style={s.landingIconPrimary}>↪</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openAuth('register')}
+            style={{ ...s.landingBtn, ...s.landingBtnSecondary }}
+          >
+            <span style={s.landingBtnTextSecondary}>Cadastrar</span>
+            <span style={s.landingIconSecondary}>♙</span>
           </button>
         </div>
-        {mode === 'login' && <p style={s.hint}>Primeira vez? Clique em "Cadastrar" para criar sua conta.</p>}
-      </div>
+      </main>
+
+      {authOpen && (
+        <div style={s.authOverlay} onClick={e => e.target === e.currentTarget && closeAuth()}>
+          <section style={s.authSheet}>
+            <button type="button" onClick={closeAuth} style={s.closeBtn}>×</button>
+
+            <div style={s.sheetHandle} />
+
+            <div style={s.sheetHeader}>
+              <h2 style={s.sheetTitle}>{mode === 'login' ? 'Entrar' : 'Cadastrar'}</h2>
+              <p style={s.sheetSub}>
+                {mode === 'login'
+                  ? 'Acesse sua conta para continuar.'
+                  : 'Crie sua conta para começar.'}
+              </p>
+            </div>
+
+            <div style={s.modeToggle}>
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setError(''); setInfo(''); }}
+                style={{ ...s.modeBtn, ...(mode === 'login' ? s.modeBtnActive : {}) }}
+              >
+                Entrar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setMode('register'); setError(''); setInfo(''); }}
+                style={{ ...s.modeBtn, ...(mode === 'register' ? s.modeBtnActive : {}) }}
+              >
+                Cadastrar
+              </button>
+            </div>
+
+            <div style={s.googleWrap}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError('Falha ao entrar com Google.')}
+                text={mode === 'login' ? 'signin_with' : 'signup_with'}
+                shape="rectangular"
+                theme="outline"
+                width="312"
+              />
+            </div>
+
+            <div style={s.divider}>
+              <div style={s.dividerLine} />
+              <span style={s.dividerText}>ou</span>
+              <div style={s.dividerLine} />
+            </div>
+
+            <div style={s.admForm}>
+              {mode === 'register' && (
+                <>
+                  <input
+                    style={s.input}
+                    placeholder="Seu nome *"
+                    type="text"
+                    value={nome}
+                    onChange={e => setNome(e.target.value)}
+                    autoCapitalize="words"
+                  />
+
+                  <input
+                    style={s.input}
+                    placeholder="Cidade / Localidade"
+                    type="text"
+                    value={localidade}
+                    onChange={e => setLocalidade(e.target.value)}
+                    autoCapitalize="words"
+                  />
+
+                  <input
+                    style={s.input}
+                    placeholder="Telefone / WhatsApp"
+                    type="tel"
+                    inputMode="numeric"
+                    value={telefone}
+                    onChange={e => setTelefone(e.target.value)}
+                  />
+                </>
+              )}
+
+              <input
+                style={s.input}
+                placeholder="seu@email.com *"
+                type="email"
+                inputMode="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+
+              <input
+                style={s.input}
+                placeholder="Senha *"
+                type="password"
+                value={pass}
+                onChange={e => setPass(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              />
+
+              {error && <p style={s.error}>{error}</p>}
+              {info  && <p style={s.infoMsg}>{info}</p>}
+
+              <button
+                type="button"
+                onClick={handleSubmit}
+                style={{ ...s.admBtn, opacity: loading ? 0.6 : 1 }}
+                disabled={loading}
+              >
+                {loading ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Criar conta'}
+              </button>
+            </div>
+
+            {mode === 'login' && (
+              <p style={s.hint}>
+                Primeira vez? Clique em <button type="button" onClick={() => setMode('register')} style={s.inlineLink}>Cadastrar</button> para criar sua conta.
+              </p>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // App principal
@@ -416,28 +550,395 @@ export default function Root() {
 // Estilos Login
 // ---------------------------------------------------------------------------
 const s: Record<string, React.CSSProperties> = {
-  page: { position: 'relative', minHeight: '100dvh', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' },
-  bgImage: { position: 'fixed', inset: 0, backgroundImage: 'url(/carlao-atual.jpg)', backgroundPosition: 'center top', backgroundSize: window.innerWidth >= 768 && navigator.maxTouchPoints === 0 ? 'auto 100%' : 'cover', backgroundRepeat: 'no-repeat', backgroundColor: '#0d0d1a' },
-  bgOverlay: { position: 'fixed', inset: 0, background: 'linear-gradient(to bottom, transparent 0%, transparent 42%, rgba(0,0,0,0.55) 58%, rgba(0,0,0,0.82) 74%, rgba(0,0,0,0.92) 100%)' },
-  bgSides: { position: 'fixed', inset: 0, background: 'radial-gradient(ellipse at 0% 65%, rgba(0,0,0,0.3) 0%, transparent 50%), radial-gradient(ellipse at 100% 65%, rgba(0,0,0,0.3) 0%, transparent 50%)' },
-  instaCorner: { position: 'fixed', top: 16, right: 16, zIndex: 50, width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg, #405de6 0%, #833ab4 30%, #c13584 55%, #e1306c 75%, #fd1d1d 88%, #f56040 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(193,53,132,0.5)', textDecoration: 'none' },
-  card: { position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '0 24px 48px', maxWidth: 360, width: '100%' },
-  title: { color: '#fff', fontSize: 28, fontWeight: 800, margin: 0, textAlign: 'center', lineHeight: 1.2, textShadow: '0 2px 12px rgba(0,0,0,0.9)' },
-  sub: { color: '#cce0ff', fontSize: 14, margin: 0, textShadow: '0 1px 6px rgba(0,0,0,0.8)' },
-  modeToggle: { display: 'flex', width: '100%', background: 'rgba(0,0,20,0.5)', borderRadius: 14, padding: 4, gap: 4, backdropFilter: 'blur(6px)' },
-  modeBtn: { flex: 1, padding: '12px 0', borderRadius: 11, border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: 15, fontWeight: 700, cursor: 'pointer' },
-  modeBtnActive: { background: '#2e7d32', color: '#fff' },
-  googleWrap: { width: '100%', display: 'flex', justifyContent: 'center' },
-  divider: { width: '100%', display: 'flex', alignItems: 'center', gap: 10 },
-  dividerLine: { flex: 1, height: 1, background: 'rgba(255,255,255,0.15)' },
-  dividerText: { color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: 600 },
-  admForm: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
-  input: { width: '100%', padding: '14px 16px', borderRadius: 12, background: 'rgba(0,0,20,0.65)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: 15, boxSizing: 'border-box', backdropFilter: 'blur(6px)' },
-  admBtn: { width: '100%', padding: '16px 20px', borderRadius: 14, background: '#2e7d32', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' },
-  error:   { color: '#ff6666', fontSize: 13, margin: 0, textAlign: 'center' },
-  infoMsg: { color: '#44ff88', fontSize: 13, margin: 0, textAlign: 'center' },
-  hint: { color: 'rgba(160,200,255,0.65)', fontSize: 11, textAlign: 'center', lineHeight: 1.6, marginTop: 4 },
+  page: {
+    position: 'relative',
+    minHeight: '100dvh',
+    overflow: 'hidden',
+    display: 'flex',
+    alignItems: 'stretch',
+    justifyContent: 'center',
+    background: '#140b06',
+    fontFamily: 'Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+
+  bgImage: {
+    position: 'fixed',
+    inset: 0,
+    backgroundImage: 'url(/tela_login.png)',
+    backgroundPosition: 'center center',
+    backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat',
+    backgroundColor: '#140b06',
+    zIndex: 0,
+  },
+
+  bgOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: [
+      'linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.06) 28%, rgba(0,0,0,0.18) 52%, rgba(0,0,0,0.42) 78%, rgba(0,0,0,0.62) 100%)',
+      'radial-gradient(ellipse at 50% 54%, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.18) 62%, rgba(0,0,0,0.48) 100%)',
+    ].join(', '),
+    zIndex: 1,
+    pointerEvents: 'none',
+  },
+
+  welcomeLayer: {
+    position: 'relative',
+    zIndex: 2,
+    width: '100%',
+    maxWidth: 460,
+    minHeight: '100dvh',
+    padding: 'max(28px, env(safe-area-inset-top, 28px)) 28px max(34px, env(safe-area-inset-bottom, 34px))',
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+
+  brandBlock: {
+    position: 'absolute',
+    left: 28,
+    right: 28,
+    top: '50%',
+    transform: 'translateY(-18%)',
+    display: 'flex',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+
+  title: {
+    margin: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    color: '#fff',
+    textShadow: '0 3px 18px rgba(0,0,0,0.68)',
+    lineHeight: 1.03,
+    letterSpacing: -0.6,
+  },
+
+  titleMain: {
+    display: 'block',
+    fontSize: 'clamp(34px, 10.4vw, 48px)',
+    fontWeight: 900,
+    color: '#fff',
+  },
+
+  titleSub: {
+    display: 'block',
+    alignSelf: 'flex-end',
+    marginTop: 5,
+    fontSize: 'clamp(21px, 6.1vw, 30px)',
+    fontWeight: 400,
+    color: '#fff',
+    letterSpacing: -0.25,
+  },
+
+  landingActions: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+    marginBottom: 6,
+  },
+
+  landingBtn: {
+    width: '100%',
+    minHeight: 70,
+    borderRadius: 26,
+    border: '1px solid rgba(255,255,255,0.22)',
+    display: 'grid',
+    gridTemplateColumns: '46px 1fr 46px',
+    alignItems: 'center',
+    padding: '0 18px',
+    boxSizing: 'border-box',
+    cursor: 'pointer',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    boxShadow: '0 16px 34px rgba(0,0,0,0.25)',
+    fontFamily: 'Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+
+  landingBtnPrimary: {
+    background: 'linear-gradient(135deg, rgba(198,107,77,0.82), rgba(147,72,54,0.72))',
+    color: '#fff',
+  },
+
+  landingBtnSecondary: {
+    background: 'rgba(255,248,239,0.72)',
+    color: '#9a4d35',
+  },
+
+  landingBtnTextPrimary: {
+    gridColumn: 2,
+    textAlign: 'center',
+    fontSize: 25,
+    fontWeight: 500,
+    color: '#fff',
+    letterSpacing: -0.25,
+  },
+
+  landingBtnTextSecondary: {
+    gridColumn: 2,
+    textAlign: 'center',
+    fontSize: 25,
+    fontWeight: 500,
+    color: '#9a4d35',
+    letterSpacing: -0.25,
+  },
+
+  landingIconPrimary: {
+    gridColumn: 3,
+    width: 42,
+    height: 42,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    justifySelf: 'end',
+    color: '#fff',
+    background: 'rgba(129,55,36,0.26)',
+    fontSize: 28,
+    fontWeight: 400,
+  },
+
+  landingIconSecondary: {
+    gridColumn: 3,
+    width: 42,
+    height: 42,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    justifySelf: 'end',
+    color: '#9a4d35',
+    background: 'rgba(154,77,53,0.08)',
+    fontSize: 26,
+    fontWeight: 400,
+  },
+
+  authOverlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 40,
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    padding: '0 14px max(14px, env(safe-area-inset-bottom, 14px))',
+    background: 'rgba(10,6,4,0.45)',
+    backdropFilter: 'blur(5px)',
+    WebkitBackdropFilter: 'blur(5px)',
+    boxSizing: 'border-box',
+  },
+
+  authSheet: {
+    position: 'relative',
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: 'min(86dvh, 720px)',
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 13,
+    padding: '14px 18px 22px',
+    borderRadius: 28,
+    background: 'rgba(255,250,246,0.94)',
+    border: '1px solid rgba(255,255,255,0.42)',
+    boxShadow: '0 24px 64px rgba(0,0,0,0.36)',
+    boxSizing: 'border-box',
+    color: '#2d2521',
+  },
+
+  sheetHandle: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    background: 'rgba(122,81,66,0.18)',
+    marginBottom: 2,
+  },
+
+  closeBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 38,
+    height: 38,
+    borderRadius: '50%',
+    border: 'none',
+    background: '#f3e8de',
+    color: '#8b5b49',
+    fontSize: 24,
+    lineHeight: 1,
+    cursor: 'pointer',
+    zIndex: 2,
+  },
+
+  sheetHeader: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+    padding: '4px 42px 0',
+    textAlign: 'center',
+  },
+
+  sheetTitle: {
+    margin: 0,
+    fontSize: 24,
+    fontWeight: 900,
+    color: '#2d2521',
+    letterSpacing: -0.5,
+  },
+
+  sheetSub: {
+    margin: 0,
+    fontSize: 12.5,
+    fontWeight: 500,
+    color: '#8f7769',
+    lineHeight: 1.35,
+  },
+
+  modeToggle: {
+    display: 'flex',
+    width: '100%',
+    background: '#f3e8de',
+    borderRadius: 18,
+    padding: 4,
+    gap: 4,
+    boxSizing: 'border-box',
+  },
+
+  modeBtn: {
+    flex: 1,
+    padding: '12px 0',
+    borderRadius: 14,
+    border: 'none',
+    background: 'transparent',
+    color: '#8f7769',
+    fontSize: 15,
+    fontWeight: 800,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+
+  modeBtnActive: {
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    color: '#fff',
+    boxShadow: '0 8px 18px rgba(147,72,54,0.18)',
+  },
+
+  googleWrap: {
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'center',
+    minHeight: 42,
+  },
+
+  divider: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    background: 'rgba(130,82,62,0.16)',
+  },
+
+  dividerText: {
+    color: '#9b8a7f',
+    fontSize: 12,
+    fontWeight: 700,
+  },
+
+  admForm: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+
+  input: {
+    width: '100%',
+    padding: '14px 15px',
+    borderRadius: 15,
+    background: '#fff',
+    border: '1px solid #eadfd6',
+    color: '#2d2521',
+    fontSize: 15,
+    fontWeight: 500,
+    boxSizing: 'border-box',
+    outline: 'none',
+    fontFamily: 'inherit',
+    colorScheme: 'light' as React.CSSProperties['colorScheme'],
+    boxShadow: '0 8px 18px rgba(117,76,56,0.04)',
+  },
+
+  admBtn: {
+    width: '100%',
+    padding: '15px 20px',
+    borderRadius: 16,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 900,
+    cursor: 'pointer',
+    boxShadow: '0 12px 24px rgba(147,72,54,0.24)',
+    fontFamily: 'inherit',
+  },
+
+  error: {
+    color: '#c95441',
+    background: '#fff4f0',
+    border: '1px solid rgba(201,84,65,0.14)',
+    borderRadius: 12,
+    padding: '9px 10px',
+    fontSize: 13,
+    fontWeight: 700,
+    margin: 0,
+    textAlign: 'center',
+  },
+
+  infoMsg: {
+    color: '#3f8f5b',
+    background: '#edf8ef',
+    border: '1px solid rgba(63,143,91,0.16)',
+    borderRadius: 12,
+    padding: '9px 10px',
+    fontSize: 13,
+    fontWeight: 700,
+    margin: 0,
+    textAlign: 'center',
+  },
+
+  hint: {
+    color: '#8f7769',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 1.5,
+    margin: 0,
+  },
+
+  inlineLink: {
+    border: 'none',
+    background: 'transparent',
+    color: '#a65440',
+    fontSize: 12,
+    fontWeight: 900,
+    padding: 0,
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    fontFamily: 'inherit',
+  },
 };
+
 
 // ---------------------------------------------------------------------------
 // Estilos Modal Pagamento
