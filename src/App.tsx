@@ -628,7 +628,7 @@ const s: Record<string, React.CSSProperties> = {
 
   titleMain: {
     display: 'block',
-    fontSize: 'clamp(31px, 9.4vw, 43px)',
+    fontSize: 'clamp(28px, 8.5vw, 39px)',
     fontWeight: 900,
     color: '#fff',
   },
@@ -637,7 +637,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'block',
     alignSelf: 'flex-end',
     marginTop: 5,
-    fontSize: 'clamp(19px, 5.4vw, 26px)',
+    fontSize: 'clamp(17px, 4.8vw, 23px)',
     fontWeight: 400,
     color: '#fff',
     letterSpacing: -0.25,
@@ -681,7 +681,7 @@ const s: Record<string, React.CSSProperties> = {
   landingBtnTextPrimary: {
     gridColumn: 2,
     textAlign: 'center',
-    fontSize: 23,
+    fontSize: 21,
     fontWeight: 500,
     color: '#fff',
     letterSpacing: -0.25,
@@ -690,7 +690,7 @@ const s: Record<string, React.CSSProperties> = {
   landingBtnTextSecondary: {
     gridColumn: 2,
     textAlign: 'center',
-    fontSize: 23,
+    fontSize: 21,
     fontWeight: 500,
     color: '#9a4d35',
     letterSpacing: -0.25,
@@ -795,7 +795,7 @@ const s: Record<string, React.CSSProperties> = {
 
   sheetTitle: {
     margin: 0,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 900,
     color: '#2d2521',
     letterSpacing: -0.5,
@@ -803,7 +803,7 @@ const s: Record<string, React.CSSProperties> = {
 
   sheetSub: {
     margin: 0,
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: 500,
     color: '#8f7769',
     lineHeight: 1.35,
@@ -826,7 +826,7 @@ const s: Record<string, React.CSSProperties> = {
     border: 'none',
     background: 'transparent',
     color: '#8f7769',
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: 800,
     cursor: 'pointer',
     fontFamily: 'inherit',
@@ -878,7 +878,7 @@ const s: Record<string, React.CSSProperties> = {
     background: '#fff',
     border: '1px solid #eadfd6',
     color: '#2d2521',
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: 500,
     boxSizing: 'border-box',
     outline: 'none',
@@ -894,7 +894,7 @@ const s: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #c66b4d, #934836)',
     border: 'none',
     color: '#fff',
-    fontSize: 15.5,
+    fontSize: 15,
     fontWeight: 900,
     cursor: 'pointer',
     boxShadow: '0 12px 24px rgba(147,72,54,0.24)',
@@ -907,7 +907,7 @@ const s: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(201,84,65,0.14)',
     borderRadius: 12,
     padding: '9px 10px',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: 700,
     margin: 0,
     textAlign: 'center',
@@ -927,7 +927,7 @@ const s: Record<string, React.CSSProperties> = {
 
   hint: {
     color: '#8f7769',
-    fontSize: 12,
+    fontSize: 11.5,
     textAlign: 'center',
     lineHeight: 1.5,
     margin: 0,
@@ -937,7 +937,7 @@ const s: Record<string, React.CSSProperties> = {
     border: 'none',
     background: 'transparent',
     color: '#a65440',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: 900,
     padding: 0,
     cursor: 'pointer',
