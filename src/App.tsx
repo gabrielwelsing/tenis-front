@@ -510,7 +510,7 @@ function App() {
             return <MuralScreen onBack={() => setScreen('home')} emailUsuario={user.email} userId={user.id} username={username} telefone={user.telefone} localidade={user.localidade} />;
 
           case 'agenda':
-            return <AgendaScreen onBack={() => setScreen('home')} emailUsuario={user.email} role={user.role} username={username} />;
+            return <AgendaScreen onBack={() => setScreen('home')} emailUsuario={user.email} role={user.role} username={username} telefone={user.telefone} />;
 
           case 'ranking':
             return <RankingScreen onBack={() => setScreen('home')} userId={user.id} role={user.role} username={username} fotoUrl={user.foto_url} />;
