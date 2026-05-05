@@ -613,6 +613,45 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             )}
           </>
         )}
+          {/* Ações usuário/aluno */}
+          {!isAdmin && !isBloqueado && !manualOcupado && (
+            <>
+              {minhaInscricao ? (
+                <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 750, padding: '10px 0',
+                  color: minhaInscricao.status === 'confirmada' ? '#3f8f5b' : minhaInscricao.status === 'lista_espera' ? '#b98718' : '#c66b4d' }}>
+                  {minhaInscricao.status === 'confirmada' ? '✓ Reserva confirmada!' :
+                   minhaInscricao.status === 'lista_espera' ? '⏳ Você está na lista de espera' :
+                   '⏳ Solicitação enviada — aguardando confirmação'}
+              </div>
+            ) : estaOcupado ? (
+              <div style={sc.ocupadoInfo}>Este horário está ocupado</div>
+            ) : slot.perto1h ? (
+              adminInfo?.telefone ? (
+                <a href={buildWaAdmin(adminInfo.telefone, data, slot.hora_inicio, slot.hora_fim, slot.tipo)}
+                  target="_blank" rel="noopener noreferrer" style={sc.waBtn}>
+                  <WaIcon/> Entre em contato para informar interesse
+                </a>
+              ) : null
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button style={{ ...sc.reservarBtn, flex: '0 0 65%' }} onClick={() => solicitarReserva(slot)}>
+                  Reservar
+                </button>
+                {adminInfo?.telefone && (
+          
+                  href={buildWaAdmin(adminInfo.telefone, data, slot.hora_inicio, slot.hora_fim, slot.tipo)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ flex: '0 0 calc(35% - 8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 16, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', textDecoration: 'none', boxShadow: '0 10px 20px rgba(27,143,69,0.18)' }}
+                >
+                  <WaIcon/>
+                </a>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
 
         {!isAdmin && (isBloqueado || manualOcupado) && (
           <div style={sc.ocupadoInfo}>{isBloqueado ? 'Horário bloqueado' : 'Este horário está ocupado'}</div>
