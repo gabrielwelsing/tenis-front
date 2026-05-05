@@ -1,5 +1,5 @@
 // =============================================================================
-// MuralScreen — Mural de Treinos
+// MuralScreen — Mural de Desafios
 // =============================================================================
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -236,7 +236,7 @@ function buildWhatsAppUrl(jogo: Jogo): string {
     : `${fmtData(jogo.dataInicio)} a ${fmtData(jogo.dataFim)}`;
 
   const msg = encodeURIComponent(
-    `Olá! Vi sua publicação no Mural de Treinos do Prof. Carlão. Quero jogar uma partida com você! Sou ${jogo.classe} e tenho disponibilidade de estar no ${jogo.local} (${jogo.cidade}), ${dataStr} entre ${jogo.horarioInicio.replace(':', 'h')} às ${jogo.horarioFim.replace(':', 'h')}. Bora?`
+    `Olá! Vi sua publicação no Mural de Desafios do Prof. Carlão. Quero jogar uma partida com você! Sou ${jogo.classe} e tenho disponibilidade de estar no ${jogo.local} (${jogo.cidade}), ${dataStr} entre ${jogo.horarioInicio.replace(':', 'h')} às ${jogo.horarioFim.replace(':', 'h')}. Bora?`
   );
 
   return `https://wa.me/${numero}?text=${msg}`;
@@ -709,7 +709,7 @@ export default function MuralScreen({
         <button onClick={onBack} style={s.backBtn}>‹</button>
 
         <div style={s.headerCenter}>
-          <span style={s.headerTitle}>Mural de Treinos</span>
+          <span style={s.headerTitle}>Mural de Desafios</span>
           <span style={s.headerSub}>Encontre parceiros para jogar</span>
         </div>
 
