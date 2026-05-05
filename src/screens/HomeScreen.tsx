@@ -593,7 +593,7 @@ export default function HomeScreen({
             <div style={s.quickGrid}>
               <button style={s.quickCard} onClick={() => onNavigate('mural')}>
                 <div style={s.quickIcon}><PeopleIcon /></div>
-                <div style={s.quickLabel}>Mural de Treinos</div>
+                <div style={s.quickLabel}>Mural de Desafios</div>
               </button>
 
               <button style={s.quickCard} onClick={() => onNavigate('agenda')}>
