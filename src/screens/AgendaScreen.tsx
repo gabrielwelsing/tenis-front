@@ -16,7 +16,6 @@ interface Props {
   telefone?:    string | null;
 }
 
-// Interface legada (slots manuais — mantida)
 interface Slot {
   id:          number;
   admin_email: string;
@@ -29,7 +28,6 @@ interface Slot {
   status:      string;
 }
 
-// Slot unificado retornado pela nova rota /agenda/dia
 interface SlotDia {
   source:            'fixo' | 'manual';
   fixo_id?:          number;
@@ -136,7 +134,6 @@ function buildWaAluno(telefone: string, nome: string) {
   return `https://wa.me/${numero}?text=${msg}`;
 }
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
 function CalendarLineIcon({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -232,26 +229,20 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const [adminInfo,  setAdminInfo]  = useState<AdminInfo | null>(null);
   const [adminTab,   setAdminTab]   = useState<AdminTab>('agenda');
 
-  // Legado
-  const [slots,     setSlots]     = useState<Slot[]>([]);
-
-  // Novos
+  const [slots,         setSlots]         = useState<Slot[]>([]);
   const [slotsDia,      setSlotsDia]      = useState<SlotDia[]>([]);
   const [solicitacoes,  setSolicitacoes]  = useState<Inscricao[]>([]);
   const [horariosFixos, setHorariosFixos] = useState<HorarioFixo[]>([]);
   const [proximoEspera, setProximoEspera] = useState<Inscricao | null>(null);
 
-  // Form slot manual (existente)
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ hora_inicio: '07:00', hora_fim: '08:00', tipo: 'individual', vagas: 1, observacao: '' });
+  const [showForm,  setShowForm]  = useState(false);
+  const [form,      setForm]      = useState({ hora_inicio: '07:00', hora_fim: '08:00', tipo: 'individual', vagas: 1, observacao: '' });
 
-  // Form horário fixo
   const [showFormFixo, setShowFormFixo] = useState(false);
-  const [formFixo, setFormFixo] = useState({ dia_semana: 1, hora_inicio: '07:00', hora_fim: '08:00' });
+  const [formFixo,     setFormFixo]     = useState({ dia_semana: 1, hora_inicio: '07:00', hora_fim: '08:00' });
 
-  // Override inline
   const [editandoOverride, setEditandoOverride] = useState<string | null>(null);
-  const [formOverride, setFormOverride] = useState({ tipo: 'individual', vagas: 1 });
+  const [formOverride,     setFormOverride]     = useState({ tipo: 'individual', vagas: 1 });
 
   const flash = (type: 'ok' | 'err', text: string) => {
     setMsg({ type, text });
@@ -262,8 +253,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     fetch(`${API}/agenda/admin-info`)
       .then(r => r.json()).then(setAdminInfo).catch(() => {});
   }, []);
-
-  // ── Loaders ───────────────────────────────────────────────────────────────
 
   const loadSlotsDia = useCallback(async () => {
     if (!adminInfo?.email) return;
@@ -276,7 +265,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     setLoading(false);
   }, [adminInfo, data, role]);
 
-  // Legado (mantido)
   const loadSlots = useCallback(async () => {
     if (!adminInfo?.email) return;
     try {
@@ -307,7 +295,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   useEffect(() => { loadSlotsDia(); loadSlots(); }, [loadSlotsDia, loadSlots]);
   useEffect(() => { loadSolicitacoes(); loadHorariosFixos(); }, [loadSolicitacoes, loadHorariosFixos]);
 
-  // ── Actions existentes (mantidos) ─────────────────────────────────────────
+  // ── Actions existentes ────────────────────────────────────────────────────
 
   const saveSlot = async () => {
     if (!adminInfo?.email) return;
@@ -347,8 +335,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   };
 
   const toggleOcupadoPorId = async (slotId: number, statusAtual: string) => {
-    const legacySlot = { id: slotId, status: statusAtual } as Slot;
-    await toggleOcupado(legacySlot);
+    await toggleOcupado({ id: slotId, status: statusAtual } as Slot);
   };
 
   // ── Novas actions ─────────────────────────────────────────────────────────
@@ -463,25 +450,25 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   // ── Render: card de slot do dia ───────────────────────────────────────────
 
   const renderSlotDiaCard = (slot: SlotDia) => {
-    const hi             = slot.hora_inicio;
-    const cor            = TIPO_COLOR[slot.tipo] ?? '#c66b4d';
-    const isEditing      = editandoOverride === hi;
-    const isBloqueado    = slot.tipo === 'bloqueado';
-    const manualOcupado  = slot.source === 'manual' && slot.status_manual === 'ocupado';
-    const vagasDisp      = slot.vagas - slot.vagas_confirmadas;
-    const estaOcupado    = !isBloqueado && !manualOcupado && vagasDisp <= 0;
+    const hi            = slot.hora_inicio;
+    const cor           = TIPO_COLOR[slot.tipo] ?? '#c66b4d';
+    const isEditing     = editandoOverride === hi;
+    const isBloqueado   = slot.tipo === 'bloqueado';
+    const manualOcupado = slot.source === 'manual' && slot.status_manual === 'ocupado';
+    const vagasDisp     = slot.vagas - slot.vagas_confirmadas;
+    const estaOcupado   = !isBloqueado && !manualOcupado && vagasDisp <= 0;
     const minhaInscricao = slot.inscricoes?.find(i => i.email_aluno === emailUsuario && i.status !== 'cancelada');
-    const corBorda       = isBloqueado || estaOcupado || manualOcupado ? '#d4c5bb' : cor;
+    const corBorda      = isBloqueado || estaOcupado || manualOcupado ? '#d4c5bb' : cor;
 
     return (
       <div key={hi} style={{ ...sc.card, borderLeft: `4px solid ${corBorda}` }}>
+
         {/* Cabeçalho */}
         <div style={sc.cardHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
             <span style={{ ...sc.badge, color: isBloqueado || estaOcupado ? '#8d7b70' : cor, background: `${isBloqueado || estaOcupado ? '#8d7b70' : cor}16`, borderColor: `${isBloqueado || estaOcupado ? '#8d7b70' : cor}33` }}>
               {TIPO_LABEL[slot.tipo] ?? slot.tipo}
             </span>
-            {slot.source === 'fixo' && <span style={sc.fixoBadge}>Fixo</span>}
             {(estaOcupado || manualOcupado) && <span style={sc.ocupadoBadge}>Ocupado</span>}
             {isBloqueado && <span style={sc.ocupadoBadge}>Bloqueado</span>}
           </div>
@@ -609,49 +596,24 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                 </a>
               ) : null
             ) : (
-              <button style={sc.reservarBtn} onClick={() => solicitarReserva(slot)}>Reservar</button>
-            )}
-          </>
-        )}
-          {/* Ações usuário/aluno */}
-          {!isAdmin && !isBloqueado && !manualOcupado && (
-            <>
-              {minhaInscricao ? (
-                <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 750, padding: '10px 0',
-                  color: minhaInscricao.status === 'confirmada' ? '#3f8f5b' : minhaInscricao.status === 'lista_espera' ? '#b98718' : '#c66b4d' }}>
-                  {minhaInscricao.status === 'confirmada' ? '✓ Reserva confirmada!' :
-                   minhaInscricao.status === 'lista_espera' ? '⏳ Você está na lista de espera' :
-                   '⏳ Solicitação enviada — aguardando confirmação'}
-              </div>
-            ) : estaOcupado ? (
-              <div style={sc.ocupadoInfo}>Este horário está ocupado</div>
-            ) : slot.perto1h ? (
-              adminInfo?.telefone ? (
-                <a href={buildWaAdmin(adminInfo.telefone, data, slot.hora_inicio, slot.hora_fim, slot.tipo)}
-                  target="_blank" rel="noopener noreferrer" style={sc.waBtn}>
-                  <WaIcon/> Entre em contato para informar interesse
-                </a>
-              ) : null
-            ) : (
               <div style={{ display: 'flex', gap: 8 }}>
                 <button style={{ ...sc.reservarBtn, flex: '0 0 65%' }} onClick={() => solicitarReserva(slot)}>
                   Reservar
                 </button>
                 {adminInfo?.telefone && (
-          
-                  href={buildWaAdmin(adminInfo.telefone, data, slot.hora_inicio, slot.hora_fim, slot.tipo)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ flex: '0 0 calc(35% - 8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 16, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', textDecoration: 'none', boxShadow: '0 10px 20px rgba(27,143,69,0.18)' }}
-                >
-                  <WaIcon/>
-                </a>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
+                  
+                    href={buildWaAdmin(adminInfo.telefone, data, slot.hora_inicio, slot.hora_fim, slot.tipo)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ flex: '0 0 calc(35% - 8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 16, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', textDecoration: 'none', boxShadow: '0 10px 20px rgba(27,143,69,0.18)' }}
+                  >
+                    <WaIcon/>
+                  </a>
+                )}
+              </div>
+            )}
+          </>
+        )}
 
         {!isAdmin && (isBloqueado || manualOcupado) && (
           <div style={sc.ocupadoInfo}>{isBloqueado ? 'Horário bloqueado' : 'Este horário está ocupado'}</div>
@@ -1015,7 +977,6 @@ const sc: Record<string, React.CSSProperties> = {
   card: { background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 22, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', padding: '14px 14px 14px 16px', display: 'flex', flexDirection: 'column', gap: 10 },
   cardHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   badge: { fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, border: '1px solid', letterSpacing: 0.1 },
-  fixoBadge: { fontSize: 10, fontWeight: 850, padding: '4px 8px', borderRadius: 999, background: '#f0f4ff', border: '1px solid #c7d2f5', color: '#5b72c4' },
   ocupadoBadge: { fontSize: 11, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: '#f1e9e4', border: '1px solid #e5d8cf', color: '#8d7b70' },
   editBtn: { padding: '6px 10px', borderRadius: 999, border: '1px solid rgba(198,107,77,0.3)', background: '#fff1eb', color: '#b65b43', fontSize: 11, fontWeight: 850, cursor: 'pointer', whiteSpace: 'nowrap' },
   ocupadoBtn: { padding: '6px 10px', borderRadius: 999, border: '1px solid', fontSize: 11, fontWeight: 850, cursor: 'pointer', whiteSpace: 'nowrap' },
