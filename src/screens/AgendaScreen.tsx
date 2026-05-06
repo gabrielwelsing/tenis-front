@@ -39,7 +39,8 @@ interface HorarioFixo {
 
 interface AdminInfo { email: string; telefone: string | null; }
 
-type AdminTab = 'agenda' | 'solicitacoes' | 'fixos';
+type AdminTab  = 'agenda' | 'solicitacoes' | 'fixos';
+type UserTab   = 'agenda' | 'minhas';
 
 const TIPOS = [
   { value: 'individual', label: 'Individual' },
@@ -93,6 +94,17 @@ function buildWaAluno(tel: string, nome: string) {
   const numero = '55' + tel.replace(/\D/g, '');
   const msg = encodeURIComponent('Olá ' + nome + ', sobre o seu horário na agenda!');
   return 'https://wa.me/' + numero + '?text=' + msg;
+}
+
+// ── Filtra slots do passado quando for hoje ───────────────────────────────────
+function filtrarSlotsPassados(slots: SlotDia[], data: string): SlotDia[] {
+  if (data !== todayStr()) return slots;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  return slots.filter(sl => {
+    const [hh, mm] = sl.hora_inicio.slice(0, 5).split(':').map(Number);
+    return hh * 60 + mm > nowMin;
+  });
 }
 
 function CalendarLineIcon({ size = 22 }: { size?: number }) {
@@ -155,9 +167,7 @@ function DateNav({ data, setData }: { data: string; setData: (d: string) => void
 
 function avatarEl(nome: string, foto: string | null | undefined, size = 30) {
   if (foto) {
-    return (
-      <img src={foto} alt={nome} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}/>
-    );
+    return <img src={foto} alt={nome} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}/>;
   }
   return (
     <div style={{ width: size, height: size, borderRadius: '50%', background: 'linear-gradient(135deg,#c6714e,#8f4635)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
@@ -193,11 +203,15 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const [msg,           setMsg]           = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [adminInfo,     setAdminInfo]     = useState<AdminInfo | null>(null);
   const [adminTab,      setAdminTab]      = useState<AdminTab>('agenda');
-  const [slots,         setSlots]         = useState<Slot[]>([]);
-  const [slotsDia,      setSlotsDia]      = useState<SlotDia[]>([]);
-  const [solicitacoes,  setSolicitacoes]  = useState<Inscricao[]>([]);
-  const [horariosFixos, setHorariosFixos] = useState<HorarioFixo[]>([]);
-  const [proximoEspera, setProximoEspera] = useState<Inscricao | null>(null);
+  const [userTab,       setUserTab]       = useState<UserTab>('agenda');
+
+  const [slots,             setSlots]             = useState<Slot[]>([]);
+  const [slotsDia,          setSlotsDia]          = useState<SlotDia[]>([]);
+  const [solicitacoes,      setSolicitacoes]      = useState<Inscricao[]>([]);
+  const [horariosFixos,     setHorariosFixos]     = useState<HorarioFixo[]>([]);
+  const [proximoEspera,     setProximoEspera]     = useState<Inscricao | null>(null);
+  const [minhasInscricoes,  setMinhasInscricoes]  = useState<Inscricao[]>([]);
+
   const [showForm,      setShowForm]      = useState(false);
   const [form,          setForm]          = useState({ hora_inicio: '07:00', hora_fim: '08:00', tipo: 'individual', vagas: 1, observacao: '' });
   const [showFormFixo,  setShowFormFixo]  = useState(false);
@@ -257,8 +271,20 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     } catch { /* silent */ }
   }, [adminInfo, isAdmin]);
 
-  useEffect(() => { loadSlotsDia(); loadSlots(); }, [loadSlotsDia, loadSlots]);
+  const loadMinhasInscricoes = useCallback(async () => {
+    if (!adminInfo?.email || isAdmin) return;
+    try {
+      const url = API + '/agenda/minhas-inscricoes?email_aluno=' + encodeURIComponent(emailUsuario) + '&admin_email=' + encodeURIComponent(adminInfo.email);
+      const r = await fetch(url);
+      const json = await r.json();
+      setMinhasInscricoes(Array.isArray(json) ? json : []);
+    } catch { /* silent */ }
+  }, [adminInfo, emailUsuario, isAdmin]);
+
+  useEffect(() => { loadSlotsDia(); loadSlots(); loadMinhasInscricoes(); }, [loadSlotsDia, loadSlots, loadMinhasInscricoes]);
   useEffect(() => { loadSolicitacoes(); loadHorariosFixos(); }, [loadSolicitacoes, loadHorariosFixos]);
+
+  // ── Actions existentes ────────────────────────────────────────────────────
 
   const saveSlot = async () => {
     if (!adminInfo?.email) return;
@@ -316,6 +342,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       if (!r.ok) { const e = await r.json(); flash('err', e.error ?? 'Erro.'); return; }
       flash('ok', 'Reserva solicitada! Aguarde a confirmação.');
       loadSlotsDia();
+      loadMinhasInscricoes();
     } catch { flash('err', 'Erro de conexão.'); }
   };
 
@@ -523,10 +550,8 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                   </div>
                 </div>
                 {insc.telefone_usuario && (
-                  <button
-                    onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
-                    style={{ width: 28, height: 28, borderRadius: '50%', background: '#edf8ef', border: '1px solid #bee0c8', color: '#3f8f5b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
-                  >
+                  <button onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
+                    style={{ width: 28, height: 28, borderRadius: '50%', background: '#edf8ef', border: '1px solid #bee0c8', color: '#3f8f5b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                     <WaIcon/>
                   </button>
                 )}
@@ -580,7 +605,60 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     );
   };
 
-  // ── Aba Solicitações ──────────────────────────────────────────────────────
+  // ── Aba Minhas Aulas (user/aluno) ─────────────────────────────────────────
+
+  const renderMinhasAulas = () => {
+    if (minhasInscricoes.length === 0) {
+      return (
+        <div style={s.emptyFeed}>
+          <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
+          <p style={s.emptyText}>Nenhuma aula inscrita.</p>
+          <p style={s.emptyHint}>Quando você reservar um horário, ele aparecerá aqui.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {minhasInscricoes.map(insc => {
+          const cor = insc.status === 'confirmada' ? '#3f8f5b' : insc.status === 'lista_espera' ? '#b98718' : '#c66b4d';
+          const bg  = insc.status === 'confirmada' ? '#edf8ef' : insc.status === 'lista_espera' ? '#fff8e6' : '#fff1eb';
+          const bd  = insc.status === 'confirmada' ? '#bee0c8' : insc.status === 'lista_espera' ? '#f0d58a' : '#efc7b8';
+          return (
+            <div key={insc.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: '4px solid ' + cor }}>
+              <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Status badge */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: bg, border: '1px solid ' + bd, color: cor }}>
+                    {insc.status === 'confirmada' ? '✓ Confirmada' : insc.status === 'lista_espera' ? '⏳ Lista de espera' : '• Aguardando confirmação'}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>{fmtDateBr(insc.data)}</span>
+                </div>
+
+                {/* Horário */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c66b4d' }}>
+                  <ClockLineIcon size={17}/>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: '#2d2521' }}>{fmt(insc.hora_inicio)} – {fmt(insc.hora_fim)}</span>
+                </div>
+
+                {/* WhatsApp do professor */}
+                {adminInfo?.telefone && (
+                  <button
+                    onClick={() => window.open(buildWaAdmin(adminInfo.telefone!, insc.data, insc.hora_inicio, insc.hora_fim, 'individual'), '_blank')}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}
+                  >
+                    <WaIcon/> Falar com o professor
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ── Aba Solicitações (admin) ──────────────────────────────────────────────
 
   const renderSolicitacoes = () => {
     if (solicitacoes.length === 0) {
@@ -592,21 +670,17 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         </div>
       );
     }
-
     const grupos: Record<string, Inscricao[]> = {};
     solicitacoes.forEach(i => {
       const key = i.data + '|' + i.hora_inicio;
       if (!grupos[key]) grupos[key] = [];
       grupos[key].push(i);
     });
-
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {Object.entries(grupos).map(([key, inscs]) => {
           const parts = key.split('|');
-          const dt = parts[0];
-          const hi = parts[1];
-          const hf = inscs[0].hora_fim;
+          const dt = parts[0]; const hi = parts[1]; const hf = inscs[0].hora_fim;
           return (
             <div key={key} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)' }}>
               <div style={{ padding: '12px 14px 10px', background: '#fffaf7', borderBottom: '1px solid #f4ebe3', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -632,10 +706,8 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {insc.telefone_usuario && (
-                      <button
-                        onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
-                        style={{ width: 30, height: 30, borderRadius: '50%', background: '#edf8ef', border: '1px solid #bee0c8', color: '#3f8f5b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', textDecoration: 'none' }}
-                      >
+                      <button onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
+                        style={{ width: 30, height: 30, borderRadius: '50%', background: '#edf8ef', border: '1px solid #bee0c8', color: '#3f8f5b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                         <WaIcon/>
                       </button>
                     )}
@@ -658,7 +730,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     );
   };
 
-  // ── Aba Horários Fixos ────────────────────────────────────────────────────
+  // ── Aba Horários Fixos (admin) ────────────────────────────────────────────
 
   const renderHorariosFixos = () => {
     const porDia: Record<number, HorarioFixo[]> = {};
@@ -666,13 +738,11 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       if (!porDia[h.dia_semana]) porDia[h.dia_semana] = [];
       porDia[h.dia_semana].push(h);
     });
-
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <button style={{ ...s.newBtn, width: '100%' }} onClick={() => setShowFormFixo(v => !v)}>
           {showFormFixo ? 'Fechar' : '+ Adicionar horário fixo'}
         </button>
-
         {showFormFixo && (
           <div style={s.formCard}>
             <div style={s.formTitle}>Novo Horário Fixo</div>
@@ -696,13 +766,9 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             <button style={s.publishBtn} onClick={adicionarHorarioFixo}>Adicionar</button>
           </div>
         )}
-
         {horariosFixos.length === 0 && (
-          <div style={s.emptyFeed}>
-            <p style={s.emptyText}>Nenhum horário fixo cadastrado.</p>
-          </div>
+          <div style={s.emptyFeed}><p style={s.emptyText}>Nenhum horário fixo cadastrado.</p></div>
         )}
-
         {Object.entries(porDia).sort(([a], [b]) => Number(a) - Number(b)).map(([dia, horas]) => (
           <div key={dia} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)' }}>
             <div style={{ padding: '10px 14px', background: '#fffaf7', borderBottom: '1px solid #f4ebe3' }}>
@@ -722,6 +788,9 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   };
 
   // ── Main render ────────────────────────────────────────────────────────────
+
+  // Slots filtrados (remove passados quando for hoje)
+  const slotsVisiveis = filtrarSlotsPassados(slotsDia, data);
 
   return (
     <div style={s.page}>
@@ -743,6 +812,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         </div>
       )}
 
+      {/* Tab bar admin */}
       {isAdmin && (
         <div style={s.tabBar}>
           {([
@@ -757,40 +827,46 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         </div>
       )}
 
+      {/* Tab bar user/aluno */}
+      {!isAdmin && (
+        <div style={s.tabBar}>
+          {([
+            { key: 'agenda', label: 'Agenda'          },
+            { key: 'minhas', label: 'Minhas Aulas' + (minhasInscricoes.length > 0 ? ' (' + minhasInscricoes.length + ')' : '') },
+          ] as { key: UserTab; label: string }[]).map(t => (
+            <button key={t.key} style={{ ...s.tabBtn, ...(userTab === t.key ? s.tabActive : {}) }} onClick={() => setUserTab(t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div style={s.scrollBody}>
         <div style={s.inner}>
 
-          {(!isAdmin || adminTab === 'agenda') && (
+          {/* ── Admin: Agenda ── */}
+          {isAdmin && adminTab === 'agenda' && (
             <>
               <section style={s.heroCard}>
                 <div style={s.heroText}>
-                  <span style={s.heroKicker}>{isAdmin ? 'GESTÃO DE HORÁRIOS' : 'AGENDA DO PROFESSOR'}</span>
-                  <h1 style={s.heroTitle}>{isAdmin ? 'Organize seus horários' : 'Escolha um horário disponível'}</h1>
-                  <p style={s.heroSub}>
-                    {isAdmin ? 'Crie, edite ou cancele horários para este dia.' : 'Veja a disponibilidade e solicite sua reserva.'}
-                  </p>
+                  <span style={s.heroKicker}>GESTÃO DE HORÁRIOS</span>
+                  <h1 style={s.heroTitle}>Organize seus horários</h1>
+                  <p style={s.heroSub}>Crie, edite ou cancele horários para este dia.</p>
                 </div>
               </section>
-
               <section style={s.section}>
                 <div style={s.sectionHead}>
                   <div style={s.sectionIcon}><CalendarLineIcon size={22}/></div>
                   <div style={s.sectionInfo}>
-                    <h2 style={s.sectionTitle}>{isAdmin ? 'Meus horários' : 'Horários disponíveis'}</h2>
+                    <h2 style={s.sectionTitle}>Meus horários</h2>
                     <DateNav data={data} setData={setData}/>
                   </div>
-                  {isAdmin && (
-                    <button onClick={() => setShowForm(v => !v)} style={s.newBtn}>{showForm ? 'Fechar' : '+ Novo'}</button>
-                  )}
+                  <button onClick={() => setShowForm(v => !v)} style={s.newBtn}>{showForm ? 'Fechar' : '+ Novo'}</button>
                 </div>
-
-                {isAdmin && showForm && (
+                {showForm && (
                   <div style={s.formCard}>
                     <div style={s.formTop}>
-                      <div>
-                        <div style={s.formTitle}>Novo horário</div>
-                        <div style={s.formSub}>{fmtDateBr(data)}</div>
-                      </div>
+                      <div><div style={s.formTitle}>Novo horário</div><div style={s.formSub}>{fmtDateBr(data)}</div></div>
                       <span style={s.formPill}>{TIPO_LABEL[form.tipo] ?? form.tipo}</span>
                     </div>
                     <div style={s.formRow}>
@@ -827,24 +903,16 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                     </button>
                   </div>
                 )}
-
-                {loading && (
-                  <div style={s.loadingBox}>
-                    <div style={s.loadingDot}/>
-                    <p style={s.loadingTxt}>Carregando horários…</p>
-                  </div>
-                )}
-
-                {!loading && slotsDia.length === 0 && (
+                {loading && <div style={s.loadingBox}><div style={s.loadingDot}/><p style={s.loadingTxt}>Carregando horários…</p></div>}
+                {!loading && slotsVisiveis.length === 0 && (
                   <div style={s.emptyFeed}>
                     <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
                     <p style={s.emptyText}>Nenhum horário em {fmtDateBr(data)}.</p>
-                    <p style={s.emptyHint}>{isAdmin ? 'Clique em "+ Novo" para adicionar.' : 'Tente outro dia.'}</p>
+                    <p style={s.emptyHint}>Clique em "+ Novo" para adicionar.</p>
                   </div>
                 )}
-
-                {!loading && slotsDia.length > 0 && (
-                  <div style={s.slotList}>{slotsDia.map(sl => renderSlotDiaCard(sl))}</div>
+                {!loading && slotsVisiveis.length > 0 && (
+                  <div style={s.slotList}>{slotsVisiveis.map(sl => renderSlotDiaCard(sl))}</div>
                 )}
               </section>
             </>
@@ -873,6 +941,53 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                 </div>
               </div>
               {renderHorariosFixos()}
+            </section>
+          )}
+
+          {/* ── User/Aluno: Agenda ── */}
+          {!isAdmin && userTab === 'agenda' && (
+            <>
+              <section style={s.heroCard}>
+                <div style={s.heroText}>
+                  <span style={s.heroKicker}>AGENDA DO PROFESSOR</span>
+                  <h1 style={s.heroTitle}>Escolha um horário disponível</h1>
+                  <p style={s.heroSub}>Veja a disponibilidade e solicite sua reserva.</p>
+                </div>
+              </section>
+              <section style={s.section}>
+                <div style={s.sectionHead}>
+                  <div style={s.sectionIcon}><CalendarLineIcon size={22}/></div>
+                  <div style={s.sectionInfo}>
+                    <h2 style={s.sectionTitle}>Horários disponíveis</h2>
+                    <DateNav data={data} setData={setData}/>
+                  </div>
+                </div>
+                {loading && <div style={s.loadingBox}><div style={s.loadingDot}/><p style={s.loadingTxt}>Carregando horários…</p></div>}
+                {!loading && slotsVisiveis.length === 0 && (
+                  <div style={s.emptyFeed}>
+                    <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
+                    <p style={s.emptyText}>Nenhum horário em {fmtDateBr(data)}.</p>
+                    <p style={s.emptyHint}>Tente outro dia.</p>
+                  </div>
+                )}
+                {!loading && slotsVisiveis.length > 0 && (
+                  <div style={s.slotList}>{slotsVisiveis.map(sl => renderSlotDiaCard(sl))}</div>
+                )}
+              </section>
+            </>
+          )}
+
+          {/* ── User/Aluno: Minhas Aulas ── */}
+          {!isAdmin && userTab === 'minhas' && (
+            <section style={s.section}>
+              <div style={s.sectionHead}>
+                <div style={s.sectionIcon}><ClockLineIcon size={20}/></div>
+                <div style={s.sectionInfo}>
+                  <h2 style={s.sectionTitle}>Minhas Aulas</h2>
+                  <span style={{ fontSize: 12, color: '#94857a' }}>Aulas inscritas e confirmadas</span>
+                </div>
+              </div>
+              {renderMinhasAulas()}
             </section>
           )}
 
