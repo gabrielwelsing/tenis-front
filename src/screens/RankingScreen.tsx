@@ -870,13 +870,13 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     </div>
   );
 
-  const TABS: { key: Tab; label: string }[] = [
-    { key: 'ranking',  label: '🏅 Ranking'  },
-    { key: 'rodada',   label: '⚔️ Rodada'   },
-    { key: 'partidas', label: '🎯 Resultado' },
-    { key: 'desafios', label: '🤝 Desafio'  },
-    { key: 'config',   label: isAdmin ? '⚙️ Config' : '⚙️ Ligas' },
-  ];
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'ranking',  label: '🏅 Ranking'  },
+  { key: 'rodada',   label: '⚔️ Rodada'   },
+  { key: 'partidas', label: '🎯 Resultado' },
+  { key: 'desafios', label: '🤝 Desafio'  },
+  ...(isAdmin ? [{ key: 'config' as Tab, label: '⚙️ Config' }] : []),
+];
 
   const temporadaAtual = temporadas.find(t => t.id === temporadaId);
   const headerSubtitle = ligaAtual
