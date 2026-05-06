@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
-import { getProximaAtividade, type ProximaAtividadeRecord } from '@services/apiService';
+import { getProximaAtividadeCompleta, type ProximaAtividadeCompletaRecord } from '@services/apiService';
 
 interface Props {
   saveMode:       SaveMode;
@@ -167,14 +167,14 @@ export default function HomeScreen({
   const [cfgLoading, setCfgLoading] = useState(false);
   const [cfgMsg, setCfgMsg] = useState('');
 
-  const [proximaAtividade, setProximaAtividade] = useState<ProximaAtividadeRecord | null>(null);
+  const [proximaAtividade, setProximaAtividade] = useState<ProximaAtividadeCompletaRecord | null>(null);
 
   useEffect(() => {
     let ativo = true;
 
     if (!emailUsuario) return;
 
-    getProximaAtividade(emailUsuario)
+    getProximaAtividadeCompleta(emailUsuario, role)
       .then(data => {
         if (ativo) setProximaAtividade(data);
       })
@@ -185,7 +185,7 @@ export default function HomeScreen({
     return () => {
       ativo = false;
     };
-  }, [emailUsuario]);
+  }, [emailUsuario, role]);
 
   const handleAvatarClick = () => fileInputRef.current?.click();
 
@@ -232,6 +232,18 @@ export default function HomeScreen({
   };
 
   const semTelefone = !telefone || telefone.trim() === '';
+
+  const proximaTipoLabel = proximaAtividade?.tipo === 'aula' ? 'PRÓXIMA AULA' : 'PRÓXIMA PARTIDA';
+
+  const proximaTitulo = proximaAtividade
+    ? proximaAtividade.tipo === 'aula'
+      ? role === 'admin'
+        ? `Aula com ${proximaAtividade.alunoNome || 'aluno'}`
+        : 'Aula com Prof. Carlão'
+      : `${displayName} x ${proximaAtividade.adversarioNome || 'Adversário'}`
+    : '';
+
+  const proximaDestino: Screen = proximaAtividade?.tipo === 'aula' ? 'agenda' : 'mural';
 
   const LockedCard = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
     <div style={{ ...s.quickCard, ...s.quickCardLocked }}>
@@ -529,10 +541,10 @@ export default function HomeScreen({
             <div style={s.heroContent}>
               {proximaAtividade ? (
                 <>
-                  <div style={s.heroKicker}>PRÓXIMA PARTIDA</div>
+                  <div style={s.heroKicker}>{proximaTipoLabel}</div>
 
                   <h1 style={s.heroTitle}>
-                    {displayName} x {proximaAtividade.adversarioNome || 'Adversário'}
+                    {proximaTitulo}
                   </h1>
 
                   <div style={s.heroMeta}>
@@ -556,9 +568,9 @@ export default function HomeScreen({
                   <button
                     type="button"
                     style={s.heroDetailsBtn}
-                    onClick={() => onNavigate('mural')}
+                    onClick={() => onNavigate(proximaDestino)}
                   >
-                    Ver detalhes ›
+                    {proximaAtividade.tipo === 'aula' ? 'Ver agenda ›' : 'Ver detalhes ›'}
                   </button>
                 </>
               ) : (
