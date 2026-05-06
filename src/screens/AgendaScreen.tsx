@@ -311,7 +311,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const loadSolicitacoes = useCallback(async () => {
     if (!adminInfo?.email || !isAdmin) return;
     try {
-      const url = API + '/agenda/solicitacoes?admin_email=' + encodeURIComponent(adminInfo.email);
+      const url = API + '/agenda/solicitacoes?admin_email=' + encodeURIComponent(adminInfo.email) + '&incluir_historico=1';
       const r = await fetch(url);
       const json = await r.json();
       setSolicitacoes(Array.isArray(json) ? json : []);
@@ -718,7 +718,9 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   // ── Aba Solicitações (admin) ──────────────────────────────────────────────
 
   const renderSolicitacoes = () => {
-    if (solicitacoes.length === 0) {
+    const solicitacoesAtivas = solicitacoes.filter(i => i.status !== 'confirmada' && !inscricaoJaPassou(i));
+
+    if (solicitacoesAtivas.length === 0) {
       return (
         <div style={s.emptyFeed}>
           <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
@@ -728,7 +730,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       );
     }
     const grupos: Record<string, Inscricao[]> = {};
-    solicitacoes.forEach(i => {
+    solicitacoesAtivas.forEach(i => {
       const key = i.data + '|' + i.hora_inicio;
       if (!grupos[key]) grupos[key] = [];
       grupos[key].push(i);
