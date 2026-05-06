@@ -178,6 +178,25 @@ function DateNav({ data, setData }: { data: string; setData: (d: string) => void
   );
 }
 
+function CalendarPicker({ data, setData }: { data: string; setData: (d: string) => void }) {
+  const ref = React.useRef<HTMLInputElement>(null);
+  return (
+    <div
+      style={{ ...s.sectionIcon, cursor: 'pointer', position: 'relative' }}
+      onClick={() => ref.current?.showPicker?.() ?? ref.current?.click()}
+    >
+      <CalendarLineIcon size={22}/>
+      <input
+        ref={ref}
+        type="date"
+        value={data}
+        onChange={e => e.target.value && setData(e.target.value)}
+        style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2 }}
+      />
+    </div>
+  );
+}
+
 function avatarEl(nome: string, foto: string | null | undefined, size = 30) {
   if (foto) {
     return <img src={foto} alt={nome} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}/>;
@@ -869,7 +888,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               </section>
               <section style={s.section}>
                 <div style={s.sectionHead}>
-                  <div style={s.sectionIcon}><CalendarLineIcon size={22}/></div>
+                  <CalendarPicker data={data} setData={setData}/>
                   <div style={s.sectionInfo}>
                     <h2 style={s.sectionTitle}>Meus horários</h2>
                     <DateNav data={data} setData={setData}/>
@@ -969,7 +988,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               </section>
               <section style={s.section}>
                 <div style={s.sectionHead}>
-                  <div style={s.sectionIcon}><CalendarLineIcon size={22}/></div>
+                  <CalendarPicker data={data} setData={setData}/>
                   <div style={s.sectionInfo}>
                     <h2 style={s.sectionTitle}>Horários disponíveis</h2>
                     <DateNav data={data} setData={setData}/>
