@@ -39,7 +39,7 @@ interface HorarioFixo {
 
 interface AdminInfo { email: string; telefone: string | null; }
 
-type AdminTab  = 'agenda' | 'solicitacoes' | 'fixos';
+type AdminTab = 'agenda' | 'solicitacoes' | 'confirmadas' | 'fixos';
 type UserTab   = 'agenda' | 'minhas';
 
 const TIPOS = [
@@ -849,8 +849,9 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         <div style={s.tabBar}>
           {([
             { key: 'agenda',       label: 'Agenda'         },
-            { key: 'solicitacoes', label: 'Solicitações'   },
-            { key: 'fixos',        label: 'Horários Fixos' },
+            { key: 'solicitacoes',  label: 'Solicitações'  },
+            { key: 'confirmadas',   label: 'Confirmadas'   },
+            { key: 'fixos',         label: 'Horários Fixos'},
           ] as { key: AdminTab; label: string }[]).map(t => (
             <button key={t.key} style={{ ...s.tabBtn, ...(adminTab === t.key ? s.tabActive : {}) }} onClick={() => setAdminTab(t.key)}>
               {t.label}
@@ -962,6 +963,69 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               {renderSolicitacoes()}
             </section>
           )}
+            {isAdmin && adminTab === 'confirmadas' && (
+  <section style={s.section}>
+    <div style={s.sectionHead}>
+      <div style={s.sectionIcon}><ClockLineIcon size={20}/></div>
+      <div style={s.sectionInfo}>
+        <h2 style={s.sectionTitle}>Aulas Confirmadas</h2>
+        <span style={{ fontSize: 12, color: '#94857a' }}>Próximas aulas agendadas</span>
+      </div>
+    </div>
+
+    {solicitacoes.filter(i => i.status === 'confirmada').length === 0 ? (
+      <div style={s.emptyFeed}>
+        <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
+        <p style={s.emptyText}>Nenhuma aula confirmada.</p>
+        <p style={s.emptyHint}>As aulas confirmadas aparecerão aqui.</p>
+      </div>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {solicitacoes
+          .filter(i => i.status === 'confirmada')
+          .map(insc => (
+            <div key={insc.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: '4px solid #3f8f5b' }}>
+              <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: '#edf8ef', border: '1px solid #bee0c8', color: '#3f8f5b' }}>
+                    ✓ Confirmada
+                  </span>
+                  <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>{fmtDateBr(insc.data)}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c66b4d' }}>
+                  <ClockLineIcon size={17}/>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: '#2d2521' }}>{fmt(insc.hora_inicio)} – {fmt(insc.hora_fim)}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {avatarEl(insc.nome_aluno, insc.foto_url, 30)}
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#2d2521' }}>{insc.nome_aluno}</span>
+                </div>
+
+                {insc.telefone_usuario && (
+                  <button
+                    onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}
+                  >
+                    <WaIcon/> WhatsApp do aluno
+                  </button>
+                )}
+
+                <button
+                  style={{ padding: '9px 0', borderRadius: 12, border: '1px solid rgba(201,84,65,0.22)', background: '#fff0ec', color: '#c95441', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
+                  onClick={() => cancelarReserva(insc.id)}
+                >
+                  Cancelar aula
+                </button>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    )}
+  </section>
+)}
 
           {isAdmin && adminTab === 'fixos' && (
             <section style={s.section}>
