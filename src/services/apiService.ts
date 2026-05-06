@@ -130,6 +130,25 @@ export interface ProximaAtividadeRecord extends JogoRecord {
   adversarioEmail: string | null;
 }
 
+export interface ProximaAulaAgendaRecord {
+  tipo:            'aula';
+  id:              number;
+  dataInicio:      string;
+  dataFim?:        string | null;
+  horarioInicio:   string;
+  horarioFim:      string;
+  local:           string;
+  status:          'confirmada';
+  alunoNome?:      string | null;
+  alunoEmail?:     string | null;
+  adversarioNome?: string | null;
+  adversarioEmail?: string | null;
+}
+
+export type ProximaAtividadeCompletaRecord =
+  | (ProximaAtividadeRecord & { tipo: 'jogo' })
+  | ProximaAulaAgendaRecord;
+
 export interface InteressadoRecord {
   email_usuario: string;
   nome_usuario:  string;
@@ -154,6 +173,54 @@ export async function getProximaAtividade(emailUsuario: string): Promise<Proxima
   const res = await fetch(`${BASE_URL}/jogos/proxima?email=${encodeURIComponent(emailUsuario)}`);
   if (!res.ok) throw new Error(`Erro ao carregar próxima atividade: ${res.status}`);
   return res.json();
+}
+
+export async function getProximaAulaAgenda(
+  emailUsuario: string,
+  role: UserRecord['role']
+): Promise<ProximaAulaAgendaRecord | null> {
+  const qs = new URLSearchParams({
+    email: emailUsuario,
+    role,
+  });
+
+  const res = await fetch(`${BASE_URL}/agenda/proxima?${qs.toString()}`);
+  if (!res.ok) throw new Error(`Erro ao carregar próxima aula: ${res.status}`);
+  return res.json();
+}
+
+function dataHoraAtividadeMs(a: { dataInicio: string; horarioInicio: string }): number {
+  const data = String(a.dataInicio).slice(0, 10);
+  const hora = String(a.horarioInicio || '00:00').slice(0, 5);
+  return new Date(`${data}T${hora}:00`).getTime();
+}
+
+export async function getProximaAtividadeCompleta(
+  emailUsuario: string,
+  role: UserRecord['role']
+): Promise<ProximaAtividadeCompletaRecord | null> {
+  const aulaPromise = getProximaAulaAgenda(emailUsuario, role);
+
+  if (role === 'admin') {
+    return aulaPromise;
+  }
+
+  const [jogoResult, aulaResult] = await Promise.allSettled([
+    getProximaAtividade(emailUsuario),
+    aulaPromise,
+  ]);
+
+  const jogo = jogoResult.status === 'fulfilled' && jogoResult.value
+    ? { ...jogoResult.value, tipo: 'jogo' as const }
+    : null;
+
+  const aula = aulaResult.status === 'fulfilled' ? aulaResult.value : null;
+
+  if (jogo && aula) {
+    return dataHoraAtividadeMs(jogo) <= dataHoraAtividadeMs(aula) ? jogo : aula;
+  }
+
+  return jogo ?? aula ?? null;
 }
 
 export async function postJogo(jogo: JogoRecord): Promise<JogoRecord> {
