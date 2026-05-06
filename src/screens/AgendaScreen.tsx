@@ -152,14 +152,27 @@ function WaIcon() {
 }
 
 function DateNav({ data, setData }: { data: string; setData: (d: string) => void }) {
-  const isToday = data === todayStr();
+  const isToday  = data === todayStr();
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
   return (
     <div style={dn.wrap}>
       <button style={dn.arrow} onClick={() => setData(addDays(data, -1))}>‹</button>
-      <button style={dn.label} onClick={() => setData(todayStr())}>
-        <CalendarLineIcon size={15}/>
-        <span>{isToday ? 'Hoje' : fmtDateBr(data)}</span>
-      </button>
+
+      <div style={{ position: 'relative' }}>
+        <button style={dn.label} onClick={() => inputRef.current?.showPicker?.() ?? inputRef.current?.click()}>
+          <CalendarLineIcon size={15}/>
+          <span>{isToday ? 'Hoje' : fmtDateBr(data)}</span>
+        </button>
+        <input
+          ref={inputRef}
+          type="date"
+          value={data}
+          onChange={e => e.target.value && setData(e.target.value)}
+          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2, colorScheme: 'light' }}
+        />
+      </div>
+
       <button style={dn.arrow} onClick={() => setData(addDays(data, 1))}>›</button>
     </div>
   );
