@@ -86,65 +86,98 @@ function ModalPagamento({ user, onClose, onSuccess }: {
   return (
     <div style={mp.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={mp.sheet}>
-        <button onClick={onClose} style={mp.closeBtn}>✕</button>
+        <button onClick={onClose} style={mp.closeBtn}>×</button>
 
         {step === 'escolha' && (
           <>
-            <div style={mp.icon}>⚡</div>
-            <h2 style={mp.title}>Assine o Plano Mensal</h2>
-            <p style={mp.sub}>R$ 14,90/mês — acesso total a todas as funcionalidades</p>
+            <div style={mp.heroCard}>
+              <div style={mp.heroOverlay} />
+              <div style={mp.heroContent}>
+                <span style={mp.kicker}>PLANO MENSAL</span>
+                <h2 style={mp.title}>Desbloqueie seu treino completo</h2>
+                <p style={mp.sub}>Acesso total às ferramentas avançadas por R$ 14,90/mês.</p>
+              </div>
+            </div>
+
+            <div style={mp.priceCard}>
+              <span style={mp.priceLabel}>Plano Pro</span>
+              <div style={mp.priceLine}>
+                <strong style={mp.price}>R$ 14,90</strong>
+                <span style={mp.pricePeriod}>/mês</span>
+              </div>
+              <p style={mp.priceHint}>Biomecânica, câmera, histórico, ranking e comparativos liberados.</p>
+            </div>
+
             {erro && <p style={mp.erro}>{erro}</p>}
+
             <div style={mp.btnGroup}>
-              <button style={mp.btnPix} onClick={() => criar('pix')}>
-                <span style={{ fontSize: 20 }}>📱</span>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 15 }}>Pagar com PIX</div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>Acesso imediato após pagamento</div>
+              <button style={mp.payBtnPrimary} onClick={() => criar('pix')}>
+                <span style={mp.payIcon}>◆</span>
+                <div style={mp.payText}>
+                  <strong>Pagar com PIX</strong>
+                  <span>Acesso imediato após confirmação</span>
                 </div>
+                <span style={mp.payArrow}>›</span>
               </button>
-              <button style={mp.btnCartao} onClick={() => criar('cartao')}>
-                <span style={{ fontSize: 20 }}>💳</span>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 15 }}>Cartão de Crédito</div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>Renovação automática mensal</div>
+
+              <button style={mp.payBtnSecondary} onClick={() => criar('cartao')}>
+                <span style={mp.payIconLight}>▣</span>
+                <div style={mp.payText}>
+                  <strong>Cartão de Crédito</strong>
+                  <span>Renovação automática mensal</span>
                 </div>
+                <span style={mp.payArrowLight}>›</span>
               </button>
             </div>
-            <p style={mp.hint}>Pagamento seguro via Mercado Pago</p>
+
+            <p style={mp.hint}>Pagamento seguro via Mercado Pago.</p>
           </>
         )}
 
         {step === 'loading' && (
-          <>
-            <div style={{ fontSize: 40 }}>⏳</div>
-            <p style={mp.sub}>Gerando pagamento...</p>
-          </>
+          <div style={mp.stateBox}>
+            <div style={mp.loadingIcon}>⏳</div>
+            <h2 style={mp.stateTitle}>Gerando pagamento...</h2>
+            <p style={mp.stateSub}>Aguarde alguns segundos.</p>
+          </div>
         )}
 
         {step === 'pix' && (
           <>
-            <h2 style={mp.title}>Pague via PIX</h2>
-            <p style={mp.sub}>Escaneie o QR Code ou copie o código</p>
+            <div style={mp.stateHeader}>
+              <span style={mp.kickerDark}>PAGAMENTO PIX</span>
+              <h2 style={mp.stateTitle}>Escaneie o QR Code</h2>
+              <p style={mp.stateSub}>Ou copie o código PIX para pagar no seu banco.</p>
+            </div>
+
             {qrB64 && (
-              <img src={`data:image/png;base64,${qrB64}`} alt="QR Code PIX"
-                style={{ width: 200, height: 200, borderRadius: 12, background: '#fff', padding: 8 }} />
+              <div style={mp.qrWrap}>
+                <img
+                  src={`data:image/png;base64,${qrB64}`}
+                  alt="QR Code PIX"
+                  style={mp.qrImg}
+                />
+              </div>
             )}
+
             <button style={mp.btnCopiar} onClick={copiarPix}>
-              {copiado ? '✓ Copiado!' : '📋 Copiar código PIX'}
+              {copiado ? '✓ Código copiado!' : 'Copiar código PIX'}
             </button>
-            <p style={{ ...mp.hint, marginTop: 8 }}>Após o pagamento, seu acesso será liberado automaticamente em até 1 minuto.</p>
+
+            <p style={mp.hint}>Após o pagamento, seu acesso será liberado automaticamente em até 1 minuto.</p>
+
             <button style={mp.btnVoltar} onClick={() => setStep('escolha')}>← Voltar</button>
           </>
         )}
 
         {step === 'cartao_redirect' && (
-          <>
-            <div style={{ fontSize: 40 }}>🔗</div>
-            <h2 style={mp.title}>Redirecionado!</h2>
-            <p style={mp.sub}>Complete o pagamento na página do Mercado Pago que foi aberta.</p>
-            <p style={{ ...mp.hint, marginTop: 8 }}>Após confirmar, seu acesso será liberado automaticamente.</p>
-            <button style={mp.btnVoltar} onClick={onClose}>Fechar</button>
-          </>
+          <div style={mp.stateBox}>
+            <div style={mp.successIcon}>✓</div>
+            <h2 style={mp.stateTitle}>Redirecionado!</h2>
+            <p style={mp.stateSub}>Complete o pagamento na página do Mercado Pago que foi aberta.</p>
+            <p style={mp.hint}>Após confirmar, seu acesso será liberado automaticamente.</p>
+            <button style={mp.primaryCloseBtn} onClick={onClose}>Fechar</button>
+          </div>
         )}
       </div>
     </div>
@@ -951,17 +984,400 @@ const s: Record<string, React.CSSProperties> = {
 // Estilos Modal Pagamento
 // ---------------------------------------------------------------------------
 const mp: Record<string, React.CSSProperties> = {
-  overlay: { position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' },
-  sheet: { background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '24px 24px 0 0', padding: '32px 24px 48px', maxWidth: 480, width: '100%', display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' },
-  closeBtn: { alignSelf: 'flex-end', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 20, cursor: 'pointer', padding: 0, marginBottom: -8 },
-  icon:  { fontSize: 48, lineHeight: 1 },
-  title: { margin: 0, fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center' },
-  sub:   { margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 1.5 },
-  erro:  { color: '#ff6b6b', fontSize: 13, margin: 0, textAlign: 'center' },
-  hint:  { margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.35)', textAlign: 'center', lineHeight: 1.5 },
-  btnGroup: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
-  btnPix: { width: '100%', padding: '16px 20px', borderRadius: 14, background: 'linear-gradient(135deg, #1a6b3c, #25a55a)', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left' },
-  btnCartao: { width: '100%', padding: '16px 20px', borderRadius: 14, background: 'linear-gradient(135deg, #0d47a1, #1976d2)', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left' },
-  btnCopiar: { width: '100%', padding: '14px', borderRadius: 14, background: 'rgba(0,229,255,0.1)', border: '1.5px solid #00e5ff', color: '#00e5ff', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
-  btnVoltar: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' },
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 200,
+    background: 'rgba(45,31,24,0.50)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    boxSizing: 'border-box',
+    backdropFilter: 'blur(7px)',
+    WebkitBackdropFilter: 'blur(7px)',
+  },
+
+  sheet: {
+    position: 'relative',
+    background: '#fffaf5',
+    border: '1px solid rgba(255,255,255,0.55)',
+    borderRadius: 30,
+    padding: '16px 16px 22px',
+    maxWidth: 430,
+    width: '100%',
+    maxHeight: '92dvh',
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+    alignItems: 'stretch',
+    boxShadow: '0 26px 76px rgba(35,23,18,0.34)',
+    boxSizing: 'border-box',
+    fontFamily: 'Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+
+  closeBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 5,
+    width: 38,
+    height: 38,
+    borderRadius: '50%',
+    background: 'rgba(255,250,245,0.88)',
+    border: '1px solid rgba(130,82,62,0.10)',
+    color: '#8b5b49',
+    fontSize: 25,
+    lineHeight: 1,
+    cursor: 'pointer',
+    boxShadow: '0 8px 20px rgba(44,30,24,0.10)',
+  },
+
+  heroCard: {
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: 148,
+    borderRadius: 24,
+    backgroundImage: 'url(/tela_inicial.png)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center right',
+    boxShadow: '0 14px 32px rgba(134,72,50,0.18)',
+  },
+
+  heroOverlay: {
+    position: 'absolute',
+    inset: 0,
+    background: 'linear-gradient(90deg, rgba(88,39,25,0.84) 0%, rgba(118,53,31,0.58) 46%, rgba(118,53,31,0.16) 100%)',
+    zIndex: 1,
+  },
+
+  heroContent: {
+    position: 'relative',
+    zIndex: 2,
+    padding: '22px 56px 22px 18px',
+    minHeight: 148,
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    gap: 7,
+  },
+
+  kicker: {
+    color: 'rgba(255,245,235,0.82)',
+    fontSize: 10,
+    fontWeight: 900,
+    letterSpacing: 1.5,
+  },
+
+  kickerDark: {
+    color: '#b7654a',
+    fontSize: 10,
+    fontWeight: 900,
+    letterSpacing: 1.4,
+    textAlign: 'center',
+  },
+
+  title: {
+    margin: 0,
+    color: '#fff8ef',
+    fontSize: 23,
+    lineHeight: 1.08,
+    fontWeight: 950,
+    letterSpacing: -0.7,
+    maxWidth: 270,
+  },
+
+  sub: {
+    margin: 0,
+    color: 'rgba(255,248,239,0.84)',
+    fontSize: 12.5,
+    fontWeight: 650,
+    lineHeight: 1.38,
+    maxWidth: 280,
+  },
+
+  priceCard: {
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 22,
+    padding: '15px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 5,
+    boxShadow: '0 10px 26px rgba(117,76,56,0.06)',
+  },
+
+  priceLabel: {
+    color: '#9b8a7f',
+    fontSize: 11,
+    fontWeight: 850,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.8,
+  },
+
+  priceLine: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: 5,
+  },
+
+  price: {
+    color: '#2d2521',
+    fontSize: 30,
+    fontWeight: 950,
+    letterSpacing: -1,
+    lineHeight: 1,
+  },
+
+  pricePeriod: {
+    color: '#8f7769',
+    fontSize: 13,
+    fontWeight: 750,
+    paddingBottom: 3,
+  },
+
+  priceHint: {
+    margin: 0,
+    color: '#8f7769',
+    fontSize: 12.5,
+    fontWeight: 600,
+    lineHeight: 1.35,
+  },
+
+  erro: {
+    color: '#c95441',
+    background: '#fff4f0',
+    border: '1px solid rgba(201,84,65,0.16)',
+    borderRadius: 14,
+    padding: '10px 12px',
+    fontSize: 12.5,
+    fontWeight: 750,
+    margin: 0,
+    textAlign: 'center',
+  },
+
+  btnGroup: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+
+  payBtnPrimary: {
+    width: '100%',
+    minHeight: 68,
+    padding: '13px 14px',
+    borderRadius: 19,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    border: 'none',
+    color: '#fff',
+    cursor: 'pointer',
+    display: 'grid',
+    gridTemplateColumns: '42px 1fr 22px',
+    alignItems: 'center',
+    gap: 10,
+    textAlign: 'left',
+    boxShadow: '0 12px 24px rgba(147,72,54,0.24)',
+    fontFamily: 'inherit',
+  },
+
+  payBtnSecondary: {
+    width: '100%',
+    minHeight: 68,
+    padding: '13px 14px',
+    borderRadius: 19,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.10)',
+    color: '#2d2521',
+    cursor: 'pointer',
+    display: 'grid',
+    gridTemplateColumns: '42px 1fr 22px',
+    alignItems: 'center',
+    gap: 10,
+    textAlign: 'left',
+    boxShadow: '0 10px 24px rgba(117,76,56,0.06)',
+    fontFamily: 'inherit',
+  },
+
+  payIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: '50%',
+    background: 'rgba(255,248,239,0.18)',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 16,
+    fontWeight: 900,
+  },
+
+  payIconLight: {
+    width: 38,
+    height: 38,
+    borderRadius: '50%',
+    background: '#fff1eb',
+    color: '#c66b4d',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 16,
+    fontWeight: 900,
+  },
+
+  payText: {
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+  },
+
+  payArrow: {
+    color: 'rgba(255,248,239,0.82)',
+    fontSize: 26,
+    fontWeight: 300,
+    textAlign: 'right',
+  },
+
+  payArrowLight: {
+    color: '#c8917d',
+    fontSize: 26,
+    fontWeight: 300,
+    textAlign: 'right',
+  },
+
+  hint: {
+    margin: 0,
+    color: '#9b8a7f',
+    fontSize: 12,
+    fontWeight: 600,
+    textAlign: 'center',
+    lineHeight: 1.45,
+  },
+
+  stateBox: {
+    minHeight: 300,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    padding: '26px 12px 12px',
+    textAlign: 'center',
+  },
+
+  stateHeader: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 5,
+    paddingTop: 10,
+    textAlign: 'center',
+  },
+
+  loadingIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: '50%',
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    boxShadow: '0 10px 26px rgba(117,76,56,0.08)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 32,
+  },
+
+  successIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: '50%',
+    background: '#edf8ef',
+    border: '1px solid rgba(63,143,91,0.16)',
+    color: '#3f8f5b',
+    boxShadow: '0 10px 26px rgba(117,76,56,0.08)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 34,
+    fontWeight: 950,
+  },
+
+  stateTitle: {
+    margin: 0,
+    color: '#2d2521',
+    fontSize: 22,
+    fontWeight: 950,
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+
+  stateSub: {
+    margin: 0,
+    color: '#8f7769',
+    fontSize: 13,
+    fontWeight: 600,
+    lineHeight: 1.45,
+    textAlign: 'center',
+  },
+
+  qrWrap: {
+    alignSelf: 'center',
+    background: '#fff',
+    borderRadius: 24,
+    padding: 12,
+    border: '1px solid rgba(130,82,62,0.08)',
+    boxShadow: '0 12px 30px rgba(117,76,56,0.08)',
+  },
+
+  qrImg: {
+    width: 210,
+    height: 210,
+    borderRadius: 16,
+    background: '#fff',
+    display: 'block',
+  },
+
+  btnCopiar: {
+    width: '100%',
+    padding: '15px',
+    borderRadius: 17,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 900,
+    cursor: 'pointer',
+    boxShadow: '0 12px 24px rgba(147,72,54,0.22)',
+    fontFamily: 'inherit',
+  },
+
+  btnVoltar: {
+    alignSelf: 'center',
+    background: 'transparent',
+    border: 'none',
+    color: '#a65440',
+    fontSize: 13,
+    fontWeight: 850,
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    fontFamily: 'inherit',
+  },
+
+  primaryCloseBtn: {
+    width: '100%',
+    padding: '15px',
+    borderRadius: 17,
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 900,
+    cursor: 'pointer',
+    boxShadow: '0 12px 24px rgba(147,72,54,0.22)',
+    fontFamily: 'inherit',
+  },
 };
