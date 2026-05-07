@@ -128,23 +128,12 @@ function PlayerSearchBox({
     <div style={s.formGroup}>
       <label style={s.label}>{label}</label>
       <div style={s.playerSearchWrap}>
-        <input
-          style={s.playerSearchInput}
-          value={query}
-          placeholder={placeholder}
-          autoComplete="off"
-          onChange={e => {
-            setQuery(e.target.value);
-            if (selectedId) onSelect(0);
-          }}
-        />
-
-        {selected && (
+        {selected ? (
           <div style={s.selectedPlayerPill}>
             {avatar(selected.nome, selected.foto_url, 24)}
             <div style={s.selectedPlayerText}>
-              <strong>{selected.nome}</strong>
-              <span>{selected.email}</span>
+              <strong style={s.selectedPlayerName}>{selected.nome}</strong>
+              <span style={s.selectedPlayerEmail}>{selected.email}</span>
             </div>
             <button
               type="button"
@@ -153,10 +142,19 @@ function PlayerSearchBox({
                 setQuery('');
                 onSelect(0);
               }}
+              aria-label="Remover jogador selecionado"
             >
               ×
             </button>
           </div>
+        ) : (
+          <input
+            style={s.playerSearchInput}
+            value={query}
+            placeholder={placeholder}
+            autoComplete="off"
+            onChange={e => setQuery(e.target.value)}
+          />
         )}
 
         {opcoes.length > 0 && (
@@ -171,10 +169,10 @@ function PlayerSearchBox({
                   onSelect(m.user_id);
                 }}
               >
-                {avatar(m.nome, m.foto_url, 28)}
+                {avatar(m.nome, m.foto_url, 26)}
                 <div style={s.playerSuggestText}>
-                  <strong>{m.nome}</strong>
-                  <span>{m.email}</span>
+                  <strong style={s.playerSuggestName}>{m.nome}</strong>
+                  <span style={s.playerSuggestEmail}>{m.email}</span>
                 </div>
               </button>
             ))}
@@ -854,13 +852,14 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       {showDesafioForm && (
         <div style={s.formCard}>
           <div style={s.formTitle}>Novo Desafio</div>
-          <div style={s.formGroup}>
-            <label style={s.label}>Adversário</label>
-            <select style={s.sel} value={formDesafio.desafiado_id} onChange={e => setFormDesafio(f => ({ ...f, desafiado_id: Number(e.target.value) }))}>
-              <option value={0}>Selecionar…</option>
-              {membros.filter(m => m.user_id !== userId).map(m => <option key={m.user_id} value={m.user_id}>{m.nome}</option>)}
-            </select>
-          </div>
+          <PlayerSearchBox
+            label="Adversário"
+            membros={membros}
+            selectedId={formDesafio.desafiado_id}
+            excludeId={userId}
+            placeholder="Digite o nome do adversário"
+            onSelect={id => setFormDesafio(f => ({ ...f, desafiado_id: id }))}
+          />
           <div style={s.formRow}>
             <div style={s.formGroup}>
               <label style={s.label}>Data</label>
@@ -1070,6 +1069,147 @@ const s: Record<string, React.CSSProperties> = {
   formRow: { display: 'flex', gap: 10 },
   formGroup: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
   label: { color: '#8f7769', fontSize: 11, fontWeight: 850, textTransform: 'uppercase', letterSpacing: 0.5 },
+  playerSearchWrap: {
+    position: 'relative',
+    width: '100%',
+  },
+
+  playerSearchInput: {
+    width: '100%',
+    height: 44,
+    background: '#fffaf7',
+    border: '1px solid #eadfd6',
+    borderRadius: 14,
+    color: '#332a25',
+    padding: '0 12px',
+    fontSize: 13,
+    fontWeight: 700,
+    boxSizing: 'border-box',
+    outline: 'none',
+    colorScheme: 'light',
+    boxShadow: '0 6px 16px rgba(117,76,56,0.04)',
+  },
+
+  selectedPlayerPill: {
+    width: '100%',
+    minHeight: 44,
+    background: '#fffaf7',
+    border: '1px solid #eadfd6',
+    borderRadius: 14,
+    color: '#332a25',
+    padding: '7px 8px',
+    boxSizing: 'border-box',
+    display: 'grid',
+    gridTemplateColumns: '24px minmax(0, 1fr) 28px',
+    alignItems: 'center',
+    gap: 8,
+    boxShadow: '0 6px 16px rgba(117,76,56,0.04)',
+  },
+
+  selectedPlayerText: {
+    minWidth: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+  },
+
+  selectedPlayerName: {
+    color: '#2d2521',
+    fontSize: 12.5,
+    fontWeight: 900,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    minWidth: 0,
+  },
+
+  selectedPlayerEmail: {
+    color: '#9b8a7f',
+    fontSize: 10.5,
+    fontWeight: 650,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    minWidth: 0,
+  },
+
+  clearPlayerBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: '50%',
+    border: '1px solid rgba(198,107,77,0.18)',
+    background: '#fff1eb',
+    color: '#a54f3d',
+    fontSize: 17,
+    fontWeight: 900,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    lineHeight: 1,
+  },
+
+  playerSuggestList: {
+    position: 'absolute',
+    top: 48,
+    left: 0,
+    right: 0,
+    zIndex: 30,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.10)',
+    borderRadius: 16,
+    padding: 6,
+    boxShadow: '0 16px 34px rgba(70,45,34,0.18)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    maxHeight: 220,
+    overflowY: 'auto',
+  },
+
+  playerSuggestItem: {
+    width: '100%',
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 12,
+    padding: '8px 9px',
+    display: 'grid',
+    gridTemplateColumns: '26px 1fr',
+    alignItems: 'center',
+    gap: 9,
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+  },
+
+  playerSuggestText: {
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+  },
+
+  playerSuggestName: {
+    color: '#2d2521',
+    fontSize: 12.5,
+    fontWeight: 900,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+
+  playerSuggestEmail: {
+    color: '#9b8a7f',
+    fontSize: 10.5,
+    fontWeight: 650,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+
   sel: { background: '#fffaf7', border: '1px solid #eadfd6', borderRadius: 14, color: '#332a25', padding: '12px 12px', fontSize: 13, fontWeight: 650, width: '100%', boxSizing: 'border-box', colorScheme: 'light' },
   inp: { background: '#fffaf7', border: '1px solid #eadfd6', borderRadius: 14, color: '#332a25', padding: '12px 12px', fontSize: 13, fontWeight: 650, width: '100%', boxSizing: 'border-box', colorScheme: 'light' },
   woRow: { display: 'flex', alignItems: 'center' },
