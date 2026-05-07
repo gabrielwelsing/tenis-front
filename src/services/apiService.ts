@@ -256,12 +256,13 @@ export interface ProximaAulaAgendaRecord {
 
 export type ProximaAtividadeCompletaRecord =
   | (ProximaAtividadeRecord & { tipo: 'jogo' })
-  | ProximaAulaAgendaRecord;
+  | ProximaAulaAgendaRecord
+  | (AtividadeHomeRecord & { tipo: 'desafio' });
 
 export interface AtividadeHomeRecord {
   id:             string;
   origemId?:      string | number | null;
-  tipo:           'aula' | 'jogo';
+  tipo:           'aula' | 'jogo' | 'desafio';
   dataInicio:     string;
   dataFim?:       string | null;
   horarioInicio:  string;
@@ -272,6 +273,10 @@ export interface AtividadeHomeRecord {
   status?:        string | null;
   pessoaNome?:    string | null;
   pessoaEmail?:   string | null;
+  adversarioNome?: string | null;
+  adversarioEmail?: string | null;
+  alunoNome?:      string | null;
+  alunoEmail?:     string | null;
   passado?:       boolean;
 }
 
@@ -333,8 +338,26 @@ function dataHoraAtividadeMs(a: { dataInicio: string; horarioInicio: string }): 
 
 export async function getProximaAtividadeCompleta(
   emailUsuario: string,
-  role: UserRecord['role']
+  role: UserRecord['role'],
+  token?: string
 ): Promise<ProximaAtividadeCompletaRecord | null> {
+  if (token) {
+    const agenda = await getAtividadesHome(emailUsuario, role, token).catch(() => null);
+    const primeira = agenda?.proximas?.[0];
+
+    if (primeira) {
+      return {
+        ...primeira,
+        adversarioNome: primeira.adversarioNome ?? primeira.pessoaNome ?? null,
+        adversarioEmail: primeira.adversarioEmail ?? primeira.pessoaEmail ?? null,
+        alunoNome: primeira.alunoNome ?? primeira.pessoaNome ?? null,
+        alunoEmail: primeira.alunoEmail ?? primeira.pessoaEmail ?? null,
+      } as ProximaAtividadeCompletaRecord;
+    }
+
+    return null;
+  }
+
   const aulaPromise = getProximaAulaAgenda(emailUsuario, role);
 
   if (role === 'admin') {
@@ -386,16 +409,24 @@ async function lerAtividadesResponse(res: Response): Promise<AtividadeHomeRecord
 
 export async function getAtividadesHome(
   emailUsuario: string,
-  role: UserRecord['role']
+  role: UserRecord['role'],
+  token?: string
 ): Promise<AtividadesHomeResponse> {
   const qs = new URLSearchParams({
     email: emailUsuario,
     role,
   });
 
-  const [agendaResult, jogosResult] = await Promise.allSettled([
+  const rankingPromise = token
+    ? fetch(`${BASE_URL}/ranking/atividades`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(lerAtividadesResponse)
+    : Promise.resolve([] as AtividadeHomeRecord[]);
+
+  const [agendaResult, jogosResult, rankingResult] = await Promise.allSettled([
     fetch(`${BASE_URL}/agenda/atividades?${qs.toString()}`).then(lerAtividadesResponse),
     fetch(`${BASE_URL}/jogos/atividades?email=${encodeURIComponent(emailUsuario)}`).then(lerAtividadesResponse),
+    rankingPromise,
   ]);
 
   const agendaAtividades: AtividadeHomeRecord[] =
@@ -404,16 +435,22 @@ export async function getAtividadesHome(
   const jogosAtividades: AtividadeHomeRecord[] =
     jogosResult.status === 'fulfilled' ? jogosResult.value : [];
 
+  const rankingAtividades: AtividadeHomeRecord[] =
+    rankingResult.status === 'fulfilled' ? rankingResult.value : [];
+
   if (
     agendaResult.status === 'rejected' &&
-    jogosResult.status === 'rejected'
+    jogosResult.status === 'rejected' &&
+    rankingResult.status === 'rejected'
   ) {
-    throw new Error('Não foi possível carregar agenda e jogos.');
+    throw new Error('Não foi possível carregar agenda, jogos e desafios.');
   }
 
   const agora = Date.now();
-  const todas = [...agendaAtividades, ...jogosAtividades].map(a => ({
+  const todas = [...agendaAtividades, ...jogosAtividades, ...rankingAtividades].map(a => ({
     ...a,
+    adversarioNome: a.adversarioNome ?? a.pessoaNome ?? null,
+    adversarioEmail: a.adversarioEmail ?? a.pessoaEmail ?? null,
     passado: a.passado ?? atividadeFimMs(a) < agora,
   }));
 
