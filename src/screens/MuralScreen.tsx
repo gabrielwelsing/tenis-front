@@ -461,19 +461,38 @@ function BanBanner({ status }: { status: { mensagem: string; permanente: boolean
   );
 }
 
-// Opções de horário: 07:00 até 22:00, apenas :00 e :30
-const TIME_OPTS: string[] = [];
-for (let h = 7; h <= 22; h++) {
-  TIME_OPTS.push(`${String(h).padStart(2, '0')}:00`);
-  if (h < 22) TIME_OPTS.push(`${String(h).padStart(2, '0')}:30`);
-}
+const HOUR_OPTS = Array.from({ length: 16 }, (_, i) => String(i + 7).padStart(2, '0')); // 07–22
 
 function TimeSelect({ value, onChange, style }: { value: string; onChange: (v: string) => void; style?: React.CSSProperties }) {
+  const parts = value ? value.split(':') : ['', '00'];
+  const h = parts[0] ?? '';
+  const m = parts[1] ?? '00';
+
+  const update = (newH: string, newM: string) => {
+    if (newH) onChange(`${newH}:${newM}`);
+    else onChange('');
+  };
+
   return (
-    <select value={value} onChange={e => onChange(e.target.value)} style={style}>
-      <option value="">Horário…</option>
-      {TIME_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
-    </select>
+    <div style={{ display: 'flex', gap: 6, ...(style as object) }}>
+      <select
+        value={h}
+        onChange={e => update(e.target.value, m)}
+        style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: '#fff', padding: '10px 8px', fontSize: 15, fontWeight: 700 }}
+      >
+        <option value="">Hora</option>
+        {HOUR_OPTS.map(ho => <option key={ho} value={ho}>{ho}h</option>)}
+      </select>
+      <select
+        value={m}
+        onChange={e => update(h, e.target.value)}
+        disabled={!h}
+        style={{ width: 72, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: '#fff', padding: '10px 8px', fontSize: 15, fontWeight: 700 }}
+      >
+        <option value="00">:00</option>
+        <option value="30">:30</option>
+      </select>
+    </div>
   );
 }
 

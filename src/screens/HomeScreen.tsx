@@ -508,12 +508,12 @@ export default function HomeScreen({
 
   const proximosEventosTela = atividadesHomeComFallback.proximas
     .sort((a, b) => atividadeTimestamp(a) - atividadeTimestamp(b))
-    .slice(0, 3);
+    .slice(0, 5);
 
+  // Todos os eventos reais + apenas 1 slot vazio no final
   const eventosSlotsTela: Array<AtividadeHomeRecord | null> = [
-    proximosEventosTela[0] ?? null,
-    proximosEventosTela[1] ?? null,
-    proximosEventosTela[2] ?? null,
+    ...proximosEventosTela,
+    null,
   ];
 
   const LockedCard = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
