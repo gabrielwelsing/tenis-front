@@ -5,12 +5,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
-import { getProximaAtividadeCompleta, type ProximaAtividadeCompletaRecord } from '@services/apiService';
+import {
+  getProximaAtividadeCompleta,
+  getPrioridadeHome,
+  responderDesafioPendente,
+  responderResultadoPendente,
+  type HomePrioridadeRecord,
+  type ProximaAtividadeCompletaRecord,
+} from '@services/apiService';
 
 interface Props {
   saveMode:       SaveMode;
   username:       string;
   emailUsuario:   string;
+  token:          string;
   role:           'user' | 'aluno' | 'admin';
   fotoUrl?:       string | null;
   telefone?:      string | null;
@@ -31,6 +39,15 @@ function formatarDataAtividade(dataIso: string, horaInicio: string, horaFim: str
   const mes = String(dt.getMonth() + 1).padStart(2, '0');
 
   return `${diaSemana}, ${dia}/${mes} • ${horaInicio} - ${horaFim}`;
+}
+
+function formatarDataHoraCurta(dataIso?: string | null, hora?: string | null): string {
+  if (!dataIso) return 'Data a definir';
+  const dt = new Date(`${String(dataIso).slice(0, 10)}T12:00:00`);
+  const diaSemana = DIAS_CARD[dt.getDay()];
+  const dia = String(dt.getDate()).padStart(2, '0');
+  const mes = String(dt.getMonth() + 1).padStart(2, '0');
+  return `${diaSemana}, ${dia}/${mes}${hora ? ` • ${String(hora).slice(0, 5)}` : ''}`;
 }
 
 function UserOutlineIcon({ size = 22 }: { size?: number }) {
@@ -148,7 +165,7 @@ function TargetIcon({ size = 24 }: { size?: number }) {
 }
 
 export default function HomeScreen({
-  saveMode, username, emailUsuario, role, fotoUrl, telefone, localidade,
+  saveMode, username, emailUsuario, token, role, fotoUrl, telefone, localidade,
   onLogout, onNavigate, onFotoUpload, onAssinar, onSalvarPerfil,
 }: Props) {
   const displayName = username
@@ -168,6 +185,8 @@ export default function HomeScreen({
   const [cfgMsg, setCfgMsg] = useState('');
 
   const [proximaAtividade, setProximaAtividade] = useState<ProximaAtividadeCompletaRecord | null>(null);
+  const [prioridadeHome, setPrioridadeHome] = useState<HomePrioridadeRecord>(null);
+  const [acaoPrioridadeLoading, setAcaoPrioridadeLoading] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -186,6 +205,28 @@ export default function HomeScreen({
       ativo = false;
     };
   }, [emailUsuario, role]);
+
+  useEffect(() => {
+    let ativo = true;
+
+    if (!token) {
+      setPrioridadeHome(null);
+      return;
+    }
+
+    getPrioridadeHome(token)
+      .then(data => {
+        if (ativo) setPrioridadeHome(data);
+      })
+      .catch(() => {
+        if (ativo) setPrioridadeHome(null);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [token]);
+
 
   const handleAvatarClick = () => fileInputRef.current?.click();
 
@@ -244,6 +285,30 @@ export default function HomeScreen({
     : '';
 
   const proximaDestino: Screen = proximaAtividade?.tipo === 'aula' ? 'agenda' : 'mural';
+
+  const handleResponderDesafio = async (aceitar: boolean) => {
+    if (!token || prioridadeHome?.tipo !== 'desafio') return;
+    setAcaoPrioridadeLoading(true);
+    try {
+      await responderDesafioPendente(token, prioridadeHome.desafio.id, aceitar);
+      const novaPrioridade = await getPrioridadeHome(token).catch(() => null);
+      setPrioridadeHome(novaPrioridade);
+    } finally {
+      setAcaoPrioridadeLoading(false);
+    }
+  };
+
+  const handleResponderResultado = async (confirmar: boolean) => {
+    if (!token || prioridadeHome?.tipo !== 'resultado') return;
+    setAcaoPrioridadeLoading(true);
+    try {
+      await responderResultadoPendente(token, prioridadeHome.resultado.id, confirmar);
+      const novaPrioridade = await getPrioridadeHome(token).catch(() => null);
+      setPrioridadeHome(novaPrioridade);
+    } finally {
+      setAcaoPrioridadeLoading(false);
+    }
+  };
 
   const LockedCard = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
     <div style={{ ...s.quickCard, ...s.quickCardLocked }}>
@@ -539,7 +604,85 @@ export default function HomeScreen({
             <div style={s.heroOverlay} />
 
             <div style={s.heroContent}>
-              {proximaAtividade ? (
+              {prioridadeHome?.tipo === 'desafio' ? (
+                <>
+                  <div style={s.heroKicker}>DESAFIO PENDENTE</div>
+
+                  <h1 style={s.heroTitle}>
+                    {prioridadeHome.desafio.desafiante_nome || 'Jogador'} desafiou você
+                  </h1>
+
+                  <div style={s.heroMeta}>
+                    <div style={s.heroMetaLine}>
+                      <CalendarIcon size={14} />
+                      <span>{formatarDataHoraCurta(prioridadeHome.desafio.data_sugerida, prioridadeHome.desafio.horario_sugerido)}</span>
+                    </div>
+
+                    <div style={s.heroMetaLine}>
+                      <TargetIcon size={14} />
+                      <span>{prioridadeHome.desafio.local_sugerido}</span>
+                    </div>
+                  </div>
+
+                  <div style={s.heroActionRow}>
+                    <button
+                      type="button"
+                      style={{ ...s.heroAcceptBtn, opacity: acaoPrioridadeLoading ? 0.65 : 1 }}
+                      onClick={() => handleResponderDesafio(true)}
+                      disabled={acaoPrioridadeLoading}
+                    >
+                      Aceitar
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...s.heroRejectBtn, opacity: acaoPrioridadeLoading ? 0.65 : 1 }}
+                      onClick={() => handleResponderDesafio(false)}
+                      disabled={acaoPrioridadeLoading}
+                    >
+                      Recusar
+                    </button>
+                  </div>
+                </>
+              ) : prioridadeHome?.tipo === 'resultado' ? (
+                <>
+                  <div style={s.heroKicker}>RESULTADO PENDENTE</div>
+
+                  <h1 style={s.heroTitle}>
+                    Confirmar resultado
+                  </h1>
+
+                  <div style={s.heroMeta}>
+                    <div style={s.heroMetaLine}>
+                      <PeopleIcon size={14} />
+                      <span>{prioridadeHome.resultado.jogador_a_nome} x {prioridadeHome.resultado.jogador_b_nome}</span>
+                    </div>
+
+                    <div style={s.heroMetaLine}>
+                      <TrophyIcon size={14} />
+                      <span>Vencedor: {prioridadeHome.resultado.vencedor_nome || 'não informado'}</span>
+                    </div>
+                  </div>
+
+                  <div style={s.heroActionRow}>
+                    <button
+                      type="button"
+                      style={{ ...s.heroAcceptBtn, opacity: acaoPrioridadeLoading ? 0.65 : 1 }}
+                      onClick={() => handleResponderResultado(true)}
+                      disabled={acaoPrioridadeLoading}
+                    >
+                      Confirmar
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...s.heroRejectBtn, opacity: acaoPrioridadeLoading ? 0.65 : 1 }}
+                      onClick={() => handleResponderResultado(false)}
+                      disabled={acaoPrioridadeLoading}
+                    >
+                      Negar
+                    </button>
+                  </div>
+                </>
+              ) : proximaAtividade ? (
                 <>
                   <div style={s.heroKicker}>{proximaTipoLabel}</div>
 
