@@ -309,6 +309,48 @@ export async function encerrarSala(jogoId: string, email_publicador: string): Pr
 }
 
 // ---------------------------------------------------------------------------
+// Prioridades da Home
+// ---------------------------------------------------------------------------
+
+export interface ResultadoPendenteRecord {
+  id: string;
+  temporada_id: string;
+  jogador_a_id: number;
+  jogador_b_id: number;
+  jogador_a_nome: string;
+  jogador_b_nome: string;
+  jogador_a_foto?: string | null;
+  jogador_b_foto?: string | null;
+  vencedor_id?: number | null;
+  vencedor_nome?: string | null;
+  placar?: unknown;
+  tipo_partida?: string;
+  data_partida?: string;
+  status: string;
+}
+
+export interface DesafioPendenteRecord {
+  id: string;
+  liga_id: string;
+  desafiante_id: number;
+  desafiado_id: number;
+  desafiante_nome: string;
+  desafiado_nome: string;
+  desafiante_foto?: string | null;
+  desafiado_foto?: string | null;
+  data_sugerida: string;
+  horario_sugerido: string;
+  local_sugerido: string;
+  status: string;
+  created_at?: string;
+}
+
+export type HomePrioridadeRecord =
+  | { tipo: 'desafio'; desafio: DesafioPendenteRecord }
+  | { tipo: 'resultado'; resultado: ResultadoPendenteRecord }
+  | null;
+
+// ---------------------------------------------------------------------------
 // Ranking
 // ---------------------------------------------------------------------------
 
@@ -340,3 +382,42 @@ export const criarDesafio            = (t: string, dados: object)               
 export const getDesafios             = (t: string, ligaId: string)                                 => rankingApi(t, 'GET',    `/ranking/desafios?ligaId=${ligaId}`);
 export const responderDesafio        = (t: string, desafioId: string, dados: object)               => rankingApi(t, 'PATCH',  `/ranking/desafios/${desafioId}`, dados);
 export const converterDesafioPartida = (t: string, desafioId: string, dados: object)               => rankingApi(t, 'POST',   `/ranking/desafios/${desafioId}/partida`, dados);
+
+export async function getResultadoPendente(token: string): Promise<ResultadoPendenteRecord | null> {
+  const data = await rankingApi(token, 'GET', '/ranking/partidas/pendentes');
+  return Array.isArray(data) ? (data[0] ?? null) : (data ?? null);
+}
+
+export async function getDesafioPendente(token: string): Promise<DesafioPendenteRecord | null> {
+  const data = await rankingApi(token, 'GET', '/ranking/desafios/pendentes');
+  return data ?? null;
+}
+
+export async function getPrioridadeHome(token: string): Promise<HomePrioridadeRecord> {
+  if (!token) return null;
+
+  const desafio = await getDesafioPendente(token).catch(() => null);
+  if (desafio) return { tipo: 'desafio', desafio };
+
+  const resultado = await getResultadoPendente(token).catch(() => null);
+  if (resultado) return { tipo: 'resultado', resultado };
+
+  return null;
+}
+
+export async function responderDesafioPendente(
+  token: string,
+  desafioId: string,
+  aceitar: boolean
+): Promise<void> {
+  await responderDesafio(token, desafioId, { status: aceitar ? 'aceito' : 'recusado' });
+}
+
+export async function responderResultadoPendente(
+  token: string,
+  partidaId: string,
+  confirmar: boolean
+): Promise<void> {
+  await confirmarPartida(token, partidaId, confirmar);
+}
+
