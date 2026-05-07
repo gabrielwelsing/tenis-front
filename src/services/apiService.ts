@@ -229,7 +229,7 @@ export interface JogoRecord {
   emailPublicador?: string | null;
   nomePublicador?:  string | null;
   fotoPublicador?:  string | null;
-  status?:          'aberta' | 'confirmada' | 'encerrada';
+  status?:          'aberta' | 'confirmada' | 'encerrada' | 'cancelada';
   interessados?:    number;
   confirmado_com?:  string | null;
 }
@@ -293,9 +293,14 @@ export interface UpdateJogoDatasPayload {
   horarioFim:    string;
 }
 
-export async function getJogos(cidade?: string): Promise<JogoRecord[]> {
-  const qs  = cidade ? `?cidade=${encodeURIComponent(cidade)}` : '';
-  const res = await fetch(`${BASE_URL}/jogos${qs}`);
+export async function getJogos(cidade?: string, incluirHistorico = false): Promise<JogoRecord[]> {
+  const qs = new URLSearchParams();
+
+  if (cidade) qs.set('cidade', cidade);
+  if (incluirHistorico) qs.set('historico', '1');
+
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await fetch(`${BASE_URL}/jogos${query}`);
   if (!res.ok) throw new Error(`Erro ao carregar mural: ${res.status}`);
   return res.json();
 }
@@ -455,6 +460,22 @@ export async function deleteJogo(id: string, emailPublicador: string): Promise<v
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? `Erro ao remover: ${res.status}`);
   }
+}
+
+
+export async function cancelarJogo(id: string, emailUsuario: string): Promise<JogoRecord> {
+  const res = await fetch(`${BASE_URL}/jogos/${id}/cancelar`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email_usuario: emailUsuario }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Erro ao cancelar partida: ${res.status}`);
+  }
+
+  return res.json();
 }
 
 export async function registrarInteresse(jogoId: string, email_usuario: string, nome_usuario: string): Promise<{ interessados: number }> {
