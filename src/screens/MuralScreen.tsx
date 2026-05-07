@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { getJogos, postJogo, deleteJogo, updateJogoDatas, buscarCidadesIBGE, padronizarCidadeIBGE, cidadeEstaPadronizada, type CidadeIBGE, type JogoRecord, type UpdateJogoDatasPayload } from '@services/apiService';
+import { getJogos, postJogo, deleteJogo, updateJogoDatas, cancelarJogo, buscarCidadesIBGE, padronizarCidadeIBGE, cidadeEstaPadronizada, type CidadeIBGE, type JogoRecord, type UpdateJogoDatasPayload } from '@services/apiService';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'https://tenis-back-production-9f72.up.railway.app';
 const TOKEN_KEY = 'tenis_token';
@@ -31,7 +31,7 @@ interface Jogo {
   emailPublicador?: string | null;
   nomePublicador?:  string | null;
   fotoPublicador?:  string | null;
-  status?:          'aberta' | 'confirmada' | 'encerrada';
+  status?:          'aberta' | 'confirmada' | 'encerrada' | 'cancelada';
   interessados?:    number;
   confirmado_com?:  string | null;
 }
@@ -54,7 +54,7 @@ interface Liga {
   temporada_ativa_nome: string | null;
 }
 
-type FiltroMural = 'todos' | 'hoje' | 'amanha' | 'calendario' | 'meus';
+type FiltroMural = 'todos' | 'hoje' | 'amanha' | 'calendario' | 'meus' | 'historico';
 
 const CLASSES     = ['Iniciante', 'Classe 5', 'Classe 4', 'Classe 3', 'Classe 2', 'Classe 1'];
 const LOCAIS      = ['Arena Bar (Prof. Carlos)', 'Automóvel Clube (ACTO)', 'Quadra Pública', 'Condomínio', 'Outro'];
@@ -573,7 +573,7 @@ export default function MuralScreen({
 
     setLoadingJogos(true);
 
-    getJogos(cidade)
+    getJogos(cidade, true)
       .then(data => setJogos(data as Jogo[]))
       .catch(() => setJogos([]))
       .finally(() => setLoadingJogos(false));
@@ -743,21 +743,43 @@ export default function MuralScreen({
     ));
   }, [emailUsuario]);
 
+  const handleCancelarJogo = useCallback(async (jogoId: string) => {
+    const atualizado = await cancelarJogo(jogoId, emailUsuario);
+
+    setJogos(prev => prev.map(j =>
+      j.id === jogoId
+        ? { ...j, ...atualizado }
+        : j
+    ));
+  }, [emailUsuario]);
+
   const hojeFiltro = hojeStr();
   const amanhaFiltro = amanhaStr();
 
-  const jogosAtivos = jogos
-    .filter(j => j.status !== 'encerrada' && !isExpired(j))
+  const jogosCidade = jogos
     .filter(j => !cidade || j.cidade.toLowerCase() === cidade.toLowerCase());
 
-  const jogosExibidos = jogosAtivos.filter(jogo => {
-    if (filtro === 'hoje') return jogoIsOnDate(jogo, hojeFiltro);
-    if (filtro === 'amanha') return jogoIsOnDate(jogo, amanhaFiltro);
-    if (filtro === 'meus') return jogo.emailPublicador === emailUsuario;
-    if (filtro === 'calendario' && selectedDate) return jogoIsOnDate(jogo, selectedDate);
+  const jogosAtivos = jogosCidade
+    .filter(j => j.status !== 'encerrada' && j.status !== 'cancelada' && !isExpired(j));
 
-    return true;
-  });
+  const jogosHistorico = jogosCidade
+    .filter(j => j.status === 'encerrada' || j.status === 'cancelada' || isExpired(j))
+    .sort((a, b) => {
+      const da = `${a.dataFim || a.dataInicio}T${a.horarioFim || '00:00'}:00`;
+      const db = `${b.dataFim || b.dataInicio}T${b.horarioFim || '00:00'}:00`;
+      return new Date(db).getTime() - new Date(da).getTime();
+    });
+
+  const jogosExibidos = filtro === 'historico'
+    ? jogosHistorico
+    : jogosAtivos.filter(jogo => {
+        if (filtro === 'hoje') return jogoIsOnDate(jogo, hojeFiltro);
+        if (filtro === 'amanha') return jogoIsOnDate(jogo, amanhaFiltro);
+        if (filtro === 'meus') return jogo.emailPublicador === emailUsuario;
+        if (filtro === 'calendario' && selectedDate) return jogoIsOnDate(jogo, selectedDate);
+
+        return true;
+      });
 
   return (
     <div style={s.page}>
@@ -840,6 +862,7 @@ export default function MuralScreen({
                 { key: 'amanha', label: 'Amanhã' },
                 { key: 'calendario', label: selectedDate ? fmtData(selectedDate) : 'Calendário' },
                 { key: 'meus', label: 'Meus posts' },
+                { key: 'historico', label: 'Histórico' },
               ].map(item => (
                 <button
                   key={item.key}
@@ -872,10 +895,14 @@ export default function MuralScreen({
 
             <div style={s.listHeader}>
               <div>
-                <h2 style={s.sectionTitle}>Jogos disponíveis</h2>
+                <h2 style={s.sectionTitle}>{filtro === 'historico' ? 'Histórico do mural' : 'Jogos disponíveis'}</h2>
                 <p style={s.sectionSub}>
                   {jogosExibidos.length} publicaç{jogosExibidos.length === 1 ? 'ão' : 'ões'}
-                  {filtro === 'calendario' && selectedDate ? ` em ${fmtData(selectedDate)}` : ` em ${cidade || '…'}`}
+                  {filtro === 'historico'
+                    ? ' no histórico'
+                    : filtro === 'calendario' && selectedDate
+                      ? ` em ${fmtData(selectedDate)}`
+                      : ` em ${cidade || '…'}`}
                 </p>
               </div>
             </div>
@@ -889,11 +916,13 @@ export default function MuralScreen({
                 <span style={{ fontSize: 42 }}>🎾</span>
 
                 <p style={s.emptyText}>
-                  {filtro === 'calendario' && selectedDate
-                    ? `Nenhum parceiro em ${fmtData(selectedDate)}.`
-                    : filtro === 'meus'
-                      ? 'Você ainda não publicou nenhum treino.'
-                      : `Nenhum parceiro disponível em ${cidade || 'sua cidade'} ainda.`}
+                  {filtro === 'historico'
+                    ? 'Nenhuma atividade no histórico ainda.'
+                    : filtro === 'calendario' && selectedDate
+                      ? `Nenhum parceiro em ${fmtData(selectedDate)}.`
+                      : filtro === 'meus'
+                        ? 'Você ainda não publicou nenhum treino.'
+                        : `Nenhum parceiro disponível em ${cidade || 'sua cidade'} ainda.`}
                 </p>
 
                 <p style={s.emptyHint}>Clique em “Publicar” para criar uma disponibilidade.</p>
@@ -910,6 +939,7 @@ export default function MuralScreen({
                     onConfirmarSala={(email) => handleConfirmarSala(jogo.id, email)}
                     onDelete={() => handleExcluirJogo(jogo.id)}
                     onUpdateDatas={(dados) => handleEditarDatasJogo(jogo.id, dados)}
+                    onCancel={() => handleCancelarJogo(jogo.id)}
                     emailUsuario={emailUsuario}
                     userId={userId}
                   />
@@ -1126,6 +1156,7 @@ function JogoCard({
   onConfirmarSala,
   onDelete,
   onUpdateDatas,
+  onCancel,
   emailUsuario,
   userId,
 }: {
@@ -1136,12 +1167,16 @@ function JogoCard({
   onConfirmarSala: (email: string) => void;
   onDelete: () => Promise<void>;
   onUpdateDatas: (dados: UpdateJogoDatasPayload) => Promise<void>;
+  onCancel: () => Promise<void>;
   emailUsuario: string;
   userId: number;
 }) {
   const waUrl = buildWhatsAppUrl(jogo);
   const isOwner = jogo.emailPublicador === emailUsuario;
   const isConfirmada = jogo.status === 'confirmada';
+  const isCancelada = jogo.status === 'cancelada';
+  const isEncerrada = jogo.status === 'encerrada';
+  const isConfirmedParticipant = String(jogo.confirmado_com || '').toLowerCase() === emailUsuario.toLowerCase();
   const autorNome = nomeDoPublicador(jogo);
   const dateInfo = getCardDateInfo(jogo.dataInicio);
 
@@ -1201,6 +1236,18 @@ function JogoCard({
     }
   };
 
+  const handleCancelar = async () => {
+    if (!window.confirm('Deseja cancelar esta partida? Ela irá para o histórico.')) return;
+
+    setOwnerActionMsg('');
+
+    try {
+      await onCancel();
+    } catch (e) {
+      setOwnerActionMsg(e instanceof Error ? e.message : 'Erro ao cancelar partida.');
+    }
+  };
+
   const handleSalvarEdicao = async (dados: UpdateJogoDatasPayload) => {
     setOwnerActionMsg('');
     await onUpdateDatas(dados);
@@ -1208,6 +1255,8 @@ function JogoCard({
   };
 
   const jaJogou = isExpired(jogo);
+  const podeAcoesAtivas = !isCancelada && !isEncerrada && !jaJogou;
+  const podeCancelar = isConfirmada && podeAcoesAtivas && (isOwner || isConfirmedParticipant);
 
   return (
     <>
@@ -1296,11 +1345,14 @@ function JogoCard({
 
         <div style={sc.chipRow}>
           {isOwner && <span style={sc.ownerChip}>Seu post</span>}
-          {isConfirmada && <span style={sc.confirmedChip}>Confirmada</span>}
+          {isConfirmada && !isCancelada && <span style={sc.confirmedChip}>Confirmada</span>}
+          {isCancelada && <span style={sc.cancelledChip}>Cancelada</span>}
+          {isEncerrada && <span style={sc.endedChip}>Encerrada</span>}
+          {jaJogou && !isCancelada && !isEncerrada && <span style={sc.endedChip}>Histórico</span>}
           {furosReportados >= 3 && <span style={sc.warningChip}>{furosReportados} furos</span>}
         </div>
 
-        {!isConfirmada && !isOwner && (
+        {podeAcoesAtivas && !isConfirmada && !isOwner && (
           <div style={sc.actionArea}>
             <div style={sc.leftStatus}>
               {jogo.dataFim && jogo.dataFim !== jogo.dataInicio ? (
@@ -1324,7 +1376,7 @@ function JogoCard({
           </div>
         )}
 
-        {isOwner && !isConfirmada && (
+        {podeAcoesAtivas && isOwner && !isConfirmada && (
           <div style={sc.ownerActions}>
             <button type="button" style={sc.editBtn} onClick={() => setShowEdit(true)}>
               Editar data/horário
@@ -1338,7 +1390,7 @@ function JogoCard({
 
         {ownerActionMsg && <p style={sc.ownerActionMsg}>{ownerActionMsg}</p>}
 
-        {isOwner && !isConfirmada && (jogo.interessados ?? 0) > 0 && (
+        {podeAcoesAtivas && isOwner && !isConfirmada && (jogo.interessados ?? 0) > 0 && (
           <div style={sc.ownerPanel}>
             <button onClick={toggleInteressados} style={sc.interessBtn}>
               {showInteress ? 'Ocultar interessados' : `Ver interessados (${jogo.interessados})`}
@@ -1379,20 +1431,28 @@ function JogoCard({
           </div>
         )}
 
-        {isConfirmada && isOwner && (
+        {isConfirmada && (isOwner || isConfirmedParticipant) && (
           <div style={sc.confirmadaInfo}>
             Confirmado com <strong>{jogo.confirmado_com?.split('@')[0]}</strong>
           </div>
         )}
 
+        {podeCancelar && (
+          <div style={sc.cancelArea}>
+            <button type="button" style={sc.cancelBtn} onClick={handleCancelar}>
+              Cancelar partida
+            </button>
+          </div>
+        )}
+
         <div style={sc.reportRow}>
-          {jaJogou && jogo.emailPublicador && jogo.emailPublicador !== emailUsuario && (
+          {jaJogou && !isCancelada && !isEncerrada && jogo.emailPublicador && jogo.emailPublicador !== emailUsuario && (
             <button onClick={() => setShowResult(true)} style={sc.rankBtn}>
               Registrar resultado
             </button>
           )}
 
-          {!isOwner && (
+          {!isOwner && !isCancelada && !isEncerrada && (
             reportado ? (
               <span style={sc.reportadoTxt}>Furo registrado</span>
             ) : (
@@ -2629,6 +2689,24 @@ const sc: Record<string, React.CSSProperties> = {
     fontWeight: 700,
   },
 
+  cancelledChip: {
+    background: '#fff0ec',
+    color: '#c95441',
+    padding: '7px 11px',
+    borderRadius: 999,
+    fontSize: 11.5,
+    fontWeight: 700,
+  },
+
+  endedChip: {
+    background: '#f1ebe6',
+    color: '#8f7769',
+    padding: '7px 11px',
+    borderRadius: 999,
+    fontSize: 11.5,
+    fontWeight: 700,
+  },
+
   warningChip: {
     background: '#fff0ec',
     color: '#c95441',
@@ -2700,6 +2778,23 @@ const sc: Record<string, React.CSSProperties> = {
     padding: '11px 12px',
     fontSize: 12.5,
     fontWeight: 700,
+    cursor: 'pointer',
+  },
+
+  cancelArea: {
+    display: 'flex',
+    justifyContent: 'stretch',
+  },
+
+  cancelBtn: {
+    width: '100%',
+    border: '1px solid rgba(201,84,65,0.18)',
+    background: '#fff4f0',
+    color: '#c95441',
+    borderRadius: 14,
+    padding: '12px 12px',
+    fontSize: 12.5,
+    fontWeight: 850,
     cursor: 'pointer',
   },
 
