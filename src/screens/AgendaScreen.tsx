@@ -626,11 +626,14 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         {!isAdmin && !isBloqueado && !manualOcupado && (
           <div>
             {minhaInscricao ? (
-              <div style={{ textAlign: 'center' as const, fontSize: 13, fontWeight: 750, padding: '10px 0',
+              <div style={{ textAlign: 'center' as const, fontSize: 13, fontWeight: 700, padding: '10px 0',
                 color: minhaInscricao.status === 'confirmada' ? '#3f8f5b' : minhaInscricao.status === 'lista_espera' ? '#b98718' : '#c66b4d' }}>
-                {minhaInscricao.status === 'confirmada'
-                  ? '✓ Reserva confirmada!'
-                  : minhaInscricao.status === 'lista_espera'
+                {minhaInscricao.status === 'confirmada' ? (
+                  <>
+                    <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 2 }}>✓ {minhaInscricao.nome_aluno}</div>
+                    <div style={{ fontSize: 11, color: '#3f8f5b', fontWeight: 600 }}>Reserva confirmada</div>
+                  </>
+                ) : minhaInscricao.status === 'lista_espera'
                   ? '⏳ Você está na lista de espera'
                   : '⏳ Solicitação enviada — aguardando confirmação'}
               </div>

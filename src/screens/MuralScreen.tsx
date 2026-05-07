@@ -461,6 +461,22 @@ function BanBanner({ status }: { status: { mensagem: string; permanente: boolean
   );
 }
 
+// Opções de horário: 07:00 até 22:00, apenas :00 e :30
+const TIME_OPTS: string[] = [];
+for (let h = 7; h <= 22; h++) {
+  TIME_OPTS.push(`${String(h).padStart(2, '0')}:00`);
+  if (h < 22) TIME_OPTS.push(`${String(h).padStart(2, '0')}:30`);
+}
+
+function TimeSelect({ value, onChange, style }: { value: string; onChange: (v: string) => void; style?: React.CSSProperties }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} style={style}>
+      <option value="">Horário…</option>
+      {TIME_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
+    </select>
+  );
+}
+
 function RegrasMural({ furos }: { furos: number }) {
   const [aberto, setAberto] = useState(false);
 
@@ -542,6 +558,7 @@ export default function MuralScreen({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<FiltroMural>('todos');
   const [showPublicar, setShowPublicar] = useState(false);
+  const [showRegras,   setShowRegras]   = useState(false);
 
   const [classe, setClasse] = useState('Iniciante');
   const [janelaData, setJanelaData] = useState(false);
@@ -826,19 +843,62 @@ export default function MuralScreen({
           <span style={s.headerSub}>Encontre parceiros para jogar</span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowPublicar(true)}
-          style={{
-            ...s.publishTopBtn,
-            opacity: banStatus.banido ? 0.45 : 1,
-            cursor: banStatus.banido ? 'not-allowed' : 'pointer',
-          }}
-          disabled={banStatus.banido}
-        >
-          + Publicar
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => setShowRegras(v => !v)}
+            style={{ ...s.publishTopBtn, background: showRegras ? 'rgba(63,143,91,0.18)' : 'rgba(63,143,91,0.08)', border: '1.5px solid rgba(63,143,91,0.3)', color: '#3f8f5b', padding: '8px 12px' }}
+          >
+            📋 Regras
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPublicar(true)}
+            style={{
+              ...s.publishTopBtn,
+              opacity: banStatus.banido ? 0.45 : 1,
+              cursor: banStatus.banido ? 'not-allowed' : 'pointer',
+            }}
+            disabled={banStatus.banido}
+          >
+            + Publicar
+          </button>
+        </div>
       </div>
+
+      {/* Painel de regras de pontuação */}
+      {showRegras && (
+        <div style={{ background: '#1a2e1a', borderBottom: '1px solid rgba(63,143,91,0.25)', padding: '14px 16px', flexShrink: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#4caf50', marginBottom: 10 }}>🏆 Regras de Pontuação</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 10 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 700, paddingBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Resultado</th>
+                <th style={{ textAlign: 'right', fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 700, paddingBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pontos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['Vitória 2×0', '10 pts', '#ffd700'],
+                ['Vitória 2×1', '8 pts',  '#ffd700'],
+                ['Derrota 2×0', '2 pts',  'rgba(255,255,255,0.55)'],
+                ['Derrota 2×1', '4 pts',  'rgba(255,255,255,0.55)'],
+                ['WO (vencedor)', '6 pts', '#ffa726'],
+                ['WO (perdedor)', '0 pts', 'rgba(255,255,255,0.35)'],
+              ].map(([res, pts, cor]) => (
+                <tr key={res} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <td style={{ padding: '7px 0', fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>{res}</td>
+                  <td style={{ padding: '7px 0', fontSize: 13, fontWeight: 800, color: cor as string, textAlign: 'right' }}>{pts}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span>⚡ <strong style={{ color: 'rgba(255,255,255,0.75)' }}>Desempate:</strong> tie-break direto até 10 pontos.</span>
+            <span>🔄 <strong style={{ color: 'rgba(255,255,255,0.75)' }}>Confrontos:</strong> máximo 2x se um ganhar as duas; 3x se ficar 1×1 e for ao decisivo.</span>
+          </div>
+        </div>
+      )}
 
       <div style={s.scrollBody}>
         <div style={s.inner}>
@@ -1080,22 +1140,11 @@ function PublishModal({
               <div style={pm.timeStack}>
                 <div style={pm.timeRow}>
                   <span style={pm.timeLabel}>Das</span>
-                  <input
-                    type="time"
-                    value={horarioInicio}
-                    onChange={e => setHorarioInicio(e.target.value)}
-                    style={pm.timeInput}
-                  />
+                  <TimeSelect value={horarioInicio} onChange={setHorarioInicio} style={pm.timeInput} />
                 </div>
-
                 <div style={pm.timeRow}>
                   <span style={pm.timeLabel}>Às</span>
-                  <input
-                    type="time"
-                    value={horarioFim}
-                    onChange={e => setHorarioFim(e.target.value)}
-                    style={pm.timeInput}
-                  />
+                  <TimeSelect value={horarioFim} onChange={setHorarioFim} style={pm.timeInput} />
                 </div>
               </div>
             </FieldGroup>
@@ -1577,22 +1626,11 @@ function EditJogoModal({
           <div style={pm.timeStack}>
             <div style={pm.timeRow}>
               <span style={pm.timeLabel}>Das</span>
-              <input
-                type="time"
-                value={horarioInicio}
-                onChange={e => setHorarioInicio(e.target.value)}
-                style={pm.timeInput}
-              />
+              <TimeSelect value={horarioInicio} onChange={setHorarioInicio} style={pm.timeInput} />
             </div>
-
             <div style={pm.timeRow}>
               <span style={pm.timeLabel}>Às</span>
-              <input
-                type="time"
-                value={horarioFim}
-                onChange={e => setHorarioFim(e.target.value)}
-                style={pm.timeInput}
-              />
+              <TimeSelect value={horarioFim} onChange={setHorarioFim} style={pm.timeInput} />
             </div>
           </div>
         </FieldGroup>
