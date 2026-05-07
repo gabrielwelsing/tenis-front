@@ -5,6 +5,115 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://tenis-back-production-9f72.up.railway.app';
 
 // ---------------------------------------------------------------------------
+// Cidades — IBGE
+// ---------------------------------------------------------------------------
+
+export interface CidadeIBGE {
+  id: number;
+  nome: string;
+  uf: string;
+  label: string;
+}
+
+const IBGE_MUNICIPIOS_CACHE_KEY = 'tenis_ibge_municipios_v1';
+
+function normalizarTextoCidade(valor: string): string {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+export function cidadeEstaPadronizada(valor?: string | null): boolean {
+  return /^[A-Za-zÀ-ÿ0-9 .'-]+ - [A-Z]{2}$/.test(String(valor || '').trim());
+}
+
+function extrairUFMunicipio(m: any): string {
+  return String(
+    m?.microrregiao?.mesorregiao?.UF?.sigla ??
+    m?.['regiao-imediata']?.['regiao-intermediaria']?.UF?.sigla ??
+    ''
+  ).toUpperCase();
+}
+
+async function carregarMunicipiosIBGE(): Promise<CidadeIBGE[]> {
+  if (typeof localStorage !== 'undefined') {
+    const cached = localStorage.getItem(IBGE_MUNICIPIOS_CACHE_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached) as CidadeIBGE[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        localStorage.removeItem(IBGE_MUNICIPIOS_CACHE_KEY);
+      }
+    }
+  }
+
+  const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome');
+  if (!res.ok) throw new Error('Erro ao buscar cidades no IBGE.');
+
+  const raw = await res.json();
+
+  const cidades: CidadeIBGE[] = (Array.isArray(raw) ? raw : [])
+    .map((m: any) => {
+      const nome = String(m?.nome ?? '').trim();
+      const uf = extrairUFMunicipio(m);
+      return {
+        id: Number(m?.id),
+        nome,
+        uf,
+        label: nome && uf ? `${nome} - ${uf}` : '',
+      };
+    })
+    .filter((c: CidadeIBGE) => Number.isFinite(c.id) && c.nome && c.uf && c.label)
+    .sort((a: CidadeIBGE, b: CidadeIBGE) => a.label.localeCompare(b.label, 'pt-BR'));
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(IBGE_MUNICIPIOS_CACHE_KEY, JSON.stringify(cidades));
+  }
+
+  return cidades;
+}
+
+export async function buscarCidadesIBGE(termo: string, limite = 8): Promise<CidadeIBGE[]> {
+  const busca = normalizarTextoCidade(termo);
+  if (busca.length < 2) return [];
+
+  const cidades = await carregarMunicipiosIBGE();
+  const partes = busca.split(/\s+/).filter(Boolean);
+
+  return cidades
+    .map(c => {
+      const nomeNorm = normalizarTextoCidade(c.nome);
+      const labelNorm = normalizarTextoCidade(c.label);
+      const match = partes.every(p => labelNorm.includes(p));
+      if (!match) return null;
+
+      let score = 3;
+      if (nomeNorm === busca || labelNorm === busca) score = 0;
+      else if (nomeNorm.startsWith(busca)) score = 1;
+      else if (labelNorm.includes(busca)) score = 2;
+
+      return { cidade: c, score };
+    })
+    .filter((x): x is { cidade: CidadeIBGE; score: number } => Boolean(x))
+    .sort((a, b) => a.score - b.score || a.cidade.label.localeCompare(b.cidade.label, 'pt-BR'))
+    .slice(0, limite)
+    .map(x => x.cidade);
+}
+
+export async function padronizarCidadeIBGE(valor?: string | null): Promise<string> {
+  const limpo = String(valor || '').trim().replace(/\s+-\s+/g, ' - ');
+  if (!limpo) return '';
+  if (cidadeEstaPadronizada(limpo)) return limpo;
+
+  const opcoes = await buscarCidadesIBGE(limpo, 1);
+  return opcoes[0]?.label ?? limpo;
+}
+
+
+// ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
 
