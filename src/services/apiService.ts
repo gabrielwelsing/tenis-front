@@ -341,6 +341,31 @@ export async function getProximaAtividadeCompleta(
   role: UserRecord['role'],
   token?: string
 ): Promise<ProximaAtividadeCompletaRecord | null> {
+  const buscarFallbackOriginal = async (): Promise<ProximaAtividadeCompletaRecord | null> => {
+    const aulaPromise = getProximaAulaAgenda(emailUsuario, role);
+
+    if (role === 'admin') {
+      return aulaPromise;
+    }
+
+    const [jogoResult, aulaResult] = await Promise.allSettled([
+      getProximaAtividade(emailUsuario),
+      aulaPromise,
+    ]);
+
+    const jogo = jogoResult.status === 'fulfilled' && jogoResult.value
+      ? { ...jogoResult.value, tipo: 'jogo' as const }
+      : null;
+
+    const aula = aulaResult.status === 'fulfilled' ? aulaResult.value : null;
+
+    if (jogo && aula) {
+      return dataHoraAtividadeMs(jogo) <= dataHoraAtividadeMs(aula) ? jogo : aula;
+    }
+
+    return jogo ?? aula ?? null;
+  };
+
   if (token) {
     const agenda = await getAtividadesHome(emailUsuario, role, token).catch(() => null);
     const primeira = agenda?.proximas?.[0];
@@ -355,31 +380,12 @@ export async function getProximaAtividadeCompleta(
       } as ProximaAtividadeCompletaRecord;
     }
 
-    return null;
+    // Segurança: se a agenda consolidada vier vazia/erro parcial, não deixa
+    // a Home perder o comportamento antigo de mostrar jogo do mural ou aula.
+    return buscarFallbackOriginal();
   }
 
-  const aulaPromise = getProximaAulaAgenda(emailUsuario, role);
-
-  if (role === 'admin') {
-    return aulaPromise;
-  }
-
-  const [jogoResult, aulaResult] = await Promise.allSettled([
-    getProximaAtividade(emailUsuario),
-    aulaPromise,
-  ]);
-
-  const jogo = jogoResult.status === 'fulfilled' && jogoResult.value
-    ? { ...jogoResult.value, tipo: 'jogo' as const }
-    : null;
-
-  const aula = aulaResult.status === 'fulfilled' ? aulaResult.value : null;
-
-  if (jogo && aula) {
-    return dataHoraAtividadeMs(jogo) <= dataHoraAtividadeMs(aula) ? jogo : aula;
-  }
-
-  return jogo ?? aula ?? null;
+  return buscarFallbackOriginal();
 }
 
 function atividadeMs(a: { dataInicio: string; horarioInicio?: string; horarioFim?: string }): number {
