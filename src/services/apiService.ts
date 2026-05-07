@@ -371,6 +371,19 @@ function atividadeFimMs(a: { dataInicio: string; horarioFim?: string; horarioIni
   return new Date(`${data}T${hora}:00`).getTime();
 }
 
+async function lerAtividadesResponse(res: Response): Promise<AtividadeHomeRecord[]> {
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Erro HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.data)) return json.data;
+
+  return [];
+}
+
 export async function getAtividadesHome(
   emailUsuario: string,
   role: UserRecord['role']
@@ -381,19 +394,22 @@ export async function getAtividadesHome(
   });
 
   const [agendaResult, jogosResult] = await Promise.allSettled([
-    fetch(`${BASE_URL}/agenda/atividades?${qs.toString()}`),
-    fetch(`${BASE_URL}/jogos/atividades?email=${encodeURIComponent(emailUsuario)}`),
+    fetch(`${BASE_URL}/agenda/atividades?${qs.toString()}`).then(lerAtividadesResponse),
+    fetch(`${BASE_URL}/jogos/atividades?email=${encodeURIComponent(emailUsuario)}`).then(lerAtividadesResponse),
   ]);
 
   const agendaAtividades: AtividadeHomeRecord[] =
-    agendaResult.status === 'fulfilled' && agendaResult.value.ok
-      ? await agendaResult.value.json()
-      : [];
+    agendaResult.status === 'fulfilled' ? agendaResult.value : [];
 
   const jogosAtividades: AtividadeHomeRecord[] =
-    jogosResult.status === 'fulfilled' && jogosResult.value.ok
-      ? await jogosResult.value.json()
-      : [];
+    jogosResult.status === 'fulfilled' ? jogosResult.value : [];
+
+  if (
+    agendaResult.status === 'rejected' &&
+    jogosResult.status === 'rejected'
+  ) {
+    throw new Error('Não foi possível carregar agenda e jogos.');
+  }
 
   const agora = Date.now();
   const todas = [...agendaAtividades, ...jogosAtividades].map(a => ({
