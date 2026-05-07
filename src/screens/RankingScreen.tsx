@@ -32,6 +32,31 @@ const CLASSES = ['iniciante', 'intermediario', 'avancado'];
 const CLASSE_LABELS: Record<string, string> = { iniciante: 'Iniciante', intermediario: 'Intermediário', avancado: 'Avançado' };
 const TIPO_LABELS: Record<string, string>   = { melhor_de_3: 'Melhor de 3', '2sets_supertiebreak': '2 Sets + ST', pro_set: 'Pró-set' };
 
+function normalizarBusca(v: string): string {
+  return v
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function escapeRegex(v: string): string {
+  return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function membrosPorBusca(membros: Membro[], termo: string, excluirId?: number): Membro[] {
+  const limpo = normalizarBusca(termo);
+  if (!limpo) return [];
+
+  const partes = limpo.split(/\s+/).filter(Boolean).map(escapeRegex);
+  const regex = new RegExp(partes.join('.*'), 'i');
+
+  return membros
+    .filter(m => !excluirId || m.user_id !== excluirId)
+    .filter(m => regex.test(normalizarBusca(`${m.nome} ${m.email}`)))
+    .slice(0, 6);
+}
+
 const CLASSE_COLORS: Record<string, { color: string; bg: string; border: string; glow: string }> = {
   avancado:      { color: '#b98718', bg: '#fff8e6', border: '#f0d58a', glow: 'rgba(185,135,24,0.18)' },
   intermediario: { color: '#c66b4d', bg: '#fff1eb', border: '#efc7b8', glow: 'rgba(198,107,77,0.18)' },
@@ -70,6 +95,94 @@ async function api(method: string, path: string, body?: unknown) {
   const json = await res.json();
   if (!res.ok) throw new Error(json.error ?? 'Erro.');
   return json.data;
+}
+
+
+function PlayerSearchBox({
+  label,
+  membros,
+  selectedId,
+  excludeId,
+  onSelect,
+  placeholder,
+}: {
+  label: string;
+  membros: Membro[];
+  selectedId: number;
+  excludeId?: number;
+  onSelect: (id: number) => void;
+  placeholder: string;
+}) {
+  const selected = membros.find(m => m.user_id === selectedId) ?? null;
+  const [query, setQuery] = useState(selected?.nome ?? '');
+
+  useEffect(() => {
+    setQuery(selected?.nome ?? '');
+  }, [selectedId, selected?.nome]);
+
+  const opcoes = selected && normalizarBusca(query) === normalizarBusca(selected.nome)
+    ? []
+    : membrosPorBusca(membros, query, excludeId);
+
+  return (
+    <div style={s.formGroup}>
+      <label style={s.label}>{label}</label>
+      <div style={s.playerSearchWrap}>
+        <input
+          style={s.playerSearchInput}
+          value={query}
+          placeholder={placeholder}
+          autoComplete="off"
+          onChange={e => {
+            setQuery(e.target.value);
+            if (selectedId) onSelect(0);
+          }}
+        />
+
+        {selected && (
+          <div style={s.selectedPlayerPill}>
+            {avatar(selected.nome, selected.foto_url, 24)}
+            <div style={s.selectedPlayerText}>
+              <strong>{selected.nome}</strong>
+              <span>{selected.email}</span>
+            </div>
+            <button
+              type="button"
+              style={s.clearPlayerBtn}
+              onClick={() => {
+                setQuery('');
+                onSelect(0);
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {opcoes.length > 0 && (
+          <div style={s.playerSuggestList}>
+            {opcoes.map(m => (
+              <button
+                key={m.user_id}
+                type="button"
+                style={s.playerSuggestItem}
+                onClick={() => {
+                  setQuery(m.nome);
+                  onSelect(m.user_id);
+                }}
+              >
+                {avatar(m.nome, m.foto_url, 28)}
+                <div style={s.playerSuggestText}>
+                  <strong>{m.nome}</strong>
+                  <span>{m.email}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // =============================================================================
@@ -270,6 +383,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       setFormPartida({ jogador_a_id: 0, jogador_b_id: 0, tipo_partida: 'melhor_de_3', wo: false, wo_vencedor_id: 0, data_partida: new Date().toISOString().split('T')[0], sets: [{ setA: '', setB: '' }, { setA: '', setB: '' }, { setA: '', setB: '' }] });
       flash('ok', 'Partida registrada! Aguardando confirmação.');
       await loadPartidas();
+      await loadPendentes();
       await loadRanking();
     } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
@@ -618,20 +732,22 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
             <div style={s.formCard}>
               <div style={s.formTitle}>Registrar Partida</div>
               <div style={s.formRow}>
-                <div style={s.formGroup}>
-                  <label style={s.label}>Jogador A</label>
-                  <select style={s.sel} value={fp.jogador_a_id} onChange={e => setFormPartida(f => ({ ...f, jogador_a_id: Number(e.target.value) }))}>
-                    <option value={0}>Selecionar…</option>
-                    {membros.map(m => <option key={m.user_id} value={m.user_id}>{m.nome}</option>)}
-                  </select>
-                </div>
-                <div style={s.formGroup}>
-                  <label style={s.label}>Jogador B</label>
-                  <select style={s.sel} value={fp.jogador_b_id} onChange={e => setFormPartida(f => ({ ...f, jogador_b_id: Number(e.target.value) }))}>
-                    <option value={0}>Selecionar…</option>
-                    {membros.map(m => <option key={m.user_id} value={m.user_id}>{m.nome}</option>)}
-                  </select>
-                </div>
+                <PlayerSearchBox
+                  label="Jogador A"
+                  membros={membros}
+                  selectedId={fp.jogador_a_id}
+                  excludeId={fp.jogador_b_id}
+                  placeholder="Digite o nome do jogador A"
+                  onSelect={id => setFormPartida(f => ({ ...f, jogador_a_id: id }))}
+                />
+                <PlayerSearchBox
+                  label="Jogador B"
+                  membros={membros}
+                  selectedId={fp.jogador_b_id}
+                  excludeId={fp.jogador_a_id}
+                  placeholder="Digite o nome do jogador B"
+                  onSelect={id => setFormPartida(f => ({ ...f, jogador_b_id: id }))}
+                />
               </div>
               <div style={s.formRow}>
                 <div style={s.formGroup}>
