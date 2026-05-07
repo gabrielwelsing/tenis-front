@@ -68,6 +68,23 @@ function formatarLinhaAtividade(a: AtividadeHomeRecord): string {
   return `${dataHora} • ${a.local}`;
 }
 
+function atividadeTimestamp(a: { dataInicio: string; horarioInicio?: string | null }): number {
+  const data = String(a.dataInicio || '').slice(0, 10);
+  const hora = String(a.horarioInicio || '00:00').slice(0, 5);
+  return new Date(`${data}T${hora}:00`).getTime();
+}
+
+function mesmaAtividadePrincipal(a: AtividadeHomeRecord, p: ProximaAtividadeCompletaRecord | null): boolean {
+  if (!p) return false;
+
+  const mesmoTipo = a.tipo === p.tipo;
+  const mesmaData = String(a.dataInicio).slice(0, 10) === String(p.dataInicio).slice(0, 10);
+  const mesmaHora = String(a.horarioInicio).slice(0, 5) === String(p.horarioInicio).slice(0, 5);
+
+  return mesmoTipo && mesmaData && mesmaHora;
+}
+
+
 function UserOutlineIcon({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -372,10 +389,14 @@ export default function HomeScreen({
     }
   };
 
-  const abrirAgendaLista = async () => {
-    setShowAgendaLista(true);
+  const recarregarAtividadesHome = async (mostrarLoading = false) => {
+    if (!emailUsuario) return;
+
+    if (mostrarLoading) {
+      setAgendaLoading(true);
+    }
+
     setAgendaErro('');
-    setAgendaLoading(true);
 
     try {
       const data = await getAtividadesHome(emailUsuario, role);
@@ -383,22 +404,53 @@ export default function HomeScreen({
       setAgendaTab(data.proximas.length > 0 ? 'proximas' : 'anteriores');
     } catch {
       setAgendaErro('Não foi possível carregar sua agenda agora.');
+      setAtividadesHome({ proximas: [], anteriores: [] });
     } finally {
-      setAgendaLoading(false);
+      if (mostrarLoading) {
+        setAgendaLoading(false);
+      }
     }
+  };
+
+  useEffect(() => {
+    let ativo = true;
+
+    if (!emailUsuario) return;
+
+    getAtividadesHome(emailUsuario, role)
+      .then(data => {
+        if (!ativo) return;
+        setAtividadesHome(data);
+        setAgendaTab(data.proximas.length > 0 ? 'proximas' : 'anteriores');
+      })
+      .catch(() => {
+        if (!ativo) return;
+        setAtividadesHome({ proximas: [], anteriores: [] });
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [emailUsuario, role]);
+
+  const abrirAgendaLista = async () => {
+    setShowAgendaLista(true);
+    await recarregarAtividadesHome(true);
   };
 
   const listaAtivaAgenda = agendaTab === 'proximas'
     ? atividadesHome.proximas
     : atividadesHome.anteriores;
 
-  const atividadeResumo = proximaAtividade
-    ? {
-        titulo: proximaTitulo,
-        meta: `${formatarDataAtividade(proximaAtividade.dataInicio, proximaAtividade.horarioInicio, proximaAtividade.horarioFim)} • ${proximaAtividade.local}`,
-        dataBox: formatarDiaMes(proximaAtividade.dataInicio),
-      }
-    : null;
+  const proximosEventosTela = atividadesHome.proximas
+    .filter(a => !mesmaAtividadePrincipal(a, proximaAtividade))
+    .sort((a, b) => atividadeTimestamp(a) - atividadeTimestamp(b))
+    .slice(0, 2);
+
+  const eventosSlotsTela: Array<AtividadeHomeRecord | null> = [
+    proximosEventosTela[0] ?? null,
+    proximosEventosTela[1] ?? null,
+  ];
 
   const LockedCard = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
     <div style={{ ...s.quickCard, ...s.quickCardLocked }}>
@@ -1048,23 +1100,39 @@ export default function HomeScreen({
             </div>
 
             <div style={s.eventsCard}>
-              <button type="button" style={s.eventItemBtn} onClick={abrirAgendaLista}>
-                <div style={s.eventDateBox}>
-                  <strong>{atividadeResumo ? atividadeResumo.dataBox.dia : '--'}</strong>
-                  <span>{atividadeResumo ? atividadeResumo.dataBox.mes : '---'}</span>
-                </div>
+              {eventosSlotsTela.map((evento, index) => {
+                const dataBox = evento ? formatarDiaMes(evento.dataInicio) : null;
 
-                <div style={s.eventInfo}>
-                  <div style={s.eventTitle}>{atividadeResumo ? atividadeResumo.titulo : 'Nenhum evento próximo'}</div>
-                  <div style={s.eventMeta}>
-                    {atividadeResumo
-                      ? atividadeResumo.meta
-                      : 'Quando houver partidas, aulas ou treinos agendados, eles aparecerão aqui.'}
-                  </div>
-                </div>
+                return (
+                  <button
+                    key={evento ? `${evento.tipo}-${evento.id}` : `slot-vazio-${index}`}
+                    type="button"
+                    style={{
+                      ...s.eventItemBtn,
+                      ...(index === 0 ? {} : s.eventItemBtnBorder),
+                    }}
+                    onClick={evento ? abrirAgendaLista : () => onNavigate('mural')}
+                  >
+                    <div style={s.eventDateBox}>
+                      <strong>{dataBox ? dataBox.dia : '--'}</strong>
+                      <span>{dataBox ? dataBox.mes : '---'}</span>
+                    </div>
 
-                <div style={s.eventArrow}>›</div>
-              </button>
+                    <div style={s.eventInfo}>
+                      <div style={s.eventTitle}>
+                        {evento ? evento.titulo : 'Agende sua próxima atividade'}
+                      </div>
+                      <div style={s.eventMeta}>
+                        {evento
+                          ? formatarLinhaAtividade(evento)
+                          : 'Use o mural ou a agenda para criar uma nova atividade.'}
+                      </div>
+                    </div>
+
+                    <div style={s.eventArrow}>›</div>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -1615,9 +1683,9 @@ const s: Record<string, React.CSSProperties> = {
   eventsCard: {
     background: 'rgba(255,255,255,0.88)',
     border: '1px solid rgba(130,82,62,0.08)',
-    borderRadius: 20,
+    borderRadius: 18,
     overflow: 'hidden',
-    boxShadow: '0 10px 28px rgba(117,76,56,0.07)',
+    boxShadow: '0 8px 22px rgba(117,76,56,0.06)',
   },
 
   eventItem: {
@@ -1635,19 +1703,23 @@ const s: Record<string, React.CSSProperties> = {
     background: 'transparent',
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
-    padding: 12,
-    minHeight: 72,
+    gap: 9,
+    padding: '8px 10px',
+    minHeight: 54,
     boxSizing: 'border-box',
     cursor: 'pointer',
     textAlign: 'left',
     fontFamily: 'inherit',
   },
 
+  eventItemBtnBorder: {
+    borderTop: '1px solid rgba(130,82,62,0.07)',
+  },
+
   eventDateBox: {
-    width: 48,
-    height: 52,
-    borderRadius: 13,
+    width: 40,
+    height: 42,
+    borderRadius: 12,
     background: '#f4ebe3',
     color: '#7b5141',
     display: 'flex',
@@ -1667,23 +1739,29 @@ const s: Record<string, React.CSSProperties> = {
 
   eventTitle: {
     color: '#342a24',
-    fontSize: 13,
+    fontSize: 12.2,
     fontWeight: 900,
-    lineHeight: 1.2,
+    lineHeight: 1.15,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
 
   eventMeta: {
     color: '#938174',
-    fontSize: 11,
+    fontSize: 10.3,
     fontWeight: 600,
-    lineHeight: 1.35,
+    lineHeight: 1.25,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
 
   eventArrow: {
     color: '#b59c8c',
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 300,
-    paddingRight: 2,
+    paddingRight: 1,
   },
 
   footer: {
