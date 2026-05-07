@@ -388,6 +388,28 @@ export default function HomeScreen({
         ? 'ranking'
         : 'mural';
 
+  const proximaComoAtividade: AtividadeHomeRecord | null = proximaAtividade
+    ? {
+        id: `${proximaAtividade.tipo}-${String((proximaAtividade as any).id ?? 'proxima')}`,
+        origemId: (proximaAtividade as any).id ?? null,
+        tipo: proximaAtividade.tipo as AtividadeHomeRecord['tipo'],
+        dataInicio: proximaAtividade.dataInicio,
+        dataFim: proximaAtividade.dataFim ?? null,
+        horarioInicio: proximaAtividade.horarioInicio,
+        horarioFim: proximaAtividade.horarioFim,
+        local: proximaAtividade.local,
+        titulo: proximaTitulo,
+        status: (proximaAtividade as any).status ?? null,
+        pessoaNome: (proximaAtividade as any).pessoaNome ?? (proximaAtividade as any).adversarioNome ?? (proximaAtividade as any).alunoNome ?? null,
+        pessoaEmail: (proximaAtividade as any).pessoaEmail ?? (proximaAtividade as any).adversarioEmail ?? (proximaAtividade as any).alunoEmail ?? null,
+        adversarioNome: (proximaAtividade as any).adversarioNome ?? (proximaAtividade as any).pessoaNome ?? null,
+        adversarioEmail: (proximaAtividade as any).adversarioEmail ?? (proximaAtividade as any).pessoaEmail ?? null,
+        alunoNome: (proximaAtividade as any).alunoNome ?? (proximaAtividade as any).pessoaNome ?? null,
+        alunoEmail: (proximaAtividade as any).alunoEmail ?? (proximaAtividade as any).pessoaEmail ?? null,
+        passado: false,
+      }
+    : null;
+
   const handleResponderDesafio = async (aceitar: boolean) => {
     if (!token || prioridadeHome?.tipo !== 'desafio') return;
     setAcaoPrioridadeLoading(true);
@@ -424,7 +446,7 @@ export default function HomeScreen({
     try {
       const data = await getAtividadesHome(emailUsuario, role, token);
       setAtividadesHome(data);
-      setAgendaTab(data.proximas.length > 0 ? 'proximas' : 'anteriores');
+      setAgendaTab(data.proximas.length > 0 || proximaComoAtividade ? 'proximas' : 'anteriores');
     } catch {
       setAgendaErro('Não foi possível carregar sua agenda agora.');
       setAtividadesHome({ proximas: [], anteriores: [] });
@@ -458,14 +480,33 @@ export default function HomeScreen({
 
   const abrirAgendaLista = async () => {
     setShowAgendaLista(true);
+    if (proximaComoAtividade) {
+      setAgendaTab('proximas');
+    }
     await recarregarAtividadesHome(true);
   };
 
-  const listaAtivaAgenda = agendaTab === 'proximas'
-    ? atividadesHome.proximas
-    : atividadesHome.anteriores;
+  const atividadesHomeComFallback = (() => {
+    const proximas = [...atividadesHome.proximas];
 
-  const proximosEventosTela = atividadesHome.proximas
+    if (
+      proximaComoAtividade &&
+      !proximas.some(a => mesmaAtividadePrincipal(a, proximaAtividade))
+    ) {
+      proximas.push(proximaComoAtividade);
+    }
+
+    return {
+      proximas: proximas.sort((a, b) => atividadeTimestamp(a) - atividadeTimestamp(b)),
+      anteriores: atividadesHome.anteriores,
+    };
+  })();
+
+  const listaAtivaAgenda = agendaTab === 'proximas'
+    ? atividadesHomeComFallback.proximas
+    : atividadesHomeComFallback.anteriores;
+
+  const proximosEventosTela = atividadesHomeComFallback.proximas
     .filter(a => !mesmaAtividadePrincipal(a, proximaAtividade))
     .sort((a, b) => atividadeTimestamp(a) - atividadeTimestamp(b))
     .slice(0, 2);
