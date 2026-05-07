@@ -149,6 +149,28 @@ export type ProximaAtividadeCompletaRecord =
   | (ProximaAtividadeRecord & { tipo: 'jogo' })
   | ProximaAulaAgendaRecord;
 
+export interface AtividadeHomeRecord {
+  id:             string;
+  origemId?:      string | number | null;
+  tipo:           'aula' | 'jogo';
+  dataInicio:     string;
+  dataFim?:       string | null;
+  horarioInicio:  string;
+  horarioFim:     string;
+  local:          string;
+  titulo:         string;
+  subtitulo?:     string | null;
+  status?:        string | null;
+  pessoaNome?:    string | null;
+  pessoaEmail?:   string | null;
+  passado?:       boolean;
+}
+
+export interface AtividadesHomeResponse {
+  proximas:   AtividadeHomeRecord[];
+  anteriores: AtividadeHomeRecord[];
+}
+
 export interface InteressadoRecord {
   email_usuario: string;
   nome_usuario:  string;
@@ -222,6 +244,62 @@ export async function getProximaAtividadeCompleta(
 
   return jogo ?? aula ?? null;
 }
+
+function atividadeMs(a: { dataInicio: string; horarioInicio?: string; horarioFim?: string }): number {
+  const data = String(a.dataInicio).slice(0, 10);
+  const hora = String(a.horarioInicio || a.horarioFim || '00:00').slice(0, 5);
+  return new Date(`${data}T${hora}:00`).getTime();
+}
+
+function atividadeFimMs(a: { dataInicio: string; horarioFim?: string; horarioInicio?: string }): number {
+  const data = String(a.dataInicio).slice(0, 10);
+  const hora = String(a.horarioFim || a.horarioInicio || '00:00').slice(0, 5);
+  return new Date(`${data}T${hora}:00`).getTime();
+}
+
+export async function getAtividadesHome(
+  emailUsuario: string,
+  role: UserRecord['role']
+): Promise<AtividadesHomeResponse> {
+  const qs = new URLSearchParams({
+    email: emailUsuario,
+    role,
+  });
+
+  const [agendaResult, jogosResult] = await Promise.allSettled([
+    fetch(`${BASE_URL}/agenda/atividades?${qs.toString()}`),
+    fetch(`${BASE_URL}/jogos/atividades?email=${encodeURIComponent(emailUsuario)}`),
+  ]);
+
+  const agendaAtividades: AtividadeHomeRecord[] =
+    agendaResult.status === 'fulfilled' && agendaResult.value.ok
+      ? await agendaResult.value.json()
+      : [];
+
+  const jogosAtividades: AtividadeHomeRecord[] =
+    jogosResult.status === 'fulfilled' && jogosResult.value.ok
+      ? await jogosResult.value.json()
+      : [];
+
+  const agora = Date.now();
+  const todas = [...agendaAtividades, ...jogosAtividades].map(a => ({
+    ...a,
+    passado: a.passado ?? atividadeFimMs(a) < agora,
+  }));
+
+  const proximas = todas
+    .filter(a => !a.passado)
+    .sort((a, b) => atividadeMs(a) - atividadeMs(b))
+    .slice(0, 30);
+
+  const anteriores = todas
+    .filter(a => a.passado)
+    .sort((a, b) => atividadeMs(b) - atividadeMs(a))
+    .slice(0, 30);
+
+  return { proximas, anteriores };
+}
+
 
 export async function postJogo(jogo: JogoRecord): Promise<JogoRecord> {
   const res = await fetch(`${BASE_URL}/jogos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(jogo) });
@@ -420,4 +498,3 @@ export async function responderResultadoPendente(
 ): Promise<void> {
   await confirmarPartida(token, partidaId, confirmar);
 }
-
