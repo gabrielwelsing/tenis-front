@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import { login, register, loginGoogle, getMe, updateProfile, type UserRecord } from '@services/apiService';
+import { login, register, loginGoogle, getMe, updateProfile, buscarCidadesIBGE, padronizarCidadeIBGE, type CidadeIBGE, type UserRecord } from '@services/apiService';
 import { setCurrentUser } from '@services/localSaveService';
 import CameraScreen       from '@screens/CameraScreen';
 import HistoryScreen      from '@screens/HistoryScreen';
@@ -194,6 +194,8 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
   const [email,      setEmail]      = useState('');
   const [pass,       setPass]       = useState('');
   const [localidade, setLocalidade] = useState('');
+  const [cidadeSugestoes, setCidadeSugestoes] = useState<CidadeIBGE[]>([]);
+  const [cidadeLoading, setCidadeLoading] = useState(false);
   const [telefone,   setTelefone]   = useState('');
   const [error,      setError]      = useState('');
   const [info,       setInfo]       = useState('');
@@ -209,6 +211,34 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
     link.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap';
     document.head.appendChild(link);
   }, []);
+
+  useEffect(() => {
+    let ativo = true;
+    const termo = localidade.trim();
+
+    if (mode !== 'register' || termo.length < 2 || /^[A-Za-zÀ-ÿ0-9 .'-]+ - [A-Z]{2}$/.test(termo)) {
+      setCidadeSugestoes([]);
+      setCidadeLoading(false);
+      return;
+    }
+
+    setCidadeLoading(true);
+
+    buscarCidadesIBGE(termo)
+      .then(opcoes => {
+        if (ativo) setCidadeSugestoes(opcoes);
+      })
+      .catch(() => {
+        if (ativo) setCidadeSugestoes([]);
+      })
+      .finally(() => {
+        if (ativo) setCidadeLoading(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [localidade, mode]);
 
   const openAuth = (nextMode: 'login' | 'register') => {
     setMode(nextMode);
@@ -232,9 +262,13 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
     if (mode === 'register' && !nome.trim())       { setError('Preencha seu nome.'); return; }
     setLoading(true);
     try {
+      const localidadeFinal = mode === 'register' && localidade.trim()
+        ? await padronizarCidadeIBGE(localidade)
+        : undefined;
+
       const res = mode === 'login'
         ? await login(rawEmail, pass)
-        : await register(nome.trim(), rawEmail, pass, localidade || undefined, telefone || undefined);
+        : await register(nome.trim(), rawEmail, pass, localidadeFinal || undefined, telefone || undefined);
       localStorage.setItem(TOKEN_KEY, res.token);
       if (mode === 'register') setInfo('Cadastro realizado! Bem-vindo(a).');
       setTimeout(() => onLogin(res.user, res.token), 300);
@@ -356,14 +390,38 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
                     autoCapitalize="words"
                   />
 
-                  <input
-                    style={s.input}
-                    placeholder="Cidade / Localidade"
-                    type="text"
-                    value={localidade}
-                    onChange={e => setLocalidade(e.target.value)}
-                    autoCapitalize="words"
-                  />
+                  <div style={s.cityFieldWrap}>
+                    <input
+                      style={s.input}
+                      placeholder="Cidade - UF"
+                      type="text"
+                      value={localidade}
+                      onChange={e => setLocalidade(e.target.value)}
+                      autoCapitalize="words"
+                      autoComplete="off"
+                    />
+
+                    {(cidadeLoading || cidadeSugestoes.length > 0) && (
+                      <div style={s.citySuggestList}>
+                        {cidadeLoading ? (
+                          <div style={s.citySuggestLoading}>Buscando cidades...</div>
+                        ) : cidadeSugestoes.map(c => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            style={s.citySuggestItem}
+                            onClick={() => {
+                              setLocalidade(c.label);
+                              setCidadeSugestoes([]);
+                            }}
+                          >
+                            <span style={s.citySuggestName}>{c.nome}</span>
+                            <span style={s.citySuggestUf}>{c.uf}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   <input
                     style={s.input}
@@ -472,7 +530,15 @@ function App() {
 
   const handleSalvarPerfil = async (dados: { nome: string; localidade: string; telefone: string }) => {
     if (!token) return;
-    const updated = await updateProfile(token, dados);
+
+    const localidadeFinal = dados.localidade?.trim()
+      ? await padronizarCidadeIBGE(dados.localidade)
+      : dados.localidade;
+
+    const updated = await updateProfile(token, {
+      ...dados,
+      localidade: localidadeFinal,
+    });
     setUser(prev => prev ? { ...prev, ...updated } : prev);
   };
 
@@ -920,6 +986,72 @@ const s: Record<string, React.CSSProperties> = {
     fontFamily: 'inherit',
     colorScheme: 'light' as React.CSSProperties['colorScheme'],
     boxShadow: '0 8px 18px rgba(117,76,56,0.04)',
+  },
+
+  cityFieldWrap: {
+    position: 'relative',
+    width: '100%',
+  },
+
+  citySuggestList: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    zIndex: 80,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.12)',
+    borderRadius: 16,
+    padding: 6,
+    boxShadow: '0 16px 34px rgba(70,45,34,0.18)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    maxHeight: 220,
+    overflowY: 'auto',
+  },
+
+  citySuggestItem: {
+    width: '100%',
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 12,
+    padding: '10px 11px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+  },
+
+  citySuggestName: {
+    color: '#2d2521',
+    fontSize: 13,
+    fontWeight: 850,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+
+  citySuggestUf: {
+    minWidth: 34,
+    padding: '4px 8px',
+    borderRadius: 999,
+    background: '#fff1eb',
+    color: '#b45e45',
+    fontSize: 11,
+    fontWeight: 950,
+    textAlign: 'center',
+  },
+
+  citySuggestLoading: {
+    padding: '12px 10px',
+    color: '#8f7769',
+    fontSize: 12,
+    fontWeight: 750,
+    textAlign: 'center',
   },
 
   admBtn: {
