@@ -512,6 +512,7 @@ function App() {
                 saveMode={saveMode}
                 username={username}
                 emailUsuario={user.email}
+                token={token ?? ''}
                 role={user.role}
                 fotoUrl={user.foto_url}
                 telefone={user.telefone}
@@ -554,6 +555,7 @@ function App() {
                 saveMode={saveMode}
                 username={username}
                 emailUsuario={user.email}
+                token={token ?? ''}
                 role={user.role}
                 fotoUrl={user.foto_url}
                 telefone={user.telefone}
