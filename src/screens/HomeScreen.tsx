@@ -631,7 +631,11 @@ export default function HomeScreen({
                       onClick={() => handleResponderDesafio(true)}
                       disabled={acaoPrioridadeLoading}
                     >
-                      Aceitar
+                      <span style={s.heroActionIcon}>✓</span>
+                      <span style={s.heroActionText}>
+                        <strong style={s.heroActionStrong}>Aceitar</strong>
+                        <small style={s.heroActionSmall}>Confirmar desafio</small>
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -639,7 +643,11 @@ export default function HomeScreen({
                       onClick={() => handleResponderDesafio(false)}
                       disabled={acaoPrioridadeLoading}
                     >
-                      Recusar
+                      <span style={s.heroActionIconSecondary}>×</span>
+                      <span style={s.heroActionText}>
+                        <strong style={s.heroActionStrong}>Recusar</strong>
+                        <small style={s.heroActionSmall}>Agora não</small>
+                      </span>
                     </button>
                   </div>
                 </>
@@ -670,7 +678,11 @@ export default function HomeScreen({
                       onClick={() => handleResponderResultado(true)}
                       disabled={acaoPrioridadeLoading}
                     >
-                      Confirmar
+                      <span style={s.heroActionIcon}>✓</span>
+                      <span style={s.heroActionText}>
+                        <strong style={s.heroActionStrong}>Confirmar</strong>
+                        <small style={s.heroActionSmall}>Resultado ok</small>
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -678,7 +690,11 @@ export default function HomeScreen({
                       onClick={() => handleResponderResultado(false)}
                       disabled={acaoPrioridadeLoading}
                     >
-                      Negar
+                      <span style={s.heroActionIconSecondary}>×</span>
+                      <span style={s.heroActionText}>
+                        <strong style={s.heroActionStrong}>Negar</strong>
+                        <small style={s.heroActionSmall}>Revisar</small>
+                      </span>
                     </button>
                   </div>
                 </>
@@ -1179,6 +1195,103 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 850,
     cursor: 'pointer',
     boxShadow: '0 8px 18px rgba(70,30,20,0.16)',
+  },
+
+  heroActionRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    alignItems: 'stretch',
+    gap: 8,
+    marginTop: 4,
+    width: '100%',
+  },
+
+  heroAcceptBtn: {
+    minHeight: 42,
+    padding: '7px 9px',
+    borderRadius: 15,
+    border: '1px solid rgba(255,248,239,0.72)',
+    background: 'rgba(255,248,239,0.92)',
+    color: '#8f4635',
+    cursor: 'pointer',
+    boxShadow: '0 10px 22px rgba(70,30,20,0.18)',
+    fontFamily: 'inherit',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+  },
+
+  heroRejectBtn: {
+    minHeight: 42,
+    padding: '7px 9px',
+    borderRadius: 15,
+    border: '1px solid rgba(255,248,239,0.36)',
+    background: 'rgba(255,248,239,0.16)',
+    color: '#fff8ef',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+  },
+
+  heroActionIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 950,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    lineHeight: 1,
+  },
+
+  heroActionIconSecondary: {
+    width: 22,
+    height: 22,
+    borderRadius: '50%',
+    background: 'rgba(255,248,239,0.18)',
+    color: '#fff8ef',
+    fontSize: 15,
+    fontWeight: 900,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    lineHeight: 1,
+  },
+
+  heroActionText: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 1,
+    minWidth: 0,
+    lineHeight: 1.05,
+  },
+
+  heroActionStrong: {
+    fontSize: 11.5,
+    fontWeight: 950,
+    letterSpacing: -0.1,
+    whiteSpace: 'nowrap',
+  },
+
+  heroActionSmall: {
+    fontSize: 8.8,
+    fontWeight: 750,
+    opacity: 0.78,
+    whiteSpace: 'nowrap',
   },
 
   section: {
