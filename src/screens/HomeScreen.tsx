@@ -11,7 +11,10 @@ import {
   responderDesafioPendente,
   responderResultadoPendente,
   getAtividadesHome,
+  buscarCidadesIBGE,
+  padronizarCidadeIBGE,
   type AtividadeHomeRecord,
+  type CidadeIBGE,
   type HomePrioridadeRecord,
   type ProximaAtividadeCompletaRecord,
 } from '@services/apiService';
@@ -195,6 +198,8 @@ export default function HomeScreen({
 
   const [cfgNome, setCfgNome] = useState(username ?? '');
   const [cfgLocalidade, setCfgLocalidade] = useState(localidade ?? '');
+  const [cfgCidadeSugestoes, setCfgCidadeSugestoes] = useState<CidadeIBGE[]>([]);
+  const [cfgCidadeLoading, setCfgCidadeLoading] = useState(false);
   const [cfgTelefone, setCfgTelefone] = useState(telefone ?? '');
   const [cfgLoading, setCfgLoading] = useState(false);
   const [cfgMsg, setCfgMsg] = useState('');
@@ -250,6 +255,34 @@ export default function HomeScreen({
     };
   }, [token]);
 
+  useEffect(() => {
+    let ativo = true;
+    const termo = cfgLocalidade.trim();
+
+    if (configView !== 'dados' || termo.length < 2 || /^[A-Za-zÀ-ÿ0-9 .'-]+ - [A-Z]{2}$/.test(termo)) {
+      setCfgCidadeSugestoes([]);
+      setCfgCidadeLoading(false);
+      return;
+    }
+
+    setCfgCidadeLoading(true);
+
+    buscarCidadesIBGE(termo)
+      .then(opcoes => {
+        if (ativo) setCfgCidadeSugestoes(opcoes);
+      })
+      .catch(() => {
+        if (ativo) setCfgCidadeSugestoes([]);
+      })
+      .finally(() => {
+        if (ativo) setCfgCidadeLoading(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [cfgLocalidade, configView]);
+
 
   const handleAvatarClick = () => fileInputRef.current?.click();
 
@@ -277,9 +310,15 @@ export default function HomeScreen({
     setCfgLoading(true);
     setCfgMsg('');
     try {
+      const localidadeFinal = cfgLocalidade.trim()
+        ? await padronizarCidadeIBGE(cfgLocalidade)
+        : '';
+
+      setCfgLocalidade(localidadeFinal);
+
       await onSalvarPerfil({
         nome: cfgNome.trim(),
-        localidade: cfgLocalidade.trim(),
+        localidade: localidadeFinal,
         telefone: cfgTelefone.trim(),
       });
       setCfgMsg('✅ Salvo com sucesso!');
@@ -625,13 +664,39 @@ export default function HomeScreen({
 
                 <div style={cfg.fieldGroup}>
                   <span style={cfg.label}>Cidade</span>
-                  <input
-                    style={cfg.input}
-                    type="text"
-                    value={cfgLocalidade}
-                    onChange={e => setCfgLocalidade(e.target.value)}
-                    autoCapitalize="words"
-                  />
+
+                  <div style={cfg.cityFieldWrap}>
+                    <input
+                      style={cfg.input}
+                      type="text"
+                      value={cfgLocalidade}
+                      onChange={e => setCfgLocalidade(e.target.value)}
+                      autoCapitalize="words"
+                      autoComplete="off"
+                      placeholder="Cidade - UF"
+                    />
+
+                    {(cfgCidadeLoading || cfgCidadeSugestoes.length > 0) && (
+                      <div style={cfg.citySuggestList}>
+                        {cfgCidadeLoading ? (
+                          <div style={cfg.citySuggestLoading}>Buscando cidades...</div>
+                        ) : cfgCidadeSugestoes.map(c => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            style={cfg.citySuggestItem}
+                            onClick={() => {
+                              setCfgLocalidade(c.label);
+                              setCfgCidadeSugestoes([]);
+                            }}
+                          >
+                            <span style={cfg.citySuggestName}>{c.nome}</span>
+                            <span style={cfg.citySuggestUf}>{c.uf}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {cfgMsg && (
@@ -2195,6 +2260,72 @@ const cfg: Record<string, React.CSSProperties> = {
     fontWeight: 650,
     boxSizing: 'border-box' as const,
     outline: 'none',
+  },
+
+  cityFieldWrap: {
+    position: 'relative',
+    width: '100%',
+  },
+
+  citySuggestList: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    zIndex: 230,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.12)',
+    borderRadius: 16,
+    padding: 6,
+    boxShadow: '0 16px 34px rgba(70,45,34,0.18)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    maxHeight: 220,
+    overflowY: 'auto',
+  },
+
+  citySuggestItem: {
+    width: '100%',
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 12,
+    padding: '10px 11px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+  },
+
+  citySuggestName: {
+    color: '#2d2521',
+    fontSize: 13,
+    fontWeight: 850,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+
+  citySuggestUf: {
+    minWidth: 34,
+    padding: '4px 8px',
+    borderRadius: 999,
+    background: '#fff1eb',
+    color: '#b45e45',
+    fontSize: 11,
+    fontWeight: 950,
+    textAlign: 'center',
+  },
+
+  citySuggestLoading: {
+    padding: '12px 10px',
+    color: '#8f7769',
+    fontSize: 12,
+    fontWeight: 750,
+    textAlign: 'center',
   },
 
   saveBtn: {
