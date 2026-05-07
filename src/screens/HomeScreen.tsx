@@ -10,6 +10,8 @@ import {
   getPrioridadeHome,
   responderDesafioPendente,
   responderResultadoPendente,
+  getAtividadesHome,
+  type AtividadeHomeRecord,
   type HomePrioridadeRecord,
   type ProximaAtividadeCompletaRecord,
 } from '@services/apiService';
@@ -48,6 +50,19 @@ function formatarDataHoraCurta(dataIso?: string | null, hora?: string | null): s
   const dia = String(dt.getDate()).padStart(2, '0');
   const mes = String(dt.getMonth() + 1).padStart(2, '0');
   return `${diaSemana}, ${dia}/${mes}${hora ? ` • ${String(hora).slice(0, 5)}` : ''}`;
+}
+
+function formatarDiaMes(dataIso?: string | null): { dia: string; mes: string } {
+  if (!dataIso) return { dia: '--', mes: '---' };
+  const dt = new Date(`${String(dataIso).slice(0, 10)}T12:00:00`);
+  const dia = String(dt.getDate()).padStart(2, '0');
+  const mes = dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+  return { dia, mes };
+}
+
+function formatarLinhaAtividade(a: AtividadeHomeRecord): string {
+  const dataHora = formatarDataAtividade(a.dataInicio, a.horarioInicio, a.horarioFim);
+  return `${dataHora} • ${a.local}`;
 }
 
 function UserOutlineIcon({ size = 22 }: { size?: number }) {
@@ -187,6 +202,14 @@ export default function HomeScreen({
   const [proximaAtividade, setProximaAtividade] = useState<ProximaAtividadeCompletaRecord | null>(null);
   const [prioridadeHome, setPrioridadeHome] = useState<HomePrioridadeRecord>(null);
   const [acaoPrioridadeLoading, setAcaoPrioridadeLoading] = useState(false);
+  const [showAgendaLista, setShowAgendaLista] = useState(false);
+  const [agendaTab, setAgendaTab] = useState<'proximas' | 'anteriores'>('proximas');
+  const [agendaLoading, setAgendaLoading] = useState(false);
+  const [agendaErro, setAgendaErro] = useState('');
+  const [atividadesHome, setAtividadesHome] = useState<{ proximas: AtividadeHomeRecord[]; anteriores: AtividadeHomeRecord[] }>({
+    proximas: [],
+    anteriores: [],
+  });
 
   useEffect(() => {
     let ativo = true;
@@ -310,6 +333,34 @@ export default function HomeScreen({
     }
   };
 
+  const abrirAgendaLista = async () => {
+    setShowAgendaLista(true);
+    setAgendaErro('');
+    setAgendaLoading(true);
+
+    try {
+      const data = await getAtividadesHome(emailUsuario, role);
+      setAtividadesHome(data);
+      setAgendaTab(data.proximas.length > 0 ? 'proximas' : 'anteriores');
+    } catch {
+      setAgendaErro('Não foi possível carregar sua agenda agora.');
+    } finally {
+      setAgendaLoading(false);
+    }
+  };
+
+  const listaAtivaAgenda = agendaTab === 'proximas'
+    ? atividadesHome.proximas
+    : atividadesHome.anteriores;
+
+  const atividadeResumo = proximaAtividade
+    ? {
+        titulo: proximaTitulo,
+        meta: `${formatarDataAtividade(proximaAtividade.dataInicio, proximaAtividade.horarioInicio, proximaAtividade.horarioFim)} • ${proximaAtividade.local}`,
+        dataBox: formatarDiaMes(proximaAtividade.dataInicio),
+      }
+    : null;
+
   const LockedCard = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
     <div style={{ ...s.quickCard, ...s.quickCardLocked }}>
       <div style={s.quickLock}>🔒</div>
@@ -331,6 +382,103 @@ export default function HomeScreen({
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
+
+      {showAgendaLista && (
+        <div
+          style={agendaModal.overlay}
+          onClick={e => {
+            if (e.target === e.currentTarget) {
+              setShowAgendaLista(false);
+              setAgendaErro('');
+            }
+          }}
+        >
+          <div style={agendaModal.sheet}>
+            <div style={agendaModal.topBar}>
+              <div style={agendaModal.iconCircle}><CalendarIcon size={19} /></div>
+              <div style={agendaModal.titleBox}>
+                <h2 style={agendaModal.title}>Minha agenda</h2>
+                <p style={agendaModal.subtitle}>Aulas e jogos em um só lugar</p>
+              </div>
+              <button
+                type="button"
+                style={agendaModal.closeBtn}
+                onClick={() => {
+                  setShowAgendaLista(false);
+                  setAgendaErro('');
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={agendaModal.tabs}>
+              <button
+                type="button"
+                style={{ ...agendaModal.tabBtn, ...(agendaTab === 'proximas' ? agendaModal.tabBtnActive : {}) }}
+                onClick={() => setAgendaTab('proximas')}
+              >
+                Próximas
+              </button>
+              <button
+                type="button"
+                style={{ ...agendaModal.tabBtn, ...(agendaTab === 'anteriores' ? agendaModal.tabBtnActive : {}) }}
+                onClick={() => setAgendaTab('anteriores')}
+              >
+                Anteriores
+              </button>
+            </div>
+
+            {agendaLoading ? (
+              <div style={agendaModal.emptyBox}>
+                <div style={agendaModal.emptyIcon}>⏳</div>
+                <strong>Carregando atividades...</strong>
+                <span>Buscando aulas e jogos confirmados.</span>
+              </div>
+            ) : agendaErro ? (
+              <div style={agendaModal.emptyBox}>
+                <div style={agendaModal.emptyIcon}>!</div>
+                <strong>Ops</strong>
+                <span>{agendaErro}</span>
+              </div>
+            ) : listaAtivaAgenda.length === 0 ? (
+              <div style={agendaModal.emptyBox}>
+                <div style={agendaModal.emptyIcon}><CalendarIcon size={26} /></div>
+                <strong>{agendaTab === 'proximas' ? 'Nenhuma atividade futura' : 'Nenhuma atividade anterior'}</strong>
+                <span>
+                  {agendaTab === 'proximas'
+                    ? 'Quando houver aula ou jogo confirmado, aparecerá aqui.'
+                    : 'Suas atividades já realizadas aparecerão aqui.'}
+                </span>
+              </div>
+            ) : (
+              <div style={agendaModal.list}>
+                {listaAtivaAgenda.map(a => {
+                  const dataBox = formatarDiaMes(a.dataInicio);
+                  return (
+                    <div key={`${a.tipo}-${a.id}`} style={agendaModal.item}>
+                      <div style={agendaModal.dateBox}>
+                        <strong>{dataBox.dia}</strong>
+                        <span>{dataBox.mes}</span>
+                      </div>
+
+                      <div style={agendaModal.itemInfo}>
+                        <div style={agendaModal.itemTop}>
+                          <span style={agendaModal.badge}>{a.tipo === 'aula' ? 'Aula' : 'Jogo'}</span>
+                          <span style={agendaModal.hour}>{a.horarioInicio} - {a.horarioFim}</span>
+                        </div>
+
+                        <strong style={agendaModal.itemTitle}>{a.titulo}</strong>
+                        <span style={agendaModal.itemMeta}>{a.local}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showConfig && (
         <div
@@ -831,25 +979,27 @@ export default function HomeScreen({
           <section style={s.section}>
             <div style={s.sectionHeader}>
               <h3 style={s.sectionTitle}>Próximos eventos</h3>
-              <span style={s.sectionLink}>Ver agenda ›</span>
+              <button type="button" style={s.sectionLinkBtn} onClick={abrirAgendaLista}>Ver agenda ›</button>
             </div>
 
             <div style={s.eventsCard}>
-              <div style={s.eventItem}>
+              <button type="button" style={s.eventItemBtn} onClick={abrirAgendaLista}>
                 <div style={s.eventDateBox}>
-                  <strong>--</strong>
-                  <span>---</span>
+                  <strong>{atividadeResumo ? atividadeResumo.dataBox.dia : '--'}</strong>
+                  <span>{atividadeResumo ? atividadeResumo.dataBox.mes : '---'}</span>
                 </div>
 
                 <div style={s.eventInfo}>
-                  <div style={s.eventTitle}>Nenhum evento próximo</div>
+                  <div style={s.eventTitle}>{atividadeResumo ? atividadeResumo.titulo : 'Nenhum evento próximo'}</div>
                   <div style={s.eventMeta}>
-                    Quando houver partidas, aulas ou treinos agendados, eles aparecerão aqui.
+                    {atividadeResumo
+                      ? atividadeResumo.meta
+                      : 'Quando houver partidas, aulas ou treinos agendados, eles aparecerão aqui.'}
                   </div>
                 </div>
 
                 <div style={s.eventArrow}>›</div>
-              </div>
+              </button>
             </div>
           </section>
 
@@ -1321,6 +1471,17 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 800,
   },
 
+  sectionLinkBtn: {
+    border: 'none',
+    background: 'transparent',
+    color: '#a86a55',
+    fontSize: 11,
+    fontWeight: 850,
+    cursor: 'pointer',
+    padding: '6px 0 6px 8px',
+    fontFamily: 'inherit',
+  },
+
   quickGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
@@ -1401,6 +1562,21 @@ const s: Record<string, React.CSSProperties> = {
     padding: 12,
     minHeight: 72,
     boxSizing: 'border-box',
+  },
+
+  eventItemBtn: {
+    width: '100%',
+    border: 'none',
+    background: 'transparent',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    minHeight: 72,
+    boxSizing: 'border-box',
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontFamily: 'inherit',
   },
 
   eventDateBox: {
@@ -1531,6 +1707,224 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+};
+
+
+const agendaModal: Record<string, React.CSSProperties> = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 210,
+    background: 'rgba(44,30,24,0.42)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    boxSizing: 'border-box',
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
+  },
+
+  sheet: {
+    width: '100%',
+    maxWidth: 440,
+    maxHeight: '88dvh',
+    overflowY: 'auto',
+    background: '#fffaf5',
+    borderRadius: 28,
+    border: '1px solid rgba(130,82,62,0.12)',
+    boxShadow: '0 24px 70px rgba(44,36,31,0.28)',
+    padding: 16,
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+  },
+
+  topBar: {
+    display: 'grid',
+    gridTemplateColumns: '42px 1fr 42px',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  iconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: '50%',
+    background: '#fff1e9',
+    color: '#c26348',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  titleBox: {
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+  },
+
+  title: {
+    margin: 0,
+    color: '#2d2521',
+    fontSize: 18,
+    fontWeight: 950,
+    letterSpacing: -0.35,
+  },
+
+  subtitle: {
+    margin: 0,
+    color: '#8f7769',
+    fontSize: 12,
+    fontWeight: 650,
+  },
+
+  closeBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: '50%',
+    border: 'none',
+    background: '#f7eee7',
+    color: '#9a5a45',
+    fontSize: 18,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  tabs: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    background: '#f3e8de',
+    borderRadius: 18,
+    padding: 4,
+    gap: 4,
+  },
+
+  tabBtn: {
+    border: 'none',
+    borderRadius: 14,
+    padding: '11px 8px',
+    background: 'transparent',
+    color: '#8f7769',
+    fontSize: 13,
+    fontWeight: 900,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+
+  tabBtnActive: {
+    background: 'linear-gradient(135deg, #c66b4d, #934836)',
+    color: '#fff',
+    boxShadow: '0 8px 18px rgba(147,72,54,0.18)',
+  },
+
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+
+  item: {
+    display: 'grid',
+    gridTemplateColumns: '48px 1fr',
+    gap: 12,
+    alignItems: 'center',
+    background: '#fff',
+    borderRadius: 18,
+    border: '1px solid rgba(130,82,62,0.08)',
+    padding: 12,
+    boxShadow: '0 10px 26px rgba(123,72,52,0.06)',
+  },
+
+  dateBox: {
+    width: 48,
+    height: 52,
+    borderRadius: 14,
+    background: '#f4ebe3',
+    color: '#7b5141',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  itemInfo: {
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+
+  itemTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+
+  badge: {
+    padding: '4px 8px',
+    borderRadius: 999,
+    background: '#fff1e9',
+    color: '#b45e45',
+    fontSize: 10,
+    fontWeight: 950,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.4,
+  },
+
+  hour: {
+    color: '#9b8a7f',
+    fontSize: 11,
+    fontWeight: 800,
+  },
+
+  itemTitle: {
+    color: '#342a24',
+    fontSize: 14,
+    fontWeight: 950,
+    lineHeight: 1.2,
+  },
+
+  itemMeta: {
+    color: '#938174',
+    fontSize: 11.5,
+    fontWeight: 650,
+    lineHeight: 1.35,
+  },
+
+  emptyBox: {
+    minHeight: 190,
+    background: '#fff',
+    borderRadius: 20,
+    border: '1px solid rgba(130,82,62,0.08)',
+    boxShadow: '0 10px 26px rgba(123,72,52,0.06)',
+    padding: 18,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    textAlign: 'center',
+    color: '#8f7769',
+  },
+
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: '50%',
+    background: '#fff1e9',
+    color: '#c26348',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 22,
+    fontWeight: 950,
   },
 };
 
