@@ -84,6 +84,12 @@ function mesmaAtividadePrincipal(a: AtividadeHomeRecord, p: ProximaAtividadeComp
   return mesmoTipo && mesmaData && mesmaHora;
 }
 
+function labelTipoAtividade(tipo: AtividadeHomeRecord['tipo']): string {
+  if (tipo === 'aula') return 'Aula';
+  if (tipo === 'desafio') return 'Desafio';
+  return 'Jogo';
+}
+
 
 function UserOutlineIcon({ size = 22 }: { size?: number }) {
   return (
@@ -238,7 +244,7 @@ export default function HomeScreen({
 
     if (!emailUsuario) return;
 
-    getProximaAtividadeCompleta(emailUsuario, role)
+    getProximaAtividadeCompleta(emailUsuario, role, token)
       .then(data => {
         if (ativo) setProximaAtividade(data);
       })
@@ -249,7 +255,7 @@ export default function HomeScreen({
     return () => {
       ativo = false;
     };
-  }, [emailUsuario, role]);
+  }, [emailUsuario, role, token]);
 
   useEffect(() => {
     let ativo = true;
@@ -353,17 +359,34 @@ export default function HomeScreen({
 
   const semTelefone = !telefone || telefone.trim() === '';
 
-  const proximaTipoLabel = proximaAtividade?.tipo === 'aula' ? 'PRÓXIMA AULA' : 'PRÓXIMA PARTIDA';
+  const proximaPessoaNome =
+    proximaAtividade
+      ? ((proximaAtividade as any).adversarioNome || (proximaAtividade as any).pessoaNome || 'Adversário')
+      : 'Adversário';
+
+  const proximaTipoLabel =
+    proximaAtividade?.tipo === 'aula'
+      ? 'PRÓXIMA AULA'
+      : proximaAtividade?.tipo === 'desafio'
+        ? 'PRÓXIMO DESAFIO'
+        : 'PRÓXIMA PARTIDA';
 
   const proximaTitulo = proximaAtividade
     ? proximaAtividade.tipo === 'aula'
       ? role === 'admin'
-        ? `Aula com ${proximaAtividade.alunoNome || 'aluno'}`
+        ? `Aula com ${(proximaAtividade as any).alunoNome || (proximaAtividade as any).pessoaNome || 'aluno'}`
         : 'Aula com Prof. Carlão'
-      : `${displayName} x ${proximaAtividade.adversarioNome || 'Adversário'}`
+      : proximaAtividade.tipo === 'desafio'
+        ? `Desafio vs ${proximaPessoaNome}`
+        : `${displayName} x ${proximaPessoaNome}`
     : '';
 
-  const proximaDestino: Screen = proximaAtividade?.tipo === 'aula' ? 'agenda' : 'mural';
+  const proximaDestino: Screen =
+    proximaAtividade?.tipo === 'aula'
+      ? 'agenda'
+      : proximaAtividade?.tipo === 'desafio'
+        ? 'ranking'
+        : 'mural';
 
   const handleResponderDesafio = async (aceitar: boolean) => {
     if (!token || prioridadeHome?.tipo !== 'desafio') return;
@@ -399,7 +422,7 @@ export default function HomeScreen({
     setAgendaErro('');
 
     try {
-      const data = await getAtividadesHome(emailUsuario, role);
+      const data = await getAtividadesHome(emailUsuario, role, token);
       setAtividadesHome(data);
       setAgendaTab(data.proximas.length > 0 ? 'proximas' : 'anteriores');
     } catch {
@@ -417,7 +440,7 @@ export default function HomeScreen({
 
     if (!emailUsuario) return;
 
-    getAtividadesHome(emailUsuario, role)
+    getAtividadesHome(emailUsuario, role, token)
       .then(data => {
         if (!ativo) return;
         setAtividadesHome(data);
@@ -431,7 +454,7 @@ export default function HomeScreen({
     return () => {
       ativo = false;
     };
-  }, [emailUsuario, role]);
+  }, [emailUsuario, role, token]);
 
   const abrirAgendaLista = async () => {
     setShowAgendaLista(true);
@@ -555,7 +578,7 @@ export default function HomeScreen({
 
                       <div style={agendaModal.itemInfo}>
                         <div style={agendaModal.itemTop}>
-                          <span style={agendaModal.badge}>{a.tipo === 'aula' ? 'Aula' : 'Jogo'}</span>
+                          <span style={agendaModal.badge}>{labelTipoAtividade(a.tipo)}</span>
                           <span style={agendaModal.hour}>{a.horarioInicio} - {a.horarioFim}</span>
                         </div>
 
@@ -994,7 +1017,7 @@ export default function HomeScreen({
                     style={s.heroDetailsBtn}
                     onClick={() => onNavigate(proximaDestino)}
                   >
-                    {proximaAtividade.tipo === 'aula' ? 'Ver agenda ›' : 'Ver detalhes ›'}
+                    {proximaAtividade.tipo === 'aula' ? 'Ver agenda ›' : proximaAtividade.tipo === 'desafio' ? 'Ver ranking ›' : 'Ver detalhes ›'}
                   </button>
                 </>
               ) : (
@@ -1683,9 +1706,9 @@ const s: Record<string, React.CSSProperties> = {
   eventsCard: {
     background: 'rgba(255,255,255,0.88)',
     border: '1px solid rgba(130,82,62,0.08)',
-    borderRadius: 18,
+    borderRadius: 20,
     overflow: 'hidden',
-    boxShadow: '0 8px 22px rgba(117,76,56,0.06)',
+    boxShadow: '0 10px 28px rgba(117,76,56,0.07)',
   },
 
   eventItem: {
@@ -1703,17 +1726,13 @@ const s: Record<string, React.CSSProperties> = {
     background: 'transparent',
     display: 'flex',
     alignItems: 'center',
-    gap: 9,
-    padding: '8px 10px',
-    minHeight: 54,
+    gap: 12,
+    padding: 12,
+    minHeight: 72,
     boxSizing: 'border-box',
     cursor: 'pointer',
     textAlign: 'left',
     fontFamily: 'inherit',
-  },
-
-  eventItemBtnBorder: {
-    borderTop: '1px solid rgba(130,82,62,0.07)',
   },
 
   eventDateBox: {
@@ -1741,27 +1760,21 @@ const s: Record<string, React.CSSProperties> = {
     color: '#342a24',
     fontSize: 12.2,
     fontWeight: 900,
-    lineHeight: 1.15,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    lineHeight: 1.2,
   },
 
   eventMeta: {
     color: '#938174',
     fontSize: 10.3,
     fontWeight: 600,
-    lineHeight: 1.25,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    lineHeight: 1.35,
   },
 
   eventArrow: {
     color: '#b59c8c',
     fontSize: 18,
     fontWeight: 300,
-    paddingRight: 1,
+    paddingRight: 2,
   },
 
   footer: {
