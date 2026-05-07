@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { getJogos, postJogo, deleteJogo, updateJogoDatas, type JogoRecord, type UpdateJogoDatasPayload } from '@services/apiService';
+import { getJogos, postJogo, deleteJogo, updateJogoDatas, buscarCidadesIBGE, padronizarCidadeIBGE, cidadeEstaPadronizada, type CidadeIBGE, type JogoRecord, type UpdateJogoDatasPayload } from '@services/apiService';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'https://tenis-back-production-9f72.up.railway.app';
 const TOKEN_KEY = 'tenis_token';
@@ -257,8 +257,17 @@ async function detectarCidade(): Promise<string> {
           const json = await res.json();
           const city = json.address?.city || json.address?.town || json.address?.village || '';
 
-          if (city) resolve(city);
-          else reject(new Error('Cidade não identificada.'));
+          if (city) {
+            try {
+              const opcoes = await buscarCidadesIBGE(city, 5);
+              const cidadeExata = opcoes.find(c => c.nome.toLowerCase() === String(city).toLowerCase());
+              resolve((cidadeExata ?? opcoes[0])?.label ?? city);
+            } catch {
+              resolve(city);
+            }
+          } else {
+            reject(new Error('Cidade não identificada.'));
+          }
         } catch {
           reject(new Error('Falha ao consultar localização.'));
         }
@@ -308,8 +317,38 @@ function UsersLineIcon({ size = 23 }: { size?: number }) {
 
 function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void; onBack: () => void }) {
   const [input, setInput] = useState('');
+  const [sugestoes, setSugestoes] = useState<CidadeIBGE[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingSugestoes, setLoadingSugestoes] = useState(false);
   const [erro, setErro] = useState('');
+
+  useEffect(() => {
+    let ativo = true;
+    const termo = input.trim();
+
+    if (termo.length < 2 || cidadeEstaPadronizada(termo)) {
+      setSugestoes([]);
+      setLoadingSugestoes(false);
+      return;
+    }
+
+    setLoadingSugestoes(true);
+
+    buscarCidadesIBGE(termo)
+      .then(opcoes => {
+        if (ativo) setSugestoes(opcoes);
+      })
+      .catch(() => {
+        if (ativo) setSugestoes([]);
+      })
+      .finally(() => {
+        if (ativo) setLoadingSugestoes(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [input]);
 
   const handleDetectar = async () => {
     setErro('');
@@ -324,7 +363,7 @@ function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void
     }
   };
 
-  const handleConfirmar = () => {
+  const handleConfirmar = async () => {
     const c = input.trim();
 
     if (!c) {
@@ -332,7 +371,15 @@ function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void
       return;
     }
 
-    onConfirm(c);
+    try {
+      const final = cidadeEstaPadronizada(c)
+        ? c
+        : sugestoes[0]?.label ?? await padronizarCidadeIBGE(c);
+
+      onConfirm(final);
+    } catch {
+      onConfirm(c);
+    }
   };
 
   return (
@@ -355,14 +402,38 @@ function CityPickerModal({ onConfirm, onBack }: { onConfirm: (c: string) => void
 
         <p style={cm.ouLabel}>— ou digite manualmente —</p>
 
-        <input
-          style={cm.input}
-          placeholder="Ex: Teófilo Otoni"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleConfirmar()}
-          autoFocus
-        />
+        <div style={cm.cityFieldWrap}>
+          <input
+            style={cm.input}
+            placeholder="Ex: Belo Horizonte - MG"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleConfirmar()}
+            autoFocus
+            autoComplete="off"
+          />
+
+          {(loadingSugestoes || sugestoes.length > 0) && (
+            <div style={cm.citySuggestList}>
+              {loadingSugestoes ? (
+                <div style={cm.citySuggestLoading}>Buscando cidades...</div>
+              ) : sugestoes.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  style={cm.citySuggestItem}
+                  onClick={() => {
+                    setInput(c.label);
+                    setSugestoes([]);
+                  }}
+                >
+                  <span style={cm.citySuggestName}>{c.nome}</span>
+                  <span style={cm.citySuggestUf}>{c.uf}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {erro && <p style={cm.erro}>{erro}</p>}
 
@@ -512,9 +583,29 @@ export default function MuralScreen({
     loadJogos();
   }, [loadJogos]);
 
-  const handleConfirmCity = useCallback((c: string) => {
-    localStorage.setItem(LS_CIDADE, c);
-    setCidade(c);
+  useEffect(() => {
+    let ativo = true;
+    const atual = cidade.trim();
+
+    if (!atual || cidadeEstaPadronizada(atual)) return;
+
+    padronizarCidadeIBGE(atual)
+      .then(final => {
+        if (!ativo || !final || final === atual) return;
+        localStorage.setItem(LS_CIDADE, final);
+        setCidade(final);
+      })
+      .catch(() => {});
+
+    return () => {
+      ativo = false;
+    };
+  }, [cidade]);
+
+  const handleConfirmCity = useCallback(async (c: string) => {
+    const final = await padronizarCidadeIBGE(c).catch(() => c.trim());
+    localStorage.setItem(LS_CIDADE, final);
+    setCidade(final);
     setShowCity(false);
   }, []);
 
@@ -2921,6 +3012,72 @@ const cm: Record<string, React.CSSProperties> = {
     fontSize: 16,
     boxSizing: 'border-box',
     colorScheme: 'light',
+  },
+
+  cityFieldWrap: {
+    position: 'relative',
+    width: '100%',
+  },
+
+  citySuggestList: {
+    position: 'absolute',
+    top: 54,
+    left: 0,
+    right: 0,
+    zIndex: 120,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.12)',
+    borderRadius: 16,
+    padding: 6,
+    boxShadow: '0 16px 34px rgba(70,45,34,0.18)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    maxHeight: 220,
+    overflowY: 'auto',
+  },
+
+  citySuggestItem: {
+    width: '100%',
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 12,
+    padding: '10px 11px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+  },
+
+  citySuggestName: {
+    color: '#2d2521',
+    fontSize: 13,
+    fontWeight: 850,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+
+  citySuggestUf: {
+    minWidth: 34,
+    padding: '4px 8px',
+    borderRadius: 999,
+    background: '#fff1eb',
+    color: '#b45e45',
+    fontSize: 11,
+    fontWeight: 950,
+    textAlign: 'center',
+  },
+
+  citySuggestLoading: {
+    padding: '12px 10px',
+    color: '#8f7769',
+    fontSize: 12,
+    fontWeight: 750,
+    textAlign: 'center',
   },
 
   erro: {
