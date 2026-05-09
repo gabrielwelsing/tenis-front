@@ -96,7 +96,6 @@ function buildWaAluno(tel: string, nome: string) {
   return 'https://wa.me/' + numero + '?text=' + msg;
 }
 
-// ── Filtra slots do passado quando for hoje ───────────────────────────────────
 function filtrarSlotsPassados(slots: SlotDia[], data: string): SlotDia[] {
   if (data !== todayStr()) return slots;
   const now = new Date();
@@ -110,15 +109,12 @@ function filtrarSlotsPassados(slots: SlotDia[], data: string): SlotDia[] {
 function inscricaoJaPassou(insc: Inscricao): boolean {
   const hoje = todayStr();
   const dataInscricao = insc.data.slice(0, 10);
-
   if (dataInscricao < hoje) return true;
   if (dataInscricao > hoje) return false;
-
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const horaBase = (insc.hora_fim || insc.hora_inicio).slice(0, 5);
   const [hh, mm] = horaBase.split(':').map(Number);
-
   return hh * 60 + mm <= nowMin;
 }
 
@@ -179,25 +175,17 @@ function WaIcon() {
 function DateNav({ data, setData }: { data: string; setData: (d: string) => void }) {
   const isToday  = data === todayStr();
   const inputRef = React.useRef<HTMLInputElement>(null);
-
   return (
     <div style={dn.wrap}>
       <button style={dn.arrow} onClick={() => setData(addDays(data, -1))}>‹</button>
-
       <div style={{ position: 'relative' }}>
         <button style={dn.label} onClick={() => inputRef.current?.showPicker?.() ?? inputRef.current?.click()}>
           <CalendarLineIcon size={15}/>
           <span>{isToday ? 'Hoje' : fmtDateBr(data)}</span>
         </button>
-        <input
-          ref={inputRef}
-          type="date"
-          value={data}
-          onChange={e => e.target.value && setData(e.target.value)}
-          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2, colorScheme: 'light' }}
-        />
+        <input ref={inputRef} type="date" value={data} onChange={e => e.target.value && setData(e.target.value)}
+          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2, colorScheme: 'light' }} />
       </div>
-
       <button style={dn.arrow} onClick={() => setData(addDays(data, 1))}>›</button>
     </div>
   );
@@ -206,26 +194,17 @@ function DateNav({ data, setData }: { data: string; setData: (d: string) => void
 function CalendarPicker({ data, setData }: { data: string; setData: (d: string) => void }) {
   const ref = React.useRef<HTMLInputElement>(null);
   return (
-    <div
-      style={{ ...s.sectionIcon, cursor: 'pointer', position: 'relative' }}
-      onClick={() => ref.current?.showPicker?.() ?? ref.current?.click()}
-    >
+    <div style={{ ...s.sectionIcon, cursor: 'pointer', position: 'relative' }}
+      onClick={() => ref.current?.showPicker?.() ?? ref.current?.click()}>
       <CalendarLineIcon size={22}/>
-      <input
-        ref={ref}
-        type="date"
-        value={data}
-        onChange={e => e.target.value && setData(e.target.value)}
-        style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2 }}
-      />
+      <input ref={ref} type="date" value={data} onChange={e => e.target.value && setData(e.target.value)}
+        style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2 }} />
     </div>
   );
 }
 
 function avatarEl(nome: string, foto: string | null | undefined, size = 30) {
-  if (foto) {
-    return <img src={foto} alt={nome} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}/>;
-  }
+  if (foto) return <img src={foto} alt={nome} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}/>;
   return (
     <div style={{ width: size, height: size, borderRadius: '50%', background: 'linear-gradient(135deg,#c6714e,#8f4635)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
       {nome.charAt(0).toUpperCase()}
@@ -269,10 +248,10 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const [proximoEspera,     setProximoEspera]     = useState<Inscricao | null>(null);
   const [minhasInscricoes,  setMinhasInscricoes]  = useState<Inscricao[]>([]);
 
-  const [showForm,      setShowForm]      = useState(false);
-  const [form,          setForm]          = useState({ hora_inicio: '07:00', hora_fim: '08:00', tipo: 'individual', vagas: 1, observacao: '' });
-  const [showFormFixo,  setShowFormFixo]  = useState(false);
-  const [formFixo,      setFormFixo]      = useState({ dia_semana: 1, hora_inicio: '07:00', hora_fim: '08:00' });
+  const [showForm,         setShowForm]         = useState(false);
+  const [form,             setForm]             = useState({ hora_inicio: '07:00', hora_fim: '08:00', tipo: 'individual', vagas: 1, observacao: '' });
+  const [showFormFixo,     setShowFormFixo]     = useState(false);
+  const [formFixo,         setFormFixo]         = useState({ dia_semana: 1, hora_inicio: '07:00', hora_fim: '08:00' });
   const [editandoOverride, setEditandoOverride] = useState<string | null>(null);
   const [formOverride,     setFormOverride]     = useState({ tipo: 'individual', vagas: 1 });
 
@@ -282,8 +261,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   };
 
   useEffect(() => {
-    fetch(API + '/agenda/admin-info')
-      .then(r => r.json()).then(setAdminInfo).catch(() => {});
+    fetch(API + '/agenda/admin-info').then(r => r.json()).then(setAdminInfo).catch(() => {});
   }, []);
 
   const loadSlotsDia = useCallback(async () => {
@@ -340,8 +318,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
 
   useEffect(() => { loadSlotsDia(); loadSlots(); loadMinhasInscricoes(); }, [loadSlotsDia, loadSlots, loadMinhasInscricoes]);
   useEffect(() => { loadSolicitacoes(); loadHorariosFixos(); }, [loadSolicitacoes, loadHorariosFixos]);
-
-  // ── Actions existentes ────────────────────────────────────────────────────
 
   const saveSlot = async () => {
     if (!adminInfo?.email) return;
@@ -527,9 +503,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               {slot.source === 'fixo' && (
                 <>
-                  <button style={sc.editBtn} onClick={() => { setEditandoOverride(hi); setFormOverride({ tipo: slot.tipo, vagas: slot.vagas }); }}>
-                    Editar dia
-                  </button>
+                  <button style={sc.editBtn} onClick={() => { setEditandoOverride(hi); setFormOverride({ tipo: slot.tipo, vagas: slot.vagas }); }}>Editar dia</button>
                   <button style={sc.delBtn} onClick={() => cancelarSlotDia(slot)}>✕</button>
                 </>
               )}
@@ -630,15 +604,15 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                 color: minhaInscricao.status === 'confirmada' ? '#3f8f5b' : minhaInscricao.status === 'lista_espera' ? '#b98718' : '#c66b4d' }}>
                 {minhaInscricao.status === 'confirmada' ? (
                   <>
-                    <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 2 }}>✓ {minhaInscricao.nome_aluno}</div>
-                    <div style={{ fontSize: 11, color: '#3f8f5b', fontWeight: 600 }}>Reserva confirmada</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 2 }}>✓ Confirmado comigo</div>
+                    <div style={{ fontSize: 11, color: '#3f8f5b', fontWeight: 600 }}>{minhaInscricao.nome_aluno}</div>
                   </>
                 ) : minhaInscricao.status === 'lista_espera'
                   ? '⏳ Você está na lista de espera'
                   : '⏳ Solicitação enviada — aguardando confirmação'}
               </div>
             ) : estaOcupado ? (
-              <div style={sc.ocupadoInfo}>Este horário está ocupado</div>
+              <div style={sc.ocupadoInfo}>Ocupado</div>
             ) : slot.perto1h ? (
               <button onClick={abrirWaAdmin} style={sc.waBtn}>
                 <WaIcon/> Entre em contato para informar interesse
@@ -659,7 +633,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         )}
 
         {!isAdmin && (isBloqueado || manualOcupado) && (
-          <div style={sc.ocupadoInfo}>{isBloqueado ? 'Horário bloqueado' : 'Este horário está ocupado'}</div>
+          <div style={sc.ocupadoInfo}>{isBloqueado ? 'Horário bloqueado' : 'Ocupado'}</div>
         )}
       </div>
     );
@@ -677,7 +651,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         </div>
       );
     }
-
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {minhasInscricoes.map(insc => {
@@ -687,26 +660,19 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
           return (
             <div key={insc.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: '4px solid ' + cor }}>
               <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {/* Status badge */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: bg, border: '1px solid ' + bd, color: cor }}>
                     {insc.status === 'confirmada' ? '✓ Confirmada' : insc.status === 'lista_espera' ? '⏳ Lista de espera' : '• Aguardando confirmação'}
                   </span>
                   <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>{fmtDateBr(insc.data)}</span>
                 </div>
-
-                {/* Horário */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c66b4d' }}>
                   <ClockLineIcon size={17}/>
                   <span style={{ fontSize: 15, fontWeight: 800, color: '#2d2521' }}>{fmt(insc.hora_inicio)} – {fmt(insc.hora_fim)}</span>
                 </div>
-
-                {/* WhatsApp do professor */}
                 {adminInfo?.telefone && (
-                  <button
-                    onClick={() => window.open(buildWaAdmin(adminInfo.telefone!, insc.data, insc.hora_inicio, insc.hora_fim, 'individual'), '_blank')}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}
-                  >
+                  <button onClick={() => window.open(buildWaAdmin(adminInfo.telefone!, insc.data, insc.hora_inicio, insc.hora_fim, 'individual'), '_blank')}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}>
                     <WaIcon/> Falar com o professor
                   </button>
                 )}
@@ -722,7 +688,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
 
   const renderSolicitacoes = () => {
     const solicitacoesAtivas = solicitacoes.filter(i => i.status !== 'confirmada' && !inscricaoJaPassou(i));
-
     if (solicitacoesAtivas.length === 0) {
       return (
         <div style={s.emptyFeed}>
@@ -753,11 +718,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                 <span style={{ fontSize: 12, color: '#8f7769', fontWeight: 700 }}>{inscs.length} pessoa{inscs.length > 1 ? 's' : ''}</span>
               </div>
               {inscs.map((insc, idx) => (
-                <div key={insc.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px',
-                  borderBottom: idx < inscs.length - 1 ? '1px solid #f4ebe3' : 'none',
-                  background: proximoEspera?.id === insc.id ? '#fff8f0' : 'transparent',
-                }}>
+                <div key={insc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: idx < inscs.length - 1 ? '1px solid #f4ebe3' : 'none', background: proximoEspera?.id === insc.id ? '#fff8f0' : 'transparent' }}>
                   {avatarEl(insc.nome_aluno, insc.foto_url, 34)}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 750, color: '#2d2521', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{insc.nome_aluno}</div>
@@ -774,8 +735,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                       </button>
                     )}
                     {insc.status !== 'confirmada' && insc.status !== 'cancelada' && (
-                      <button style={{ padding: '6px 10px', borderRadius: 10, border: 'none', background: '#3f8f5b', color: '#fff', fontSize: 11, fontWeight: 850, cursor: 'pointer' }}
-                        onClick={() => confirmarReserva(insc.id)}>
+                      <button style={{ padding: '6px 10px', borderRadius: 10, border: 'none', background: '#3f8f5b', color: '#fff', fontSize: 11, fontWeight: 850, cursor: 'pointer' }} onClick={() => confirmarReserva(insc.id)}>
                         Confirmar
                       </button>
                     )}
@@ -851,10 +811,9 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
 
   // ── Main render ────────────────────────────────────────────────────────────
 
-  // Slots filtrados (remove passados quando for hoje)
   const slotsVisiveis = filtrarSlotsPassados(slotsDia, data);
   const aulasConfirmadas = solicitacoes.filter(i => i.status === 'confirmada');
-  const aulasConfirmadasFuturas = aulasConfirmadas.filter(i => !inscricaoJaPassou(i)).sort(ordenarInscricoesAsc);
+  const aulasConfirmadasFuturas  = aulasConfirmadas.filter(i => !inscricaoJaPassou(i)).sort(ordenarInscricoesAsc);
   const aulasConfirmadasHistorico = aulasConfirmadas.filter(inscricaoJaPassou).sort(ordenarInscricoesDesc);
 
   return (
@@ -877,15 +836,14 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         </div>
       )}
 
-      {/* Tab bar admin */}
       {isAdmin && (
         <div style={s.tabBar}>
           {([
             { key: 'agenda',       label: 'Agenda'         },
-            { key: 'solicitacoes',  label: 'Solicitações'  },
-            { key: 'confirmadas',   label: 'Confirmadas'   },
-            { key: 'historico',     label: 'Histórico'     },
-            { key: 'fixos',         label: 'Horários Fixos'},
+            { key: 'solicitacoes', label: 'Solicitações'   },
+            { key: 'confirmadas',  label: 'Confirmadas'    },
+            { key: 'historico',    label: 'Histórico'      },
+            { key: 'fixos',        label: 'Horários Fixos' },
           ] as { key: AdminTab; label: string }[]).map(t => (
             <button key={t.key} style={{ ...s.tabBtn, ...(adminTab === t.key ? s.tabActive : {}) }} onClick={() => setAdminTab(t.key)}>
               {t.label}
@@ -894,11 +852,10 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         </div>
       )}
 
-      {/* Tab bar user/aluno */}
       {!isAdmin && (
         <div style={s.tabBar}>
           {([
-            { key: 'agenda', label: 'Agenda'          },
+            { key: 'agenda', label: 'Agenda' },
             { key: 'minhas', label: 'Minhas Aulas' + (minhasInscricoes.length > 0 ? ' (' + minhasInscricoes.length + ')' : '') },
           ] as { key: UserTab; label: string }[]).map(t => (
             <button key={t.key} style={{ ...s.tabBtn, ...(userTab === t.key ? s.tabActive : {}) }} onClick={() => setUserTab(t.key)}>
@@ -911,7 +868,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       <div style={s.scrollBody}>
         <div style={s.inner}>
 
-          {/* ── Admin: Agenda ── */}
           {isAdmin && adminTab === 'agenda' && (
             <>
               <section style={s.heroCard}>
@@ -997,6 +953,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               {renderSolicitacoes()}
             </section>
           )}
+
           {isAdmin && adminTab === 'confirmadas' && (
             <section style={s.section}>
               <div style={s.sectionHead}>
@@ -1006,7 +963,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                   <span style={{ fontSize: 12, color: '#94857a' }}>Próximas aulas agendadas</span>
                 </div>
               </div>
-
               {aulasConfirmadasFuturas.length === 0 ? (
                 <div style={s.emptyFeed}>
                   <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
@@ -1019,35 +975,25 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                     <div key={insc.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: '4px solid #3f8f5b' }}>
                       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: '#edf8ef', border: '1px solid #bee0c8', color: '#3f8f5b' }}>
-                            ✓ Confirmada
-                          </span>
+                          <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: '#edf8ef', border: '1px solid #bee0c8', color: '#3f8f5b' }}>✓ Confirmada</span>
                           <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>{fmtDateBr(insc.data)}</span>
                         </div>
-
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c66b4d' }}>
                           <ClockLineIcon size={17}/>
                           <span style={{ fontSize: 15, fontWeight: 800, color: '#2d2521' }}>{fmt(insc.hora_inicio)} – {fmt(insc.hora_fim)}</span>
                         </div>
-
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {avatarEl(insc.nome_aluno, insc.foto_url, 30)}
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#2d2521' }}>{insc.nome_aluno}</span>
                         </div>
-
                         {insc.telefone_usuario && (
-                          <button
-                            onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}
-                          >
+                          <button onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}>
                             <WaIcon/> WhatsApp do aluno
                           </button>
                         )}
-
-                        <button
-                          style={{ padding: '9px 0', borderRadius: 12, border: '1px solid rgba(201,84,65,0.22)', background: '#fff0ec', color: '#c95441', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
-                          onClick={() => cancelarReserva(insc.id)}
-                        >
+                        <button style={{ padding: '9px 0', borderRadius: 12, border: '1px solid rgba(201,84,65,0.22)', background: '#fff0ec', color: '#c95441', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
+                          onClick={() => cancelarReserva(insc.id)}>
                           Cancelar aula
                         </button>
                       </div>
@@ -1067,7 +1013,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                   <span style={{ fontSize: 12, color: '#94857a' }}>Aulas confirmadas que já passaram</span>
                 </div>
               </div>
-
               {aulasConfirmadasHistorico.length === 0 ? (
                 <div style={s.emptyFeed}>
                   <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
@@ -1080,27 +1025,20 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                     <div key={insc.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: '4px solid #8d7b70', opacity: 0.92 }}>
                       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: '#f1e9e4', border: '1px solid #e5d8cf', color: '#8d7b70' }}>
-                            Histórico
-                          </span>
+                          <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: '#f1e9e4', border: '1px solid #e5d8cf', color: '#8d7b70' }}>Histórico</span>
                           <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>{fmtDateBr(insc.data)}</span>
                         </div>
-
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#8d7b70' }}>
                           <ClockLineIcon size={17}/>
                           <span style={{ fontSize: 15, fontWeight: 800, color: '#2d2521' }}>{fmt(insc.hora_inicio)} – {fmt(insc.hora_fim)}</span>
                         </div>
-
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {avatarEl(insc.nome_aluno, insc.foto_url, 30)}
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#2d2521' }}>{insc.nome_aluno}</span>
                         </div>
-
                         {insc.telefone_usuario && (
-                          <button
-                            onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: '#edf8ef', color: '#3f8f5b', border: '1px solid #bee0c8', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}
-                          >
+                          <button onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: '#edf8ef', color: '#3f8f5b', border: '1px solid #bee0c8', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}>
                             <WaIcon/> WhatsApp do aluno
                           </button>
                         )}
@@ -1125,7 +1063,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             </section>
           )}
 
-          {/* ── User/Aluno: Agenda ── */}
           {!isAdmin && userTab === 'agenda' && (
             <>
               <section style={s.heroCard}>
@@ -1158,7 +1095,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             </>
           )}
 
-          {/* ── User/Aluno: Minhas Aulas ── */}
           {!isAdmin && userTab === 'minhas' && (
             <section style={s.section}>
               <div style={s.sectionHead}>
