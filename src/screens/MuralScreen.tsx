@@ -34,6 +34,7 @@ interface Jogo {
   status?:          'aberta' | 'confirmada' | 'encerrada' | 'cancelada';
   interessados?:    number;
   confirmado_com?:  string | null;
+  nomeConfirmado?:  string | null
 }
 
 interface Interessado {
@@ -1414,6 +1415,7 @@ function JogoCard({
         <div style={sc.chipRow}>
           {isOwner && <span style={sc.ownerChip}>Seu post</span>}
           {isConfirmada && !isCancelada && <span style={sc.confirmedChip}>Confirmada</span>}
+          {isConfirmada && !isCancelada && ((isOwner || isConfirmedParticipant)? <span style={sc.confirmedChip}>Confirmada</span>: <span style={{ ...sc.confirmedChip, background: '#fff4e8', color: '#b36a2f' }}>Confirmada com outro jogador</span>)}
           {isCancelada && <span style={sc.cancelledChip}>Cancelada</span>}
           {isEncerrada && <span style={sc.endedChip}>Encerrada</span>}
           {jaJogou && !isCancelada && !isEncerrada && <span style={sc.endedChip}>Histórico</span>}
@@ -1501,7 +1503,7 @@ function JogoCard({
 
         {isConfirmada && (isOwner || isConfirmedParticipant) && (
           <div style={sc.confirmadaInfo}>
-            Confirmado com <strong>{jogo.confirmado_com?.split('@')[0]}</strong>
+            Confirmado com <strong>{jogo.nomeConfirmado || jogo.confirmado_com?.split('@')[0]}</strong>
           </div>
         )}
 
