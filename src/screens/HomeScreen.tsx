@@ -505,15 +505,15 @@ export default function HomeScreen({
   const listaAtivaAgenda = agendaTab === 'proximas'
     ? atividadesHomeComFallback.proximas
     : atividadesHomeComFallback.anteriores;
-
+  
   const proximosEventosTela = atividadesHomeComFallback.proximas
-    .sort((a, b) => atividadeTimestamp(a) - atividadeTimestamp(b))
-    .slice(0, 5);
+  .sort((a, b) => atividadeTimestamp(a) - atividadeTimestamp(b))
+  .filter(a => !mesmaAtividadePrincipal(a, proximaAtividade))
+  .slice(0, 2);
 
-  // Todos os eventos reais + apenas 1 slot vazio no final
   const eventosSlotsTela: Array<AtividadeHomeRecord | null> = [
-    ...proximosEventosTela,
-    null,
+  ...proximosEventosTela,
+  ...Array(Math.max(0, 2 - proximosEventosTela.length)).fill(null),
   ];
 
   const LockedCard = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
