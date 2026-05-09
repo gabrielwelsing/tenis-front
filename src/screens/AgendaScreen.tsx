@@ -479,7 +479,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     const vagasDisp      = slot.vagas - slot.vagas_confirmadas;
     const estaOcupado    = !isBloqueado && !manualOcupado && vagasDisp <= 0;
     const minhaInscricao = slot.inscricoes?.find(i => i.email_aluno === emailUsuario && i.status !== 'cancelada');
-    const corBorda       = isBloqueado || estaOcupado || manualOcupado ? '#d4c5bb' : cor;
+    const corBorda = isBloqueado || ((estaOcupado || manualOcupado) && !minhaInscricao) ? '#d4c5bb' : cor;
 
     const abrirWaAdmin = () => {
       if (adminInfo?.telefone) {
@@ -495,7 +495,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             <span style={{ ...sc.badge, color: isBloqueado || estaOcupado ? '#8d7b70' : cor, background: (isBloqueado || estaOcupado ? '#8d7b70' : cor) + '16', borderColor: (isBloqueado || estaOcupado ? '#8d7b70' : cor) + '33' }}>
               {TIPO_LABEL[slot.tipo] ?? slot.tipo}
             </span>
-            {(estaOcupado || manualOcupado) && <span style={sc.ocupadoBadge}>Ocupado</span>}
+            {(estaOcupado || manualOcupado) && !minhaInscricao && <span style={sc.ocupadoBadge}>Ocupado</span>}
             {isBloqueado && <span style={sc.ocupadoBadge}>Bloqueado</span>}
           </div>
 
