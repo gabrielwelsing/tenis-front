@@ -1,6 +1,5 @@
 // =============================================================================
 // RANKING SCREEN — Ligas, Temporadas, Tabela, Partidas, Desafios, Config
-// Auth: Bearer token do localStorage
 // =============================================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -16,10 +15,7 @@ interface Props {
   fotoUrl?:  string | null;
 }
 
-interface Liga {
-  id: string; admin_id: number; nome: string; is_admin: boolean; admin_nome: string;
-  temporada_ativa_id: string | null; temporada_ativa_nome: string | null; total_membros: number;
-}
+interface Liga { id: string; admin_id: number; nome: string; is_admin: boolean; admin_nome: string; temporada_ativa_id: string | null; temporada_ativa_nome: string | null; total_membros: number; }
 interface Temporada { id: string; liga_id: string; nome: string; data_inicio: string; data_fim: string; ativa: boolean; total_partidas: number; }
 interface Membro    { membro_id: string; user_id: number; classe: string; nome: string; email: string; foto_url: string | null; }
 interface RankingEntry { id: number; nome: string; foto_url: string | null; classe: string; total_pontos: number; jogos: number; vitorias: number; derrotas: number; }
@@ -33,24 +29,16 @@ const CLASSE_LABELS: Record<string, string> = { iniciante: 'Iniciante', intermed
 const TIPO_LABELS: Record<string, string>   = { melhor_de_3: 'Melhor de 3', '2sets_supertiebreak': '2 Sets + ST', pro_set: 'Pró-set' };
 
 function normalizarBusca(v: string): string {
-  return v
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+  return v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
-
 function escapeRegex(v: string): string {
   return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-
 function membrosPorBusca(membros: Membro[], termo: string, excluirId?: number): Membro[] {
   const limpo = normalizarBusca(termo);
   if (!limpo) return [];
-
   const partes = limpo.split(/\s+/).filter(Boolean).map(escapeRegex);
   const regex = new RegExp(partes.join('.*'), 'i');
-
   return membros
     .filter(m => !excluirId || m.user_id !== excluirId)
     .filter(m => regex.test(normalizarBusca(`${m.nome} ${m.email}`)))
@@ -64,9 +52,7 @@ const CLASSE_COLORS: Record<string, { color: string; bg: string; border: string;
   geral:         { color: '#8d7b70', bg: '#fffaf7', border: '#eadfd6', glow: 'rgba(117,76,56,0.10)' },
 };
 
-function getClasseColor(classe: string) {
-  return CLASSE_COLORS[classe] ?? CLASSE_COLORS['geral'];
-}
+function getClasseColor(classe: string) { return CLASSE_COLORS[classe] ?? CLASSE_COLORS['geral']; }
 
 function avatar(nome: string, foto: string | null, size = 36) {
   if (foto) return <img src={foto} alt={nome} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />;
@@ -78,11 +64,7 @@ function avatar(nome: string, foto: string | null, size = 36) {
 }
 
 const MEDAL = ['🥇', '🥈', '🥉'];
-const MEDAL_BG = [
-  'linear-gradient(135deg, #fff8e6, #ffffff)',
-  'linear-gradient(135deg, #f5f2ef, #ffffff)',
-  'linear-gradient(135deg, #fff1e8, #ffffff)',
-];
+const MEDAL_BG = ['linear-gradient(135deg, #fff8e6, #ffffff)', 'linear-gradient(135deg, #f5f2ef, #ffffff)', 'linear-gradient(135deg, #fff1e8, #ffffff)'];
 const MEDAL_BORDER = ['#f0d58a', '#d9d3cf', '#e5b184'];
 
 async function api(method: string, path: string, body?: unknown) {
@@ -97,28 +79,14 @@ async function api(method: string, path: string, body?: unknown) {
   return json.data;
 }
 
-
-function PlayerSearchBox({
-  label,
-  membros,
-  selectedId,
-  excludeId,
-  onSelect,
-  placeholder,
-}: {
-  label: string;
-  membros: Membro[];
-  selectedId: number;
-  excludeId?: number;
-  onSelect: (id: number) => void;
-  placeholder: string;
+function PlayerSearchBox({ label, membros, selectedId, excludeId, onSelect, placeholder }: {
+  label: string; membros: Membro[]; selectedId: number; excludeId?: number;
+  onSelect: (id: number) => void; placeholder: string;
 }) {
   const selected = membros.find(m => m.user_id === selectedId) ?? null;
   const [query, setQuery] = useState(selected?.nome ?? '');
 
-  useEffect(() => {
-    setQuery(selected?.nome ?? '');
-  }, [selectedId, selected?.nome]);
+  useEffect(() => { setQuery(selected?.nome ?? ''); }, [selectedId, selected?.nome]);
 
   const opcoes = selected && normalizarBusca(query) === normalizarBusca(selected.nome)
     ? []
@@ -135,40 +103,15 @@ function PlayerSearchBox({
               <strong style={s.selectedPlayerName}>{selected.nome}</strong>
               <span style={s.selectedPlayerEmail}>{selected.email}</span>
             </div>
-            <button
-              type="button"
-              style={s.clearPlayerBtn}
-              onClick={() => {
-                setQuery('');
-                onSelect(0);
-              }}
-              aria-label="Remover jogador selecionado"
-            >
-              ×
-            </button>
+            <button type="button" style={s.clearPlayerBtn} onClick={() => { setQuery(''); onSelect(0); }} aria-label="Remover jogador selecionado">×</button>
           </div>
         ) : (
-          <input
-            style={s.playerSearchInput}
-            value={query}
-            placeholder={placeholder}
-            autoComplete="off"
-            onChange={e => setQuery(e.target.value)}
-          />
+          <input style={s.playerSearchInput} value={query} placeholder={placeholder} autoComplete="off" onChange={e => setQuery(e.target.value)} />
         )}
-
         {opcoes.length > 0 && (
           <div style={s.playerSuggestList}>
             {opcoes.map(m => (
-              <button
-                key={m.user_id}
-                type="button"
-                style={s.playerSuggestItem}
-                onClick={() => {
-                  setQuery(m.nome);
-                  onSelect(m.user_id);
-                }}
-              >
+              <button key={m.user_id} type="button" style={s.playerSuggestItem} onClick={() => { setQuery(m.nome); onSelect(m.user_id); }}>
                 {avatar(m.nome, m.foto_url, 26)}
                 <div style={s.playerSuggestText}>
                   <strong style={s.playerSuggestName}>{m.nome}</strong>
@@ -188,6 +131,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   const isAdmin = role === 'admin';
 
   const [tab, setTab] = useState<Tab>('ranking');
+  const [showRegras, setShowRegras] = useState(false);
 
   const [ligas,       setLigas]       = useState<Liga[]>([]);
   const [ligaId,      setLigaId]      = useState('');
@@ -218,21 +162,14 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   const [formDesafio,     setFormDesafio]     = useState({ desafiado_id: 0, data_sugerida: '', horario_sugerido: '', local_sugerido: '' });
   const [showDesafioForm, setShowDesafioForm] = useState(false);
 
-  const flash = (type: 'ok' | 'err', text: string) => {
-    setMsg({ type, text });
-    setTimeout(() => setMsg(null), 3500);
-  };
+  const flash = (type: 'ok' | 'err', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 3500); };
 
   const loadLigas = useCallback(async () => {
     setLoading(true);
     try {
       const data: Liga[] = await api('GET', '/ranking/ligas');
       setLigas(data);
-      if (data.length > 0 && !ligaId) {
-        const first = data[0];
-        setLigaId(first.id);
-        if (first.temporada_ativa_id) setTemporadaId(first.temporada_ativa_id);
-      }
+      if (data.length > 0 && !ligaId) { const first = data[0]; setLigaId(first.id); if (first.temporada_ativa_id) setTemporadaId(first.temporada_ativa_id); }
     } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   }, [ligaId]);
@@ -256,10 +193,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
 
   const loadRanking = useCallback(async () => {
     if (!temporadaId) return;
-    try {
-      const qs = classeFilter ? `?classe=${classeFilter}` : '';
-      setRankingData(await api('GET', `/ranking/temporadas/${temporadaId}/tabela${qs}`));
-    } catch { /* silent */ }
+    try { const qs = classeFilter ? `?classe=${classeFilter}` : ''; setRankingData(await api('GET', `/ranking/temporadas/${temporadaId}/tabela${qs}`)); } catch { /* silent */ }
   }, [temporadaId, classeFilter]);
 
   const loadPartidas = useCallback(async () => {
@@ -278,12 +212,8 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       const data: Rodada[] = await api('GET', `/ranking/temporadas/${temporadaId}/rodadas`);
       setRodadas(data);
       const ativa = data.find(r => r.ativa);
-      if (ativa) {
-        const mu: Partida[] = await api('GET', `/ranking/rodadas/${ativa.id}/matchups`);
-        setMatchups(mu);
-      } else {
-        setMatchups([]);
-      }
+      if (ativa) { const mu: Partida[] = await api('GET', `/ranking/rodadas/${ativa.id}/matchups`); setMatchups(mu); }
+      else { setMatchups([]); }
     } catch { /* silent */ }
   }, [temporadaId]);
 
@@ -298,64 +228,42 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   const criarLiga = async () => {
     if (!novaLiga.trim()) return;
     setLoading(true);
-    try {
-      await api('POST', '/ranking/ligas', { nome: novaLiga.trim() });
-      setNovaLiga('');
-      flash('ok', 'Liga criada!');
-      await loadLigas();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('POST', '/ranking/ligas', { nome: novaLiga.trim() }); setNovaLiga(''); flash('ok', 'Liga criada!'); await loadLigas(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
   const criarTemporada = async () => {
     if (!formTemp.nome || !formTemp.data_inicio || !formTemp.data_fim) { flash('err', 'Preencha todos os campos.'); return; }
     setLoading(true);
-    try {
-      await api('POST', `/ranking/ligas/${ligaId}/temporadas`, formTemp);
-      setFormTemp({ nome: '', data_inicio: '', data_fim: '' });
-      flash('ok', 'Temporada criada!');
-      await loadTemporadas();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('POST', `/ranking/ligas/${ligaId}/temporadas`, formTemp); setFormTemp({ nome: '', data_inicio: '', data_fim: '' }); flash('ok', 'Temporada criada!'); await loadTemporadas(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
   const encerrarTemporada = async (id: string) => {
     if (!confirm('Encerrar esta temporada?')) return;
-    try {
-      await api('PATCH', `/ranking/ligas/${ligaId}/temporadas/${id}`, {});
-      flash('ok', 'Temporada encerrada.');
-      await loadTemporadas();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('PATCH', `/ranking/ligas/${ligaId}/temporadas/${id}`, {}); flash('ok', 'Temporada encerrada.'); await loadTemporadas(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const adicionarMembro = async () => {
     if (!formMembro.email) { flash('err', 'E-mail obrigatório.'); return; }
     setLoading(true);
-    try {
-      await api('POST', `/ranking/ligas/${ligaId}/membros`, formMembro);
-      setFormMembro({ email: '', classe: 'intermediario' });
-      flash('ok', 'Membro adicionado!');
-      await loadMembros();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('POST', `/ranking/ligas/${ligaId}/membros`, formMembro); setFormMembro({ email: '', classe: 'intermediario' }); flash('ok', 'Membro adicionado!'); await loadMembros(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
   const removerMembro = async (uid: number) => {
     if (!confirm('Remover membro da liga?')) return;
-    try {
-      await api('DELETE', `/ranking/ligas/${ligaId}/membros/${uid}`, {});
-      flash('ok', 'Membro removido.');
-      await loadMembros();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('DELETE', `/ranking/ligas/${ligaId}/membros/${uid}`, {}); flash('ok', 'Membro removido.'); await loadMembros(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const alterarClasse = async (uid: number, classe: string) => {
-    try {
-      await api('PATCH', `/ranking/ligas/${ligaId}/membros/${uid}`, { classe });
-      flash('ok', 'Classe atualizada.');
-      await loadMembros();
-      await loadRanking();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('PATCH', `/ranking/ligas/${ligaId}/membros/${uid}`, { classe }); flash('ok', 'Classe atualizada.'); await loadMembros(); await loadRanking(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const registrarPartida = async () => {
@@ -363,7 +271,6 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     if (!jogador_a_id || !jogador_b_id) { flash('err', 'Selecione os dois jogadores.'); return; }
     if (jogador_a_id === jogador_b_id) { flash('err', 'Jogadores devem ser diferentes.'); return; }
     if (wo && !wo_vencedor_id) { flash('err', 'Selecione o vencedor do WO.'); return; }
-
     let placar: Array<{setA:number;setB:number}> | null = null;
     if (!wo) {
       const nSets = tipo_partida === 'pro_set' ? 1 : 2;
@@ -374,15 +281,12 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
         if (sA === 1 && sB === 1) placar.push({ setA: Number(sets[2].setA || 0), setB: Number(sets[2].setB || 0) });
       }
     }
-
     setLoading(true);
     try {
       await api('POST', '/ranking/partidas', { temporada_id: temporadaId, jogador_a_id, jogador_b_id, placar, tipo_partida, wo, wo_vencedor_id: wo ? wo_vencedor_id : undefined, data_partida });
       setFormPartida({ jogador_a_id: 0, jogador_b_id: 0, tipo_partida: 'melhor_de_3', wo: false, wo_vencedor_id: 0, data_partida: new Date().toISOString().split('T')[0], sets: [{ setA: '', setB: '' }, { setA: '', setB: '' }, { setA: '', setB: '' }] });
       flash('ok', 'Partida registrada! Aguardando confirmação.');
-      await loadPartidas();
-      await loadPendentes();
-      await loadRanking();
+      await loadPartidas(); await loadPendentes(); await loadRanking();
     } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
@@ -391,9 +295,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     try {
       await api('PATCH', `/ranking/partidas/${id}/confirmar`, { confirmar });
       flash('ok', confirmar ? 'Confirmado! Pontos entram ao outro confirmar também.' : 'Resultado contestado — admin vai revisar.');
-      await loadPartidas();
-      await loadPendentes();
-      await loadRanking();
+      await loadPartidas(); await loadPendentes(); await loadRanking();
     } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
@@ -401,67 +303,44 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     if (partSel.size < 2) { flash('err', 'Selecione ao menos 2 participantes.'); return; }
     if (!temporadaId) { flash('err', 'Selecione uma temporada ativa.'); return; }
     setLoading(true);
-    try {
-      await api('POST', '/ranking/rodadas', { temporada_id: temporadaId, participantes: [...partSel] });
-      setPartSel(new Set());
-      flash('ok', 'Rodada criada e emparelhamentos gerados!');
-      await loadRodadas();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('POST', '/ranking/rodadas', { temporada_id: temporadaId, participantes: [...partSel] }); setPartSel(new Set()); flash('ok', 'Rodada criada e emparelhamentos gerados!'); await loadRodadas(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
   const encerrarRodada = async (rodadaId: string) => {
     if (!confirm('Encerrar esta rodada?')) return;
-    try {
-      await api('PATCH', `/ranking/rodadas/${rodadaId}/encerrar`, {});
-      flash('ok', 'Rodada encerrada.');
-      await loadRodadas();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('PATCH', `/ranking/rodadas/${rodadaId}/encerrar`, {}); flash('ok', 'Rodada encerrada.'); await loadRodadas(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const togglePartSel = (uid: number) => {
-    setPartSel(prev => {
-      const next = new Set(prev);
-      next.has(uid) ? next.delete(uid) : next.add(uid);
-      return next;
-    });
+    setPartSel(prev => { const next = new Set(prev); next.has(uid) ? next.delete(uid) : next.add(uid); return next; });
   };
 
   const criarDesafio = async () => {
-    if (!formDesafio.desafiado_id || !formDesafio.data_sugerida || !formDesafio.horario_sugerido || !formDesafio.local_sugerido) {
-      flash('err', 'Preencha todos os campos do desafio.'); return;
-    }
+    if (!formDesafio.desafiado_id || !formDesafio.data_sugerida || !formDesafio.horario_sugerido || !formDesafio.local_sugerido) { flash('err', 'Preencha todos os campos do desafio.'); return; }
     setLoading(true);
-    try {
-      await api('POST', '/ranking/desafios', { liga_id: ligaId, ...formDesafio });
-      setFormDesafio({ desafiado_id: 0, data_sugerida: '', horario_sugerido: '', local_sugerido: '' });
-      setShowDesafioForm(false);
-      flash('ok', 'Desafio enviado!');
-      await loadDesafios();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('POST', '/ranking/desafios', { liga_id: ligaId, ...formDesafio }); setFormDesafio({ desafiado_id: 0, data_sugerida: '', horario_sugerido: '', local_sugerido: '' }); setShowDesafioForm(false); flash('ok', 'Desafio enviado!'); await loadDesafios(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
   const responderDesafio = async (id: string, status: string) => {
-    try {
-      await api('PATCH', `/ranking/desafios/${id}`, { status });
-      flash('ok', status === 'aceito' ? 'Desafio aceito!' : 'Desafio recusado.');
-      await loadDesafios();
-    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try { await api('PATCH', `/ranking/desafios/${id}`, { status }); flash('ok', status === 'aceito' ? 'Desafio aceito!' : 'Desafio recusado.'); await loadDesafios(); }
+    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const ligaAtual      = ligas.find(l => l.id === ligaId);
   const isLigaAdmin    = ligaAtual?.is_admin ?? false;
   const aproveitamento = (v: number, j: number) => j === 0 ? 0 : Math.round((v / j) * 100);
 
+  // ── Seletor de liga/temporada sem emoji ───────────────────────────────────
   const renderLigaSelect = () => (
     <div style={s.ligaRow}>
-      <div style={{ position: 'relative', flex: 1 }}>
-        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 14, pointerEvents: 'none', zIndex: 1 }}>🏟️</span>
-        <select style={{ ...s.ligaSelect, paddingLeft: 30 }} value={ligaId} onChange={e => { setLigaId(e.target.value); setTemporadaId(''); setRankingData([]); }}>
-          {ligas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
-        </select>
-      </div>
+      <select style={s.ligaSelect} value={ligaId} onChange={e => { setLigaId(e.target.value); setTemporadaId(''); setRankingData([]); }}>
+        {ligas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+      </select>
       {temporadas.length > 0 && (
         <select style={{ ...s.ligaSelect, flex: 0.8 }} value={temporadaId} onChange={e => setTemporadaId(e.target.value)}>
           {temporadas.map(t => <option key={t.id} value={t.id}>{t.nome}{t.ativa ? ' ✓' : ''}</option>)}
@@ -484,11 +363,8 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
           <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
             {membros.map(m => (
               <div key={m.user_id} onClick={() => togglePartSel(m.user_id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12,
-                  border: `1.5px solid ${partSel.has(m.user_id) ? 'rgba(255,215,0,.5)' : '#f4ebe3'}`,
-                  background: partSel.has(m.user_id) ? 'rgba(255,215,0,.06)' : '#fff', cursor: 'pointer' }}>
-                <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${partSel.has(m.user_id) ? '#b98718' : '#dfc8bb'}`,
-                  background: partSel.has(m.user_id) ? '#b98718' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#000', flexShrink: 0 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, border: `1.5px solid ${partSel.has(m.user_id) ? 'rgba(255,215,0,.5)' : '#f4ebe3'}`, background: partSel.has(m.user_id) ? 'rgba(255,215,0,.06)' : '#fff', cursor: 'pointer' }}>
+                <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${partSel.has(m.user_id) ? '#b98718' : '#dfc8bb'}`, background: partSel.has(m.user_id) ? '#b98718' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#000', flexShrink: 0 }}>
                   {partSel.has(m.user_id) ? '✓' : ''}
                 </div>
                 {avatar(m.nome, m.foto_url, 30)}
@@ -501,7 +377,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
           </div>
           <div style={{ padding: '0 16px' }}>
             <button style={{ ...s.submitBtn, opacity: partSel.size >= 2 ? 1 : 0.4 }} onClick={criarRodada} disabled={partSel.size < 2 || loading}>
-              {loading ? 'Gerando…' : `⚔️ Gerar Rodada (${partSel.size} selecionados)`}
+              {loading ? 'Gerando…' : `Gerar Rodada (${partSel.size} selecionados)`}
             </button>
           </div>
         </div>
@@ -518,12 +394,11 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px 6px' }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 800 }}>⚔️ Rodada {rodadaAtiva.numero}</div>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>Rodada {rodadaAtiva.numero}</div>
             <div style={{ fontSize: 11, color: '#94857a', marginTop: 2 }}>{rodadaAtiva.total_matchups} partidas</div>
           </div>
           {isLigaAdmin && (
-            <button onClick={() => encerrarRodada(rodadaAtiva.id)}
-              style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid rgba(239,83,80,.4)', background: 'rgba(239,83,80,.1)', color: '#ef9a9a', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={() => encerrarRodada(rodadaAtiva.id)} style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid rgba(239,83,80,.4)', background: 'rgba(239,83,80,.1)', color: '#ef9a9a', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
               Encerrar
             </button>
           )}
@@ -557,18 +432,14 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   const CLASS_ORDER = ['avancado', 'intermediario', 'iniciante', 'geral'];
   const CLASSE_FILTER_OPTIONS: Array<{ value: string; label: string }> = [
     { value: '', label: 'Todos' },
-    { value: 'avancado', label: '🏆 Avançado' },
-    { value: 'intermediario', label: '🎾 Intermediário' },
-    { value: 'iniciante', label: '🌱 Iniciante' },
+    { value: 'avancado', label: 'Avançado' },
+    { value: 'intermediario', label: 'Intermediário' },
+    { value: 'iniciante', label: 'Iniciante' },
   ];
 
   const renderRanking = () => {
     const byClasse: Record<string, RankingEntry[]> = {};
-    rankingData.forEach(e => {
-      const cl = e.classe || 'geral';
-      if (!byClasse[cl]) byClasse[cl] = [];
-      byClasse[cl].push(e);
-    });
+    rankingData.forEach(e => { const cl = e.classe || 'geral'; if (!byClasse[cl]) byClasse[cl] = []; byClasse[cl].push(e); });
     const classesPresentes = CLASS_ORDER.filter(c => byClasse[c]?.length > 0);
     return (
       <div>
@@ -578,7 +449,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
             {CLASSE_FILTER_OPTIONS.map(opt => {
               const isActive = classeFilter === opt.value;
               const palette  = opt.value ? getClasseColor(opt.value) : null;
-              const activeBg     = palette ? palette.bg     : '#f4ebe3';
+              const activeBg = palette ? palette.bg : '#f4ebe3';
               const activeBorder = palette ? palette.border : '#b5a69d';
               const activeColor  = palette ? palette.color  : '#fff';
               return (
@@ -609,9 +480,9 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                     <div style={{ flex: 1, height: 1, background: `linear-gradient(to left, ${palette.border}, transparent)` }} />
                   </div>
                   {entries.map((entry, idx) => {
-                    const isSelf  = entry.id === userId;
-                    const isTop3  = idx < 3;
-                    const aprov   = aproveitamento(entry.vitorias, entry.jogos);
+                    const isSelf = entry.id === userId;
+                    const isTop3 = idx < 3;
+                    const aprov  = aproveitamento(entry.vitorias, entry.jogos);
                     const cardBg     = isTop3 ? MEDAL_BG[idx]    : palette.bg;
                     const cardBorder = isTop3 ? MEDAL_BORDER[idx] : palette.border;
                     const cardGlow   = isTop3 ? `0 0 16px ${palette.glow}, 0 0 0 1px ${MEDAL_BORDER[idx]}` : undefined;
@@ -666,9 +537,17 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       <div>
         {renderLigaSelect()}
 
+        {/* ── Botão regras de pontuação ── */}
+        <button
+          onClick={() => setShowRegras(true)}
+          style={{ width: '100%', padding: '11px 0', borderRadius: 14, background: '#fff1eb', border: '1px solid rgba(198,107,77,0.28)', color: '#a54f3d', fontSize: 13, fontWeight: 850, cursor: 'pointer', marginBottom: 4 }}
+        >
+          Ver regras de pontuação
+        </button>
+
         {pendentes.length > 0 && (
           <>
-            <div style={s.sectionTitle}>📬 Aguardando sua confirmação</div>
+            <div style={s.sectionTitle}>Aguardando sua confirmação</div>
             {pendentes.map(pt => {
               const euSouA  = pt.jogador_a_id === userId;
               const vencedor = pt.vencedor_id === pt.jogador_a_id ? pt.jogador_a_nome : pt.jogador_b_nome;
@@ -681,13 +560,10 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                   <div style={{ fontSize: 12, color: '#6f625b', marginBottom: 8, lineHeight: 1.5 }}>
                     Vencedor: <strong style={{ color: '#3f8f5b' }}>{vencedor}</strong>
                   </div>
-                  {/* ── CORREÇÃO: Array.isArray ── */}
                   {pt.placar && Array.isArray(pt.placar) && (
                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                       {pt.placar.map((set, i) => (
-                        <span key={i} style={{ background: '#f4ebe3', borderRadius: 6, padding: '3px 10px', fontSize: 13, fontWeight: 800 }}>
-                          {set.setA}–{set.setB}
-                        </span>
+                        <span key={i} style={{ background: '#f4ebe3', borderRadius: 6, padding: '3px 10px', fontSize: 13, fontWeight: 800 }}>{set.setA}–{set.setB}</span>
                       ))}
                     </div>
                   )}
@@ -707,14 +583,14 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
         )}
 
         {partidas.filter(pt => pt.status === 'pendente' && (pt.jogador_a_id === userId || pt.jogador_b_id === userId)).map(pt => {
-          const euSouA     = pt.jogador_a_id === userId;
+          const euSouA      = pt.jogador_a_id === userId;
           const jaConfirmei = euSouA ? pt.confirmado_a : pt.confirmado_b;
           if (!jaConfirmei) return null;
           return (
             <div key={pt.id} style={{ ...s.partidaCard, border: '1px solid rgba(79,195,247,.25)', background: 'rgba(79,195,247,.04)', marginBottom: 10 }}>
               <div style={s.partidaHeader}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>📤 Resultado enviado</span>
-                <span style={{ ...s.statusPill, background: 'rgba(79,195,247,.15)', color: '#c66b4d', border: '1px solid #c66b4d' }}>⏳ Aguardando</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>Resultado enviado</span>
+                <span style={{ ...s.statusPill, background: 'rgba(79,195,247,.15)', color: '#c66b4d', border: '1px solid #c66b4d' }}>Aguardando</span>
               </div>
               <div style={{ fontSize: 12, color: '#8d7b70', lineHeight: 1.5 }}>
                 {pt.jogador_a_nome} vs {pt.jogador_b_nome}<br/>
@@ -730,22 +606,8 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
             <div style={s.formCard}>
               <div style={s.formTitle}>Registrar Partida</div>
               <div style={s.formRow}>
-                <PlayerSearchBox
-                  label="Jogador A"
-                  membros={membros}
-                  selectedId={fp.jogador_a_id}
-                  excludeId={fp.jogador_b_id}
-                  placeholder="Digite o nome do jogador A"
-                  onSelect={id => setFormPartida(f => ({ ...f, jogador_a_id: id }))}
-                />
-                <PlayerSearchBox
-                  label="Jogador B"
-                  membros={membros}
-                  selectedId={fp.jogador_b_id}
-                  excludeId={fp.jogador_a_id}
-                  placeholder="Digite o nome do jogador B"
-                  onSelect={id => setFormPartida(f => ({ ...f, jogador_b_id: id }))}
-                />
+                <PlayerSearchBox label="Jogador A" membros={membros} selectedId={fp.jogador_a_id} excludeId={fp.jogador_b_id} placeholder="Digite o nome do jogador A" onSelect={id => setFormPartida(f => ({ ...f, jogador_a_id: id }))} />
+                <PlayerSearchBox label="Jogador B" membros={membros} selectedId={fp.jogador_b_id} excludeId={fp.jogador_a_id} placeholder="Digite o nome do jogador B" onSelect={id => setFormPartida(f => ({ ...f, jogador_b_id: id }))} />
               </div>
               <div style={s.formRow}>
                 <div style={s.formGroup}>
@@ -770,11 +632,9 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                   {Array.from({ length: fp.tipo_partida === 'pro_set' ? 1 : (show3 ? 3 : nSets) }).map((_, i) => (
                     <div key={i} style={s.setRow}>
                       <span style={s.setLabel}>{fp.tipo_partida === 'pro_set' ? 'Placar' : `Set ${i + 1}`}</span>
-                      <input style={s.setInp} type="number" min={0} max={99} placeholder="A" value={fp.sets[i].setA}
-                        onChange={e => setFormPartida(f => { const ns = [...f.sets]; ns[i] = { ...ns[i], setA: e.target.value }; return { ...f, sets: ns }; })} />
+                      <input style={s.setInp} type="number" min={0} max={99} placeholder="A" value={fp.sets[i].setA} onChange={e => setFormPartida(f => { const ns = [...f.sets]; ns[i] = { ...ns[i], setA: e.target.value }; return { ...f, sets: ns }; })} />
                       <span style={{ color: '#94857a' }}>×</span>
-                      <input style={s.setInp} type="number" min={0} max={99} placeholder="B" value={fp.sets[i].setB}
-                        onChange={e => setFormPartida(f => { const ns = [...f.sets]; ns[i] = { ...ns[i], setB: e.target.value }; return { ...f, sets: ns }; })} />
+                      <input style={s.setInp} type="number" min={0} max={99} placeholder="B" value={fp.sets[i].setB} onChange={e => setFormPartida(f => { const ns = [...f.sets]; ns[i] = { ...ns[i], setB: e.target.value }; return { ...f, sets: ns }; })} />
                     </div>
                   ))}
                 </>
@@ -815,12 +675,9 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                     <span style={s.vs}>vs</span>
                     <span style={{ color: pt.vencedor_id === pt.jogador_b_id ? '#3f8f5b' : '#3d332e', fontWeight: pt.vencedor_id === pt.jogador_b_id ? 800 : 500 }}>{pt.jogador_b_nome}</span>
                   </div>
-                  {/* ── CORREÇÃO: Array.isArray ── */}
                   {pt.placar && Array.isArray(pt.placar) && (
                     <div style={s.placarRow}>
-                      {pt.placar.map((set, i) => (
-                        <span key={i} style={s.placarSet}>{set.setA}–{set.setB}</span>
-                      ))}
+                      {pt.placar.map((set, i) => <span key={i} style={s.placarSet}>{set.setA}–{set.setB}</span>)}
                     </div>
                   )}
                   {pt.wo && <div style={s.woTag}>W.O.</div>}
@@ -852,14 +709,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       {showDesafioForm && (
         <div style={s.formCard}>
           <div style={s.formTitle}>Novo Desafio</div>
-          <PlayerSearchBox
-            label="Adversário"
-            membros={membros}
-            selectedId={formDesafio.desafiado_id}
-            excludeId={userId}
-            placeholder="Digite o nome do adversário"
-            onSelect={id => setFormDesafio(f => ({ ...f, desafiado_id: id }))}
-          />
+          <PlayerSearchBox label="Adversário" membros={membros} selectedId={formDesafio.desafiado_id} excludeId={userId} placeholder="Digite o nome do adversário" onSelect={id => setFormDesafio(f => ({ ...f, desafiado_id: id }))} />
           <div style={s.formRow}>
             <div style={s.formGroup}>
               <label style={s.label}>Data</label>
@@ -891,9 +741,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
               </span>
             </div>
             <div style={s.desafioInfo}>{d.data_sugerida} · {d.horario_sugerido} · {d.local_sugerido}</div>
-            {d.contra_data && (
-              <div style={{ ...s.desafioInfo, color: '#ffa726' }}>Contraproposta: {d.contra_data} · {d.contra_horario} · {d.contra_local}</div>
-            )}
+            {d.contra_data && <div style={{ ...s.desafioInfo, color: '#ffa726' }}>Contraproposta: {d.contra_data} · {d.contra_horario} · {d.contra_local}</div>}
             {recebido && pending && (
               <div style={s.confirmBtns}>
                 <button style={s.okBtn} onClick={() => responderDesafio(d.id, 'aceito')}>Aceitar</button>
@@ -915,9 +763,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
             <label style={s.label}>Nome da Liga</label>
             <input style={s.inp} placeholder="Ex: Liga ACTO 2026" value={novaLiga} onChange={e => setNovaLiga(e.target.value)} />
           </div>
-          <button style={{ ...s.submitBtn, opacity: loading ? 0.6 : 1 }} onClick={criarLiga} disabled={loading}>
-            {loading ? 'Criando…' : 'Criar Liga'}
-          </button>
+          <button style={{ ...s.submitBtn, opacity: loading ? 0.6 : 1 }} onClick={criarLiga} disabled={loading}>{loading ? 'Criando…' : 'Criar Liga'}</button>
         </div>
       )}
       {isAdmin && (
@@ -985,13 +831,14 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     </div>
   );
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'ranking',  label: '🏅 Ranking'  },
-  { key: 'rodada',   label: '⚔️ Rodada'   },
-  { key: 'partidas', label: '🎯 Resultado' },
-  { key: 'desafios', label: '🤝 Desafio'  },
-  ...(isAdmin ? [{ key: 'config' as Tab, label: '⚙️ Config' }] : []),
-];
+  // ── Tabs sem emoji ────────────────────────────────────────────────────────
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'ranking',  label: 'Ranking'   },
+    { key: 'rodada',   label: 'Rodada'    },
+    { key: 'partidas', label: 'Resultado' },
+    { key: 'desafios', label: 'Desafio'   },
+    ...(isAdmin ? [{ key: 'config' as Tab, label: 'Config' }] : []),
+  ];
 
   const temporadaAtual = temporadas.find(t => t.id === temporadaId);
   const headerSubtitle = ligaAtual
@@ -1002,19 +849,66 @@ const TABS: { key: Tab; label: string }[] = [
     <div style={s.page}>
       <div style={s.bgGlow} />
       <div style={s.bgGlow2} />
+
+      {/* ── Modal flutuante de Regras de Pontuação ── */}
+      {showRegras && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(44,30,24,0.42)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', backdropFilter: 'blur(5px)' }}
+          onClick={e => e.target === e.currentTarget && setShowRegras(false)}
+        >
+          <div style={{ background: '#fffaf5', border: '1px solid rgba(130,82,62,0.12)', borderRadius: '28px 28px 0 0', padding: '10px 18px 34px', maxWidth: 520, width: '100%', maxHeight: '80dvh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 15, boxSizing: 'border-box', boxShadow: '0 -16px 44px rgba(55,35,26,0.22)' }}>
+            <div style={{ width: 46, height: 5, borderRadius: 10, background: '#dfc8bb', alignSelf: 'center', margin: '2px 0 4px' }} />
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <h2 style={{ margin: 0, color: '#2d2521', fontSize: 22, fontWeight: 950, letterSpacing: -0.6 }}>Regras de Pontuação</h2>
+                <p style={{ margin: '4px 0 0', color: '#8f7769', fontSize: 13, fontWeight: 650 }}>Sistema de pontos do ranking</p>
+              </div>
+              <button style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: '#f4ebe3', color: '#8b6657', fontSize: 18, cursor: 'pointer' }} onClick={() => setShowRegras(false)}>✕</button>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, overflow: 'hidden', boxShadow: '0 10px 28px rgba(117,76,56,0.07)' }}>
+              {([
+                ['Vitória 2×0', '10 pts', '#b98718'],
+                ['Vitória 2×1', '8 pts',  '#b98718'],
+                ['Derrota 2×0', '2 pts',  '#8d7b70'],
+                ['Derrota 2×1', '4 pts',  '#8d7b70'],
+                ['WO (vencedor)', '6 pts', '#c66b4d'],
+                ['WO (perdedor)', '0 pts', '#9b8a7f'],
+              ] as [string, string, string][]).map(([res, pts, cor], i, arr) => (
+                <div key={res} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', borderBottom: i < arr.length - 1 ? '1px solid #f4ebe3' : 'none' }}>
+                  <span style={{ fontSize: 14, color: '#3d332e', fontWeight: 650 }}>{res}</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: cor }}>{pts}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background: '#fff8f3', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 16, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontSize: 12, color: '#6f625b', lineHeight: 1.6 }}>
+                <strong style={{ color: '#3d332e' }}>Desempate:</strong> tie-break direto até 10 pontos.
+              </span>
+              <span style={{ fontSize: 12, color: '#6f625b', lineHeight: 1.6 }}>
+                <strong style={{ color: '#3d332e' }}>Confrontos:</strong> máx. 2× se um ganhar as duas; 3× se ficar 1×1 e for ao decisivo.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={s.header}>
         <button style={s.backBtn} onClick={onBack}>‹ Voltar</button>
         <div style={{ textAlign: 'center' }}>
-          <h2 style={s.title}>🏆 Ranking</h2>
+          <h2 style={s.title}>Ranking</h2>
           {headerSubtitle && <div style={s.headerSubtitle}>{headerSubtitle}</div>}
         </div>
         <div style={{ width: 64 }} />
       </div>
+
       {msg && (
         <div style={{ ...s.toast, background: msg.type === 'ok' ? 'rgba(46,125,50,0.95)' : 'rgba(198,40,40,0.95)' }}>
           {msg.text}
         </div>
       )}
+
       <div style={s.tabBar}>
         {TABS.map(t => (
           <button key={t.key} style={{ ...s.tabBtn, ...(tab === t.key ? s.tabActive : {}) }} onClick={() => setTab(t.key)}>
@@ -1022,6 +916,7 @@ const TABS: { key: Tab; label: string }[] = [
           </button>
         ))}
       </div>
+
       <div style={s.body}>
         {loading && ligas.length === 0 && <div style={s.empty}>Carregando…</div>}
         {!loading && ligas.length === 0 && (
@@ -1069,147 +964,18 @@ const s: Record<string, React.CSSProperties> = {
   formRow: { display: 'flex', gap: 10 },
   formGroup: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
   label: { color: '#8f7769', fontSize: 11, fontWeight: 850, textTransform: 'uppercase', letterSpacing: 0.5 },
-  playerSearchWrap: {
-    position: 'relative',
-    width: '100%',
-  },
-
-  playerSearchInput: {
-    width: '100%',
-    height: 44,
-    background: '#fffaf7',
-    border: '1px solid #eadfd6',
-    borderRadius: 14,
-    color: '#332a25',
-    padding: '0 12px',
-    fontSize: 13,
-    fontWeight: 700,
-    boxSizing: 'border-box',
-    outline: 'none',
-    colorScheme: 'light',
-    boxShadow: '0 6px 16px rgba(117,76,56,0.04)',
-  },
-
-  selectedPlayerPill: {
-    width: '100%',
-    minHeight: 44,
-    background: '#fffaf7',
-    border: '1px solid #eadfd6',
-    borderRadius: 14,
-    color: '#332a25',
-    padding: '7px 8px',
-    boxSizing: 'border-box',
-    display: 'grid',
-    gridTemplateColumns: '24px minmax(0, 1fr) 28px',
-    alignItems: 'center',
-    gap: 8,
-    boxShadow: '0 6px 16px rgba(117,76,56,0.04)',
-  },
-
-  selectedPlayerText: {
-    minWidth: 0,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-  },
-
-  selectedPlayerName: {
-    color: '#2d2521',
-    fontSize: 12.5,
-    fontWeight: 900,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    minWidth: 0,
-  },
-
-  selectedPlayerEmail: {
-    color: '#9b8a7f',
-    fontSize: 10.5,
-    fontWeight: 650,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    minWidth: 0,
-  },
-
-  clearPlayerBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: '50%',
-    border: '1px solid rgba(198,107,77,0.18)',
-    background: '#fff1eb',
-    color: '#a54f3d',
-    fontSize: 17,
-    fontWeight: 900,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 0,
-    lineHeight: 1,
-  },
-
-  playerSuggestList: {
-    position: 'absolute',
-    top: 48,
-    left: 0,
-    right: 0,
-    zIndex: 30,
-    background: '#fff',
-    border: '1px solid rgba(130,82,62,0.10)',
-    borderRadius: 16,
-    padding: 6,
-    boxShadow: '0 16px 34px rgba(70,45,34,0.18)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    maxHeight: 220,
-    overflowY: 'auto',
-  },
-
-  playerSuggestItem: {
-    width: '100%',
-    border: 'none',
-    background: 'transparent',
-    borderRadius: 12,
-    padding: '8px 9px',
-    display: 'grid',
-    gridTemplateColumns: '26px 1fr',
-    alignItems: 'center',
-    gap: 9,
-    cursor: 'pointer',
-    textAlign: 'left',
-    fontFamily: 'inherit',
-  },
-
-  playerSuggestText: {
-    minWidth: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 1,
-  },
-
-  playerSuggestName: {
-    color: '#2d2521',
-    fontSize: 12.5,
-    fontWeight: 900,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-
-  playerSuggestEmail: {
-    color: '#9b8a7f',
-    fontSize: 10.5,
-    fontWeight: 650,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-
+  playerSearchWrap: { position: 'relative', width: '100%' },
+  playerSearchInput: { width: '100%', height: 44, background: '#fffaf7', border: '1px solid #eadfd6', borderRadius: 14, color: '#332a25', padding: '0 12px', fontSize: 13, fontWeight: 700, boxSizing: 'border-box', outline: 'none', colorScheme: 'light', boxShadow: '0 6px 16px rgba(117,76,56,0.04)' },
+  selectedPlayerPill: { width: '100%', minHeight: 44, background: '#fffaf7', border: '1px solid #eadfd6', borderRadius: 14, color: '#332a25', padding: '7px 8px', boxSizing: 'border-box', display: 'grid', gridTemplateColumns: '24px minmax(0, 1fr) 28px', alignItems: 'center', gap: 8, boxShadow: '0 6px 16px rgba(117,76,56,0.04)' },
+  selectedPlayerText: { minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden' },
+  selectedPlayerName: { color: '#2d2521', fontSize: 12.5, fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 },
+  selectedPlayerEmail: { color: '#9b8a7f', fontSize: 10.5, fontWeight: 650, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 },
+  clearPlayerBtn: { width: 28, height: 28, borderRadius: '50%', border: '1px solid rgba(198,107,77,0.18)', background: '#fff1eb', color: '#a54f3d', fontSize: 17, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 },
+  playerSuggestList: { position: 'absolute', top: 48, left: 0, right: 0, zIndex: 30, background: '#fff', border: '1px solid rgba(130,82,62,0.10)', borderRadius: 16, padding: 6, boxShadow: '0 16px 34px rgba(70,45,34,0.18)', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' },
+  playerSuggestItem: { width: '100%', border: 'none', background: 'transparent', borderRadius: 12, padding: '8px 9px', display: 'grid', gridTemplateColumns: '26px 1fr', alignItems: 'center', gap: 9, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' },
+  playerSuggestText: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 },
+  playerSuggestName: { color: '#2d2521', fontSize: 12.5, fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  playerSuggestEmail: { color: '#9b8a7f', fontSize: 10.5, fontWeight: 650, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   sel: { background: '#fffaf7', border: '1px solid #eadfd6', borderRadius: 14, color: '#332a25', padding: '12px 12px', fontSize: 13, fontWeight: 650, width: '100%', boxSizing: 'border-box', colorScheme: 'light' },
   inp: { background: '#fffaf7', border: '1px solid #eadfd6', borderRadius: 14, color: '#332a25', padding: '12px 12px', fontSize: 13, fontWeight: 650, width: '100%', boxSizing: 'border-box', colorScheme: 'light' },
   woRow: { display: 'flex', alignItems: 'center' },
