@@ -1,5 +1,5 @@
 // =============================================================================
-// AGENDA SCREEN — v2 + Reserva de Quadra
+// AGENDA SCREEN — v2 + Reserva de Quadra + Nome Fixo
 // =============================================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -24,6 +24,7 @@ interface SlotDia {
   hora_inicio: string; hora_fim: string; tipo: string; vagas: number;
   vagas_confirmadas: number; perto1h: boolean; status_manual?: string;
   observacao?: string | null; inscricoes?: Inscricao[];
+  nome_fixo?: string | null;
 }
 
 interface Inscricao {
@@ -35,11 +36,12 @@ interface Inscricao {
 interface HorarioFixo {
   id: number; admin_email: string; dia_semana: number;
   hora_inicio: string; hora_fim: string; ativo: boolean;
+  nome?: string | null; email_vinculado?: string | null;
+  valido_de?: string | null; valido_ate?: string | null;
 }
 
 interface AdminInfo { email: string; telefone: string | null; }
 
-// ── Quadra ────────────────────────────────────────────────────────────────────
 interface LocalQuadra {
   id: number; nome: string; endereco: string; observacao: string | null;
   socios_only: boolean; quadras: QuadraInfo[];
@@ -67,7 +69,6 @@ const HORAS = Array.from({ length: 28 }, (_, i) => {
   return `${h.toString().padStart(2, '0')}:${m}`;
 });
 
-// Slots de quadra: 07:00 a 23:00 de 30 em 30
 const COURT_SLOTS: string[] = Array.from({ length: 33 }, (_, i) => {
   const total = 7 * 60 + i * 30;
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
@@ -280,7 +281,6 @@ function InfoItem({ icon, text }: { icon: React.ReactNode; text: string }) {
 export default function AgendaScreen({ onBack, emailUsuario, role, username, telefone }: Props) {
   const isAdmin = role === 'admin';
 
-  // ── Estado agenda ──────────────────────────────────────────────────────────
   const [data,          setData]          = useState(todayStr());
   const [loading,       setLoading]       = useState(false);
   const [msg,           setMsg]           = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -302,7 +302,11 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const [editandoOverride, setEditandoOverride] = useState<string | null>(null);
   const [formOverride,     setFormOverride]     = useState({ tipo: 'individual', vagas: 1 });
 
-  // ── Estado quadra ──────────────────────────────────────────────────────────
+  // ── Nome fixo ──────────────────────────────────────────────────────────────
+  const [editandoNomeFixoId, setEditandoNomeFixoId] = useState<number | null>(null);
+  const [formNomeFixo,       setFormNomeFixo]       = useState({ nome: '', email_vinculado: '', valido_de: '', valido_ate: '' });
+
+  // ── Quadra ─────────────────────────────────────────────────────────────────
   const [locaisQuadra,      setLocaisQuadra]      = useState<LocalQuadra[]>([]);
   const [localQuadraId,     setLocalQuadraId]     = useState<number>(2);
   const [quadraId,          setQuadraId]          = useState<number>(6);
@@ -331,7 +335,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     setTimeout(() => setMsg(null), 3500);
   };
 
-  // ── Load agenda ────────────────────────────────────────────────────────────
   useEffect(() => {
     fetch(API + '/agenda/admin-info').then(r => r.json()).then(setAdminInfo).catch(() => {});
   }, []);
@@ -391,7 +394,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   useEffect(() => { loadSlotsDia(); loadSlots(); loadMinhasInscricoes(); }, [loadSlotsDia, loadSlots, loadMinhasInscricoes]);
   useEffect(() => { loadSolicitacoes(); loadHorariosFixos(); }, [loadSolicitacoes, loadHorariosFixos]);
 
-  // ── Load quadra ────────────────────────────────────────────────────────────
   const loadLocaisQuadra = useCallback(async () => {
     try {
       const r = await fetch(`${API}/quadras/locais/todos`);
@@ -428,8 +430,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       if (Array.isArray(json) && json.length > 0) {
         const row = json[0];
         const cfg = { dias_semana: row.dias_semana, hi_text: row.hi_text || '07:00', hf_text: row.hf_text || '22:00' };
-        setDispConfig(cfg);
-        setFormDisp(cfg);
+        setDispConfig(cfg); setFormDisp(cfg);
       }
     } catch { /* silent */ }
   }, [isAdmin, quadraId]);
@@ -606,13 +607,36 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     loadHorariosFixos(); loadSlotsDia();
   };
 
+  // ── Actions nome fixo ──────────────────────────────────────────────────────
+  const salvarNomeFixo = async (id: number) => {
+    if (!adminInfo?.email) return;
+    try {
+      await fetch(`${API}/agenda/horarios-fixos/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_email: adminInfo.email, ...formNomeFixo }),
+      });
+      flash('ok', 'Nome fixado!');
+      setEditandoNomeFixoId(null);
+      loadHorariosFixos(); loadSlotsDia();
+    } catch { flash('err', 'Erro ao salvar.'); }
+  };
+
+  const removerNomeFixo = async (id: number) => {
+    if (!adminInfo?.email) return;
+    await fetch(`${API}/agenda/horarios-fixos/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ admin_email: adminInfo.email, nome: null, email_vinculado: null, valido_de: null, valido_ate: null }),
+    });
+    flash('ok', 'Nome removido.');
+    loadHorariosFixos(); loadSlotsDia();
+  };
+
   // ── Actions quadra ─────────────────────────────────────────────────────────
   const solicitarReservaQuadra = async () => {
     if (!reservaHoraInicio || !reservaHoraFim) { flash('err', 'Selecione horário de início e fim.'); return; }
     if (!reservaNome.trim()) { flash('err', 'Informe seu nome.'); return; }
     const digits = reservaWhatsapp.replace(/\D/g, '');
     if (digits.length < 10) { flash('err', 'WhatsApp inválido.'); return; }
-
     const conflito = minhasInscricoes.some(i =>
       i.status === 'confirmada' &&
       i.data.slice(0, 10) === dataQuadra &&
@@ -620,7 +644,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       fmt(i.hora_fim) > reservaHoraInicio
     );
     if (conflito) { flash('err', 'Você tem aula confirmada neste horário.'); return; }
-
     setReservaLoading(true);
     try {
       const r = await fetch(`${API}/quadras/reservas`, {
@@ -672,9 +695,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   };
 
   const adicionarBloqueio = async () => {
-    if (!formBloqueio.data || !formBloqueio.hi_text || !formBloqueio.hf_text) {
-      flash('err', 'Preencha data e horários.'); return;
-    }
+    if (!formBloqueio.data || !formBloqueio.hi_text || !formBloqueio.hf_text) { flash('err', 'Preencha data e horários.'); return; }
     try {
       await fetch(`${API}/quadras/bloqueios`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -692,7 +713,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     loadBloqueios(); loadSlotsQuadra();
   };
 
-  // ── Renders agenda ─────────────────────────────────────────────────────────
+  // ── Renders ────────────────────────────────────────────────────────────────
 
   const renderSlotDiaCard = (slot: SlotDia) => {
     const hi            = slot.hora_inicio;
@@ -785,6 +806,17 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         </div>
 
         {slot.observacao && <InfoItem icon={<NoteLineIcon size={16}/>} text={slot.observacao}/>}
+
+        {/* ── Nome fixado — visível só para admin ── */}
+        {isAdmin && slot.nome_fixo && (
+          <div style={{ background: '#fff8e6', border: '1px solid #f0d58a', borderRadius: 12, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15 }}>📌</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#b98718' }}>{slot.nome_fixo}</div>
+              <div style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>Horário fixado</div>
+            </div>
+          </div>
+        )}
 
         {isAdmin && slot.inscricoes && slot.inscricoes.length > 0 && (
           <div style={{ borderTop: '1px solid #f4ebe3', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -999,10 +1031,71 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               <span style={{ fontSize: 13, fontWeight: 850, color: '#b65b43' }}>{DIAS[Number(dia)]}</span>
             </div>
             {horas.map((h, idx) => (
-              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: idx < horas.length - 1 ? '1px solid #f4ebe3' : 'none' }}>
-                <ClockLineIcon size={16}/>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#2d2521' }}>{fmt(h.hora_inicio)} – {fmt(h.hora_fim)}</span>
-                <button style={sc.delBtn} onClick={() => removerHorarioFixo(h.id)}>✕</button>
+              <div key={h.id}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: (idx < horas.length - 1 || editandoNomeFixoId === h.id) ? '1px solid #f4ebe3' : 'none' }}>
+                  <ClockLineIcon size={16}/>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#2d2521' }}>{fmt(h.hora_inicio)} – {fmt(h.hora_fim)}</span>
+                    {h.nome && (
+                      <div style={{ fontSize: 11, color: '#b98718', fontWeight: 750, marginTop: 2 }}>
+                        📌 {h.nome}
+                        {h.valido_de ? ` · ${fmtDateBr(String(h.valido_de))} – ${h.valido_ate ? fmtDateBr(String(h.valido_ate)) : '...'}` : ''}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    style={{ padding: '5px 9px', borderRadius: 10, border: '1px solid rgba(198,107,77,0.3)', background: '#fff1eb', color: '#b65b43', fontSize: 11, fontWeight: 850, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
+                    onClick={() => {
+                      if (editandoNomeFixoId === h.id) { setEditandoNomeFixoId(null); return; }
+                      setEditandoNomeFixoId(h.id);
+                      setFormNomeFixo({
+                        nome: h.nome || '',
+                        email_vinculado: h.email_vinculado || '',
+                        valido_de:  h.valido_de  ? String(h.valido_de).slice(0, 10)  : '',
+                        valido_ate: h.valido_ate ? String(h.valido_ate).slice(0, 10) : '',
+                      });
+                    }}>
+                    {editandoNomeFixoId === h.id ? 'Fechar' : h.nome ? 'Editar' : '+ Nome'}
+                  </button>
+                  <button style={sc.delBtn} onClick={() => removerHorarioFixo(h.id)}>✕</button>
+                </div>
+
+                {editandoNomeFixoId === h.id && (
+                  <div style={{ padding: '10px 14px 14px', background: '#fffaf7', display: 'flex', flexDirection: 'column', gap: 10, borderBottom: idx < horas.length - 1 ? '1px solid #f4ebe3' : 'none' }}>
+                    <div style={s.formRow}>
+                      <FieldGroup label="Nome(s)">
+                        <input style={s.input} placeholder="Ex: Nath, Gisely" value={formNomeFixo.nome}
+                          onChange={e => setFormNomeFixo(f => ({ ...f, nome: e.target.value }))}/>
+                      </FieldGroup>
+                      <FieldGroup label="Email (opcional)">
+                        <input style={s.input} placeholder="aluno@email.com" value={formNomeFixo.email_vinculado}
+                          onChange={e => setFormNomeFixo(f => ({ ...f, email_vinculado: e.target.value }))}/>
+                      </FieldGroup>
+                    </div>
+                    <div style={s.formRow}>
+                      <FieldGroup label="Válido de">
+                        <input style={s.input} type="date" value={formNomeFixo.valido_de}
+                          onChange={e => setFormNomeFixo(f => ({ ...f, valido_de: e.target.value }))}/>
+                      </FieldGroup>
+                      <FieldGroup label="Até">
+                        <input style={s.input} type="date" value={formNomeFixo.valido_ate}
+                          onChange={e => setFormNomeFixo(f => ({ ...f, valido_ate: e.target.value }))}/>
+                      </FieldGroup>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button style={{ flex: 1, padding: '10px 0', borderRadius: 12, border: 'none', background: '#3f8f5b', color: '#fff', fontSize: 13, fontWeight: 850, cursor: 'pointer' }}
+                        onClick={() => salvarNomeFixo(h.id)}>
+                        Salvar
+                      </button>
+                      {h.nome && (
+                        <button style={{ flex: 0.6, padding: '10px 0', borderRadius: 12, border: '1px solid rgba(201,84,65,0.22)', background: '#fff0ec', color: '#c95441', fontSize: 13, cursor: 'pointer' }}
+                          onClick={() => removerNomeFixo(h.id)}>
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1011,12 +1104,9 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     );
   };
 
-  // ── Renders quadra ─────────────────────────────────────────────────────────
-
   const renderReservarQuadra = () => {
     const localSel = locaisQuadra.find(l => l.id === localQuadraId);
     const isACTO   = localSel?.socios_only === true;
-
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <FieldGroup label="Escolha o local">
@@ -1024,7 +1114,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             {locaisQuadra.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
           </select>
         </FieldGroup>
-
         {localSel && (
           <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 8px 20px rgba(117,76,56,0.06)' }}>
             <span style={{ fontSize: 13, fontWeight: 850, color: '#2d2521' }}>{localSel.nome}</span>
@@ -1032,7 +1121,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             {localSel.observacao && <span style={{ fontSize: 11, color: '#b5a69d' }}>{localSel.observacao}</span>}
           </div>
         )}
-
         {isACTO ? (
           <div style={s.emptyFeed}>
             <div style={{ ...s.emptyIcon, fontSize: 26 }}>🎾</div>
@@ -1048,7 +1136,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                 <DateNav data={dataQuadra} setData={setDataQuadra}/>
               </div>
             </div>
-
             {loadingSlots ? (
               <div style={s.loadingBox}><div style={s.loadingDot}/><p style={s.loadingTxt}>Carregando...</p></div>
             ) : slotsQuadra.length === 0 ? (
@@ -1082,7 +1169,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                 </div>
               </>
             )}
-
             <div style={s.formCard}>
               <div style={s.formTitle}>Solicitar Reserva</div>
               <p style={{ margin: 0, fontSize: 12, color: '#94857a', fontWeight: 650, lineHeight: 1.5 }}>
@@ -1129,7 +1215,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       const sBg  = r.status === 'confirmada' ? '#edf8ef' : r.status === 'fila_espera' ? '#fff8e6' : '#fff4e8';
       const sBd  = r.status === 'confirmada' ? '#bee0c8' : r.status === 'fila_espera' ? '#f0d58a' : '#f0d5b0';
       const sLbl = r.status === 'confirmada' ? '✓ Confirmada' : r.status === 'fila_espera' ? '⏳ Fila' : '• Pendente';
-
       return (
         <div key={r.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: `4px solid ${sCor}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -1149,14 +1234,10 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
           <div style={{ display: 'flex', gap: 8 }}>
             {r.status !== 'confirmada' && (
               <button style={{ flex: 1, padding: '10px 0', borderRadius: 13, border: 'none', background: '#3f8f5b', color: '#fff', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
-                onClick={() => confirmarReservaAdmin(r.id)}>
-                Confirmar
-              </button>
+                onClick={() => confirmarReservaAdmin(r.id)}>Confirmar</button>
             )}
             <button style={{ flex: 1, padding: '10px 0', borderRadius: 13, border: '1px solid rgba(201,84,65,0.22)', background: '#fff0ec', color: '#c95441', fontSize: 12, fontWeight: 850, cursor: 'pointer' }}
-              onClick={() => cancelarReservaAdmin(r.id)}>
-              Cancelar
-            </button>
+              onClick={() => cancelarReservaAdmin(r.id)}>Cancelar</button>
           </div>
         </div>
       );
@@ -1174,24 +1255,18 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {pendentes.length > 0 && (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 950, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8 }}>Aguardando aprovação ({pendentes.length})</div>
-            {pendentes.map(renderCard)}
-          </>
-        )}
-        {fila.length > 0 && (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 950, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginTop: 4 }}>Fila de espera ({fila.length})</div>
-            {fila.map(renderCard)}
-          </>
-        )}
-        {confirmadas.length > 0 && (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 950, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginTop: 4 }}>Confirmadas ({confirmadas.length})</div>
-            {confirmadas.map(renderCard)}
-          </>
-        )}
+        {pendentes.length > 0 && (<>
+          <div style={{ fontSize: 11, fontWeight: 950, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8 }}>Aguardando aprovação ({pendentes.length})</div>
+          {pendentes.map(renderCard)}
+        </>)}
+        {fila.length > 0 && (<>
+          <div style={{ fontSize: 11, fontWeight: 950, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginTop: 4 }}>Fila de espera ({fila.length})</div>
+          {fila.map(renderCard)}
+        </>)}
+        {confirmadas.length > 0 && (<>
+          <div style={{ fontSize: 11, fontWeight: 950, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginTop: 4 }}>Confirmadas ({confirmadas.length})</div>
+          {confirmadas.map(renderCard)}
+        </>)}
       </div>
     );
   };
@@ -1231,7 +1306,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         </div>
         <button style={s.publishBtn} onClick={salvarDisponibilidade}>Salvar disponibilidade</button>
       </div>
-
       <div style={s.formCard}>
         <div style={s.formTitle}>Bloquear Horário</div>
         <FieldGroup label="Data">
@@ -1256,23 +1330,20 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
         </FieldGroup>
         <button style={s.publishBtn} onClick={adicionarBloqueio}>Bloquear</button>
       </div>
-
-      {bloqueios.length > 0 && (
-        <>
-          <div style={{ fontSize: 11, fontWeight: 950, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8 }}>Bloqueios ativos</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {bloqueios.map((b: any) => (
-              <div key={b.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 16, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 6px 16px rgba(57,37,28,0.04)' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#2d2521' }}>{fmtDateBr(b.data)} · {b.hi_text || b.hora_inicio + 'h'} – {b.hf_text || b.hora_fim + 'h'}</div>
-                  {b.motivo && <div style={{ fontSize: 11, color: '#94857a', marginTop: 2 }}>{b.motivo}</div>}
-                </div>
-                <button style={sc.delBtn} onClick={() => removerBloqueio(b.id)}>✕</button>
+      {bloqueios.length > 0 && (<>
+        <div style={{ fontSize: 11, fontWeight: 950, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8 }}>Bloqueios ativos</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {bloqueios.map((b: any) => (
+            <div key={b.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 16, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 6px 16px rgba(57,37,28,0.04)' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#2d2521' }}>{fmtDateBr(b.data)} · {b.hi_text || b.hora_inicio + 'h'} – {b.hf_text || b.hora_fim + 'h'}</div>
+                {b.motivo && <div style={{ fontSize: 11, color: '#94857a', marginTop: 2 }}>{b.motivo}</div>}
               </div>
-            ))}
-          </div>
-        </>
-      )}
+              <button style={sc.delBtn} onClick={() => removerBloqueio(b.id)}>✕</button>
+            </div>
+          ))}
+        </div>
+      </>)}
     </div>
   );
 
