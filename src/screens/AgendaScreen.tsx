@@ -478,7 +478,13 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     const manualOcupado  = slot.source === 'manual' && slot.status_manual === 'ocupado';
     const vagasDisp      = slot.vagas - slot.vagas_confirmadas;
     const estaOcupado    = !isBloqueado && !manualOcupado && vagasDisp <= 0;
-    const minhaInscricao = slot.inscricoes?.find(i => i.email_aluno === emailUsuario && i.status !== 'cancelada');
+    const minhaInscricao =
+      slot.inscricoes?.find(i => i.email_aluno === emailUsuario && i.status !== 'cancelada') ??
+      minhasInscricoes.find(i =>
+        i.data.slice(0, 10) === data &&
+        i.hora_inicio.slice(0, 5) === slot.hora_inicio.slice(0, 5) &&
+        i.status !== 'cancelada'
+      );
     const corBorda = isBloqueado || ((estaOcupado || manualOcupado) && !minhaInscricao) ? '#d4c5bb' : cor;
 
     const abrirWaAdmin = () => {
