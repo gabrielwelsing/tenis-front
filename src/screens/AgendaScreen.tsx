@@ -211,6 +211,19 @@ function UserOutlineIcon({ size = 22 }: { size?: number }) {
   );
 }
 
+function CourtIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={Math.round(size * 0.72)} viewBox="0 0 25 18" fill="none"
+      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="1" width="23" height="16" rx="1"/>
+      <line x1="12.5" y1="1" x2="12.5" y2="17"/>
+      <line x1="1" y1="9" x2="24" y2="9" strokeDasharray="2.5 2"/>
+      <line x1="5"  y1="1" x2="5"  y2="17" strokeWidth="0.9" strokeDasharray="1.5 2.5"/>
+      <line x1="20" y1="1" x2="20" y2="17" strokeWidth="0.9" strokeDasharray="1.5 2.5"/>
+    </svg>
+  );
+}
+
 function WaIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
@@ -1105,30 +1118,72 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   };
 
   const renderReservarQuadra = () => {
-    const localSel = locaisQuadra.find(l => l.id === localQuadraId);
-    const isACTO   = localSel?.socios_only === true;
+    const localSel       = locaisQuadra.find(l => l.id === localQuadraId);
+    const hasMultiQuadra = (localSel?.quadras?.length ?? 0) > 1;
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <FieldGroup label="Escolha o local">
-          <select style={s.select} value={localQuadraId} onChange={e => setLocalQuadraId(Number(e.target.value))}>
-            {locaisQuadra.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
-          </select>
-        </FieldGroup>
+
+        {/* Pills de local */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {locaisQuadra.map(l => {
+            const ativo = l.id === localQuadraId;
+            return (
+              <button key={l.id} onClick={() => setLocalQuadraId(l.id)} style={{
+                flex: 1, padding: '11px 8px', borderRadius: 16, cursor: 'pointer', textAlign: 'center',
+                border: `1.5px solid ${ativo ? '#c66b4d' : 'rgba(130,82,62,0.14)'}`,
+                background: ativo ? '#fff4ee' : '#fff',
+                boxShadow: ativo ? '0 4px 14px rgba(198,107,77,0.15)' : 'none',
+                transition: 'all .2s',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 5,
+                  color: ativo ? '#c66b4d' : '#94857a', fontSize: 22 }}>
+                  {l.socios_only ? '🎾' : <CourtIcon size={26} />}
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: ativo ? '#c66b4d' : '#2d2521', lineHeight: 1.3 }}>
+                  {l.socios_only ? 'Automóvel Clube' : 'Arena Tênis'}
+                </div>
+                <div style={{ fontSize: 10, color: '#94857a', fontWeight: 600, marginTop: 2 }}>
+                  {l.socios_only ? `ACTO · ${l.quadras?.length ?? 5} quadras` : 'Prof. Carlão'}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Info do local */}
         {localSel && (
-          <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 8px 20px rgba(117,76,56,0.06)' }}>
+          <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 16,
+            padding: '11px 14px', display: 'flex', flexDirection: 'column', gap: 3,
+            boxShadow: '0 6px 18px rgba(117,76,56,0.06)' }}>
             <span style={{ fontSize: 13, fontWeight: 850, color: '#2d2521' }}>{localSel.nome}</span>
             <span style={{ fontSize: 12, color: '#94857a', fontWeight: 650 }}>{localSel.endereco}</span>
             {localSel.observacao && <span style={{ fontSize: 11, color: '#b5a69d' }}>{localSel.observacao}</span>}
           </div>
         )}
-        {isACTO ? (
-          <div style={s.emptyFeed}>
-            <div style={{ ...s.emptyIcon, fontSize: 26 }}>🎾</div>
-            <p style={s.emptyText}>Automóvel Clube (ACTO)</p>
-            <p style={s.emptyHint}>Reservas via contato direto com o clube. Em breve disponível no app.</p>
+
+        {/* Chips de quadra (para locais com múltiplas quadras) */}
+        {hasMultiQuadra && localSel && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+            {localSel.quadras.map(q => {
+              const ativo = q.id === quadraId;
+              return (
+                <button key={q.id} onClick={() => setQuadraId(q.id)} style={{
+                  padding: '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                  border: `1.5px solid ${ativo ? '#c66b4d' : 'rgba(130,82,62,0.18)'}`,
+                  background: ativo ? '#c66b4d' : '#fff',
+                  color: ativo ? '#fff' : '#82523e',
+                  transition: 'all .15s',
+                }}>
+                  {q.nome}
+                </button>
+              );
+            })}
           </div>
-        ) : (
-          <>
+        )}
+
+        {/* Calendário + slots — para todos os locais */}
+        <>
             <div style={s.sectionHead}>
               <CalendarPicker data={dataQuadra} setData={setDataQuadra}/>
               <div style={s.sectionInfo}>
@@ -1199,8 +1254,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                 {reservaLoading ? 'Enviando...' : 'Solicitar Reserva'}
               </button>
             </div>
-          </>
-        )}
+        </>
       </div>
     );
   };
