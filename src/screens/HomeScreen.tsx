@@ -6,7 +6,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
 import {
-  getProximaAtividadeCompleta,
   getPrioridadeHome,
   responderDesafioPendente,
   responderResultadoPendente,
@@ -242,24 +241,6 @@ export default function HomeScreen({
   useEffect(() => {
     let ativo = true;
 
-    if (!emailUsuario) return;
-
-    getProximaAtividadeCompleta(emailUsuario, role, token)
-      .then(data => {
-        if (ativo) setProximaAtividade(data);
-      })
-      .catch(() => {
-        if (ativo) setProximaAtividade(null);
-      });
-
-    return () => {
-      ativo = false;
-    };
-  }, [emailUsuario, role, token]);
-
-  useEffect(() => {
-    let ativo = true;
-
     if (!token) {
       setPrioridadeHome(null);
       return;
@@ -462,17 +443,25 @@ export default function HomeScreen({
 
     if (!emailUsuario) return;
 
-    getAtividadesHome(emailUsuario, role, token)
+      getAtividadesHome(emailUsuario, role, token)
       .then(data => {
         if (!ativo) return;
         setAtividadesHome(data);
+        const primeira = data.proximas[0] ?? null;
+        setProximaAtividade(primeira ? {
+          ...primeira,
+          adversarioNome: primeira.adversarioNome ?? primeira.pessoaNome ?? null,
+          adversarioEmail: primeira.adversarioEmail ?? primeira.pessoaEmail ?? null,
+          alunoNome: primeira.alunoNome ?? primeira.pessoaNome ?? null,
+          alunoEmail: primeira.alunoEmail ?? primeira.pessoaEmail ?? null,
+        } as ProximaAtividadeCompletaRecord : null);
         setAgendaTab(data.proximas.length > 0 ? 'proximas' : 'anteriores');
       })
       .catch(() => {
         if (!ativo) return;
         setAtividadesHome({ proximas: [], anteriores: [] });
+        setProximaAtividade(null);
       });
-
     return () => {
       ativo = false;
     };
