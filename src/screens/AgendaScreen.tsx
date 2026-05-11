@@ -1201,59 +1201,92 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               </div>
             ) : (
               <>
+                {/* Grade de horários — clicável */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                   {slotsQuadra.map(slot => {
-                    const pal = SLOT_STATUS_PAL[slot.status] ?? SLOT_STATUS_PAL.bloqueado;
+                    const isSel   = slot.hora_inicio === reservaHoraInicio;
+                    const isLivre = slot.status === 'livre';
+                    const pal     = isSel
+                      ? { bg: '#c66b4d', border: '#c66b4d', color: '#fff' }
+                      : SLOT_STATUS_PAL[slot.status] ?? SLOT_STATUS_PAL.bloqueado;
                     return (
-                      <div key={slot.hora_inicio} style={{ padding: '8px 4px', borderRadius: 12, textAlign: 'center', background: pal.bg, border: `1px solid ${pal.border}`, color: pal.color }}>
+                      <button
+                        key={slot.hora_inicio}
+                        onClick={() => {
+                          if (!isLivre) return;
+                          if (isSel) { setReservaHoraInicio(''); setReservaHoraFim(''); }
+                          else       { setReservaHoraInicio(slot.hora_inicio); setReservaHoraFim(addCourtMin(slot.hora_inicio, 60)); }
+                        }}
+                        style={{
+                          padding: '10px 4px', borderRadius: 12, textAlign: 'center',
+                          background: pal.bg, border: `1.5px solid ${pal.border}`, color: pal.color,
+                          cursor: isLivre ? 'pointer' : 'default',
+                          boxShadow: isSel ? '0 4px 14px rgba(198,107,77,0.35)' : 'none',
+                          transition: 'all .15s', fontFamily: 'inherit',
+                          transform: isSel ? 'scale(1.04)' : 'scale(1)',
+                        }}
+                      >
                         <div style={{ fontSize: 12, fontWeight: 800 }}>{slot.hora_inicio}</div>
-                        <div style={{ fontSize: 9, fontWeight: 700, marginTop: 2 }}>{SLOT_STATUS_LABEL[slot.status] ?? slot.status}</div>
-                      </div>
+                        <div style={{ fontSize: 9, fontWeight: 700, marginTop: 3 }}>
+                          {isSel ? 'Selecionado' : SLOT_STATUS_LABEL[slot.status] ?? slot.status}
+                        </div>
+                      </button>
                     );
                   })}
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {Object.entries(SLOT_STATUS_LABEL).map(([key, label]) => {
+
+                {/* Legenda */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                  {(Object.entries(SLOT_STATUS_LABEL) as [string, string][]).map(([key, label]) => {
                     const pal = SLOT_STATUS_PAL[key];
+                    if (!pal) return null;
                     return (
-                      <span key={key} style={{ fontSize: 10, fontWeight: 750, padding: '3px 8px', borderRadius: 999, background: pal.bg, color: pal.color, border: `1px solid ${pal.border}` }}>
+                      <span key={key} style={{ fontSize: 10, fontWeight: 750, padding: '3px 8px', borderRadius: 999,
+                        background: pal.bg, color: pal.color, border: `1px solid ${pal.border}` }}>
                         {label}
                       </span>
                     );
                   })}
+                  <span style={{ fontSize: 10, fontWeight: 750, padding: '3px 8px', borderRadius: 999,
+                    background: '#c66b4d', color: '#fff', border: '1px solid #c66b4d' }}>
+                    Selecionado
+                  </span>
                 </div>
+
+                {/* Formulário inline — aparece ao clicar num slot livre */}
+                {reservaHoraInicio && (
+                  <div style={{ background: '#fff8f5', border: '1.5px solid rgba(198,107,77,0.28)',
+                    borderRadius: 18, padding: '14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#c66b4d' }}>📋 Solicitar reserva</div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#2d2521', marginTop: -4 }}>
+                      {reservaHoraInicio} – {reservaHoraFim}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94857a', fontWeight: 650, marginTop: -6, lineHeight: 1.5 }}>
+                      {localSel?.nome} · Mínimo 1h · Carlão confirmará pelo app
+                    </div>
+                    <FieldGroup label="Seu nome">
+                      <input style={s.input} value={reservaNome}
+                        onChange={e => setReservaNome(e.target.value)} placeholder="Como prefere ser chamado"/>
+                    </FieldGroup>
+                    <FieldGroup label="WhatsApp">
+                      <input style={s.input} type="tel" inputMode="numeric" value={reservaWhatsapp}
+                        onChange={e => setReservaWhatsapp(maskPhone(e.target.value))} placeholder="(33) 99999-0000"/>
+                    </FieldGroup>
+                    <button style={{ ...s.publishBtn, opacity: reservaLoading ? 0.6 : 1 }}
+                      onClick={solicitarReservaQuadra} disabled={reservaLoading}>
+                      {reservaLoading ? 'Enviando...' : 'Solicitar Reserva'}
+                    </button>
+                    <button
+                      style={{ width: '100%', padding: '11px 0', borderRadius: 12, background: 'transparent',
+                        border: '1.5px solid rgba(130,82,62,0.2)', color: '#82523e', fontSize: 13,
+                        fontWeight: 700, cursor: 'pointer' }}
+                      onClick={() => { setReservaHoraInicio(''); setReservaHoraFim(''); }}>
+                      Cancelar
+                    </button>
+                  </div>
+                )}
               </>
             )}
-            <div style={s.formCard}>
-              <div style={s.formTitle}>Solicitar Reserva</div>
-              <p style={{ margin: 0, fontSize: 12, color: '#94857a', fontWeight: 650, lineHeight: 1.5 }}>
-                Mínimo 1 hora. O Carlão confirmará pelo app.
-              </p>
-              <div style={s.formRow}>
-                <FieldGroup label="Das">
-                  <select style={s.select} value={reservaHoraInicio} onChange={e => setReservaHoraInicio(e.target.value)}>
-                    <option value="">Selecionar...</option>
-                    {COURT_SLOTS.filter(t => t < '23:00').map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </FieldGroup>
-                <FieldGroup label="Às">
-                  <select style={s.select} value={reservaHoraFim} onChange={e => setReservaHoraFim(e.target.value)}>
-                    <option value="">Selecionar...</option>
-                    {COURT_SLOTS.filter(t => !reservaHoraInicio || t >= addCourtMin(reservaHoraInicio, 60)).map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </FieldGroup>
-              </div>
-              <FieldGroup label="Seu nome">
-                <input style={s.input} value={reservaNome} onChange={e => setReservaNome(e.target.value)} placeholder="Como prefere ser chamado"/>
-              </FieldGroup>
-              <FieldGroup label="WhatsApp">
-                <input style={s.input} type="tel" inputMode="numeric" value={reservaWhatsapp}
-                  onChange={e => setReservaWhatsapp(maskPhone(e.target.value))} placeholder="(33) 99999-0000"/>
-              </FieldGroup>
-              <button style={{ ...s.publishBtn, opacity: reservaLoading ? 0.6 : 1 }} onClick={solicitarReservaQuadra} disabled={reservaLoading}>
-                {reservaLoading ? 'Enviando...' : 'Solicitar Reserva'}
-              </button>
-            </div>
         </>
       </div>
     );
