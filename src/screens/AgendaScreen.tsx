@@ -860,14 +860,15 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                   ? '⏳ Você está na lista de espera'
                   : '⏳ Solicitação enviada — aguardando confirmação'}
               </div>
+            
             ) : estaOcupado ? (
               slot.source === 'fixo' ? (
-                <button style={sc.reservaBtn} onClick={() => solicitarReserva(slot)
+                <button style={sc.reservarBtn} onClick={() => solicitarReserva(slot)}>
                   Entrar na lista de espera
-                  </button>
-                ) : (
-                  <div style={sc.ocupadoInfo}>Ocupado</div>
-                )
+                </button>
+              ) : (
+                <div style={sc.ocupadoInfo}>Ocupado</div>
+              )
             ) : slot.perto1h ? (
             
               <button onClick={abrirWaAdmin} style={sc.waBtn}><WaIcon/> Entre em contato para informar interesse</button>
