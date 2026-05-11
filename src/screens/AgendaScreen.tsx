@@ -211,19 +211,6 @@ function UserOutlineIcon({ size = 22 }: { size?: number }) {
   );
 }
 
-function CourtIcon({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={Math.round(size * 0.72)} viewBox="0 0 25 18" fill="none"
-      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="1" y="1" width="23" height="16" rx="1"/>
-      <line x1="12.5" y1="1" x2="12.5" y2="17"/>
-      <line x1="1" y1="9" x2="24" y2="9" strokeDasharray="2.5 2"/>
-      <line x1="5"  y1="1" x2="5"  y2="17" strokeWidth="0.9" strokeDasharray="1.5 2.5"/>
-      <line x1="20" y1="1" x2="20" y2="17" strokeWidth="0.9" strokeDasharray="1.5 2.5"/>
-    </svg>
-  );
-}
-
 function WaIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
@@ -1118,72 +1105,30 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   };
 
   const renderReservarQuadra = () => {
-    const localSel       = locaisQuadra.find(l => l.id === localQuadraId);
-    const hasMultiQuadra = (localSel?.quadras?.length ?? 0) > 1;
-
+    const localSel = locaisQuadra.find(l => l.id === localQuadraId);
+    const isACTO   = localSel?.socios_only === true;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {/* Pills de local */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          {locaisQuadra.map(l => {
-            const ativo = l.id === localQuadraId;
-            return (
-              <button key={l.id} onClick={() => setLocalQuadraId(l.id)} style={{
-                flex: 1, padding: '11px 8px', borderRadius: 16, cursor: 'pointer', textAlign: 'center',
-                border: `1.5px solid ${ativo ? '#c66b4d' : 'rgba(130,82,62,0.14)'}`,
-                background: ativo ? '#fff4ee' : '#fff',
-                boxShadow: ativo ? '0 4px 14px rgba(198,107,77,0.15)' : 'none',
-                transition: 'all .2s',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 5,
-                  color: ativo ? '#c66b4d' : '#94857a', fontSize: 22 }}>
-                  {l.socios_only ? '🎾' : <CourtIcon size={26} />}
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: ativo ? '#c66b4d' : '#2d2521', lineHeight: 1.3 }}>
-                  {l.socios_only ? 'Automóvel Clube' : 'Arena Tênis'}
-                </div>
-                <div style={{ fontSize: 10, color: '#94857a', fontWeight: 600, marginTop: 2 }}>
-                  {l.socios_only ? `ACTO · ${l.quadras?.length ?? 5} quadras` : 'Prof. Carlão'}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Info do local */}
+        <FieldGroup label="Escolha o local">
+          <select style={s.select} value={localQuadraId} onChange={e => setLocalQuadraId(Number(e.target.value))}>
+            {locaisQuadra.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+          </select>
+        </FieldGroup>
         {localSel && (
-          <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 16,
-            padding: '11px 14px', display: 'flex', flexDirection: 'column', gap: 3,
-            boxShadow: '0 6px 18px rgba(117,76,56,0.06)' }}>
+          <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 8px 20px rgba(117,76,56,0.06)' }}>
             <span style={{ fontSize: 13, fontWeight: 850, color: '#2d2521' }}>{localSel.nome}</span>
             <span style={{ fontSize: 12, color: '#94857a', fontWeight: 650 }}>{localSel.endereco}</span>
             {localSel.observacao && <span style={{ fontSize: 11, color: '#b5a69d' }}>{localSel.observacao}</span>}
           </div>
         )}
-
-        {/* Chips de quadra (para locais com múltiplas quadras) */}
-        {hasMultiQuadra && localSel && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-            {localSel.quadras.map(q => {
-              const ativo = q.id === quadraId;
-              return (
-                <button key={q.id} onClick={() => setQuadraId(q.id)} style={{
-                  padding: '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                  border: `1.5px solid ${ativo ? '#c66b4d' : 'rgba(130,82,62,0.18)'}`,
-                  background: ativo ? '#c66b4d' : '#fff',
-                  color: ativo ? '#fff' : '#82523e',
-                  transition: 'all .15s',
-                }}>
-                  {q.nome}
-                </button>
-              );
-            })}
+        {isACTO ? (
+          <div style={s.emptyFeed}>
+            <div style={{ ...s.emptyIcon, fontSize: 26 }}>🎾</div>
+            <p style={s.emptyText}>Automóvel Clube (ACTO)</p>
+            <p style={s.emptyHint}>Reservas via contato direto com o clube. Em breve disponível no app.</p>
           </div>
-        )}
-
-        {/* Calendário + slots — para todos os locais */}
-        <>
+        ) : (
+          <>
             <div style={s.sectionHead}>
               <CalendarPicker data={dataQuadra} setData={setDataQuadra}/>
               <div style={s.sectionInfo}>
@@ -1201,93 +1146,61 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               </div>
             ) : (
               <>
-                {/* Grade de horários — clicável */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                   {slotsQuadra.map(slot => {
-                    const isSel   = slot.hora_inicio === reservaHoraInicio;
-                    const isLivre = slot.status === 'livre';
-                    const pal     = isSel
-                      ? { bg: '#c66b4d', border: '#c66b4d', color: '#fff' }
-                      : SLOT_STATUS_PAL[slot.status] ?? SLOT_STATUS_PAL.bloqueado;
+                    const pal = SLOT_STATUS_PAL[slot.status] ?? SLOT_STATUS_PAL.bloqueado;
                     return (
-                      <button
-                        key={slot.hora_inicio}
-                        onClick={() => {
-                          if (!isLivre) return;
-                          if (isSel) { setReservaHoraInicio(''); setReservaHoraFim(''); }
-                          else       { setReservaHoraInicio(slot.hora_inicio); setReservaHoraFim(addCourtMin(slot.hora_inicio, 60)); }
-                        }}
-                        style={{
-                          padding: '10px 4px', borderRadius: 12, textAlign: 'center',
-                          background: pal.bg, border: `1.5px solid ${pal.border}`, color: pal.color,
-                          cursor: isLivre ? 'pointer' : 'default',
-                          boxShadow: isSel ? '0 4px 14px rgba(198,107,77,0.35)' : 'none',
-                          transition: 'all .15s', fontFamily: 'inherit',
-                          transform: isSel ? 'scale(1.04)' : 'scale(1)',
-                        }}
-                      >
+                      <div key={slot.hora_inicio} style={{ padding: '8px 4px', borderRadius: 12, textAlign: 'center', background: pal.bg, border: `1px solid ${pal.border}`, color: pal.color }}>
                         <div style={{ fontSize: 12, fontWeight: 800 }}>{slot.hora_inicio}</div>
-                        <div style={{ fontSize: 9, fontWeight: 700, marginTop: 3 }}>
-                          {isSel ? 'Selecionado' : SLOT_STATUS_LABEL[slot.status] ?? slot.status}
-                        </div>
-                      </button>
+                        <div style={{ fontSize: 9, fontWeight: 700, marginTop: 2 }}>{SLOT_STATUS_LABEL[slot.status] ?? slot.status}</div>
+                      </div>
                     );
                   })}
                 </div>
-
-                {/* Legenda */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-                  {(Object.entries(SLOT_STATUS_LABEL) as [string, string][]).map(([key, label]) => {
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {Object.entries(SLOT_STATUS_LABEL).map(([key, label]) => {
                     const pal = SLOT_STATUS_PAL[key];
-                    if (!pal) return null;
                     return (
-                      <span key={key} style={{ fontSize: 10, fontWeight: 750, padding: '3px 8px', borderRadius: 999,
-                        background: pal.bg, color: pal.color, border: `1px solid ${pal.border}` }}>
+                      <span key={key} style={{ fontSize: 10, fontWeight: 750, padding: '3px 8px', borderRadius: 999, background: pal.bg, color: pal.color, border: `1px solid ${pal.border}` }}>
                         {label}
                       </span>
                     );
                   })}
-                  <span style={{ fontSize: 10, fontWeight: 750, padding: '3px 8px', borderRadius: 999,
-                    background: '#c66b4d', color: '#fff', border: '1px solid #c66b4d' }}>
-                    Selecionado
-                  </span>
                 </div>
-
-                {/* Formulário inline — aparece ao clicar num slot livre */}
-                {reservaHoraInicio && (
-                  <div style={{ background: '#fff8f5', border: '1.5px solid rgba(198,107,77,0.28)',
-                    borderRadius: 18, padding: '14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#c66b4d' }}>📋 Solicitar reserva</div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: '#2d2521', marginTop: -4 }}>
-                      {reservaHoraInicio} – {reservaHoraFim}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#94857a', fontWeight: 650, marginTop: -6, lineHeight: 1.5 }}>
-                      {localSel?.nome} · Mínimo 1h · Carlão confirmará pelo app
-                    </div>
-                    <FieldGroup label="Seu nome">
-                      <input style={s.input} value={reservaNome}
-                        onChange={e => setReservaNome(e.target.value)} placeholder="Como prefere ser chamado"/>
-                    </FieldGroup>
-                    <FieldGroup label="WhatsApp">
-                      <input style={s.input} type="tel" inputMode="numeric" value={reservaWhatsapp}
-                        onChange={e => setReservaWhatsapp(maskPhone(e.target.value))} placeholder="(33) 99999-0000"/>
-                    </FieldGroup>
-                    <button style={{ ...s.publishBtn, opacity: reservaLoading ? 0.6 : 1 }}
-                      onClick={solicitarReservaQuadra} disabled={reservaLoading}>
-                      {reservaLoading ? 'Enviando...' : 'Solicitar Reserva'}
-                    </button>
-                    <button
-                      style={{ width: '100%', padding: '11px 0', borderRadius: 12, background: 'transparent',
-                        border: '1.5px solid rgba(130,82,62,0.2)', color: '#82523e', fontSize: 13,
-                        fontWeight: 700, cursor: 'pointer' }}
-                      onClick={() => { setReservaHoraInicio(''); setReservaHoraFim(''); }}>
-                      Cancelar
-                    </button>
-                  </div>
-                )}
               </>
             )}
-        </>
+            <div style={s.formCard}>
+              <div style={s.formTitle}>Solicitar Reserva</div>
+              <p style={{ margin: 0, fontSize: 12, color: '#94857a', fontWeight: 650, lineHeight: 1.5 }}>
+                Mínimo 1 hora. O Carlão confirmará pelo app.
+              </p>
+              <div style={s.formRow}>
+                <FieldGroup label="Das">
+                  <select style={s.select} value={reservaHoraInicio} onChange={e => setReservaHoraInicio(e.target.value)}>
+                    <option value="">Selecionar...</option>
+                    {COURT_SLOTS.filter(t => t < '23:00').map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </FieldGroup>
+                <FieldGroup label="Às">
+                  <select style={s.select} value={reservaHoraFim} onChange={e => setReservaHoraFim(e.target.value)}>
+                    <option value="">Selecionar...</option>
+                    {COURT_SLOTS.filter(t => !reservaHoraInicio || t >= addCourtMin(reservaHoraInicio, 60)).map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </FieldGroup>
+              </div>
+              <FieldGroup label="Seu nome">
+                <input style={s.input} value={reservaNome} onChange={e => setReservaNome(e.target.value)} placeholder="Como prefere ser chamado"/>
+              </FieldGroup>
+              <FieldGroup label="WhatsApp">
+                <input style={s.input} type="tel" inputMode="numeric" value={reservaWhatsapp}
+                  onChange={e => setReservaWhatsapp(maskPhone(e.target.value))} placeholder="(33) 99999-0000"/>
+              </FieldGroup>
+              <button style={{ ...s.publishBtn, opacity: reservaLoading ? 0.6 : 1 }} onClick={solicitarReservaQuadra} disabled={reservaLoading}>
+                {reservaLoading ? 'Enviando...' : 'Solicitar Reserva'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     );
   };
