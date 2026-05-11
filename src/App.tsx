@@ -672,7 +672,7 @@ const s: Record<string, React.CSSProperties> = {
   bgImage: {
     position: 'absolute',
     inset: 0,
-    backgroundImage: 'url(/tela_login.png)',
+    backgroundImage: 'url(/tela_login_carlao.png)',
     backgroundPosition: 'center center',
     backgroundSize: 'cover',
     backgroundRepeat: 'no-repeat',
