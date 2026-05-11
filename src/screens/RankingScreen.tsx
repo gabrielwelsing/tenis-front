@@ -749,7 +749,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                 <button style={s.disputeBtn} onClick={() => responderDesafio(d.id, 'recusado')}>Recusar</button>
               </div>
             )}
-            {!recebido && d.status === 'pendente' && (
+            {!recebido && (d.status === 'pendente' || d.status === 'aceito') && (
               <div style={s.confirmBtns}>
                 <button style={s.disputeBtn} onClick={() => responderDesafio(d.id, 'cancelado')}>
                   Cancelar desafio
