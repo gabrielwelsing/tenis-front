@@ -327,15 +327,17 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   };
 
   const responderDesafio = async (id: string, status: string) => {
-    try { await api('PATCH', `/ranking/desafios/${id}`, { status }); flash('ok', status === 'aceito' ? 'Desafio aceito!' : 'Desafio recusado.'); await loadDesafios(); }
-    catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    try {
+      await api('PATCH', `/ranking/desafios/${id}`, { status });
+      flash('ok', status === 'aceito' ? 'Desafio aceito!' : status === 'cancelado' ? 'Desafio cancelado.' : 'Desafio recusado.');
+      await loadDesafios();
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
   };
 
   const ligaAtual      = ligas.find(l => l.id === ligaId);
   const isLigaAdmin    = ligaAtual?.is_admin ?? false;
   const aproveitamento = (v: number, j: number) => j === 0 ? 0 : Math.round((v / j) * 100);
 
-  // ── Seletor de liga/temporada sem emoji ───────────────────────────────────
   const renderLigaSelect = () => (
     <div style={s.ligaRow}>
       <select style={s.ligaSelect} value={ligaId} onChange={e => { setLigaId(e.target.value); setTemporadaId(''); setRankingData([]); }}>
@@ -537,7 +539,6 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       <div>
         {renderLigaSelect()}
 
-        {/* ── Botão regras de pontuação ── */}
         <button
           onClick={() => setShowRegras(true)}
           style={{ width: '100%', padding: '11px 0', borderRadius: 14, background: '#fff1eb', border: '1px solid rgba(198,107,77,0.28)', color: '#a54f3d', fontSize: 13, fontWeight: 850, cursor: 'pointer', marginBottom: 4 }}
@@ -736,7 +737,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
           <div key={d.id} style={s.desafioCard}>
             <div style={s.desafioHeader}>
               <span style={s.desafioNome}>{recebido ? `De: ${d.desafiante_nome}` : `Para: ${d.desafiado_nome}`}</span>
-              <span style={{ ...s.statusPill, background: d.status === 'aceito' ? 'rgba(76,175,80,0.15)' : d.status === 'recusado' ? 'rgba(244,67,54,0.15)' : 'rgba(255,167,38,0.15)', color: d.status === 'aceito' ? '#3f8f5b' : d.status === 'recusado' ? '#f44336' : '#ffa726', border: `1px solid ${d.status === 'aceito' ? '#3f8f5b' : d.status === 'recusado' ? '#f44336' : '#ffa726'}` }}>
+              <span style={{ ...s.statusPill, background: d.status === 'aceito' ? 'rgba(76,175,80,0.15)' : d.status === 'recusado' || d.status === 'cancelado' ? 'rgba(244,67,54,0.15)' : 'rgba(255,167,38,0.15)', color: d.status === 'aceito' ? '#3f8f5b' : d.status === 'recusado' || d.status === 'cancelado' ? '#f44336' : '#ffa726', border: `1px solid ${d.status === 'aceito' ? '#3f8f5b' : d.status === 'recusado' || d.status === 'cancelado' ? '#f44336' : '#ffa726'}` }}>
                 {d.status}
               </span>
             </div>
@@ -746,6 +747,13 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
               <div style={s.confirmBtns}>
                 <button style={s.okBtn} onClick={() => responderDesafio(d.id, 'aceito')}>Aceitar</button>
                 <button style={s.disputeBtn} onClick={() => responderDesafio(d.id, 'recusado')}>Recusar</button>
+              </div>
+            )}
+            {!recebido && d.status === 'pendente' && (
+              <div style={s.confirmBtns}>
+                <button style={s.disputeBtn} onClick={() => responderDesafio(d.id, 'cancelado')}>
+                  Cancelar desafio
+                </button>
               </div>
             )}
           </div>
@@ -831,7 +839,6 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     </div>
   );
 
-  // ── Tabs sem emoji ────────────────────────────────────────────────────────
   const TABS: { key: Tab; label: string }[] = [
     { key: 'ranking',  label: 'Ranking'   },
     { key: 'rodada',   label: 'Rodada'    },
@@ -850,7 +857,6 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
       <div style={s.bgGlow} />
       <div style={s.bgGlow2} />
 
-      {/* ── Modal flutuante de Regras de Pontuação ── */}
       {showRegras && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(44,30,24,0.42)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', backdropFilter: 'blur(5px)' }}
@@ -865,7 +871,6 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
               </div>
               <button style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: '#f4ebe3', color: '#8b6657', fontSize: 18, cursor: 'pointer' }} onClick={() => setShowRegras(false)}>✕</button>
             </div>
-
             <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, overflow: 'hidden', boxShadow: '0 10px 28px rgba(117,76,56,0.07)' }}>
               {([
                 ['Vitória 2×0', '10 pts', '#b98718'],
@@ -881,7 +886,6 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
                 </div>
               ))}
             </div>
-
             <div style={{ background: '#fff8f3', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 16, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span style={{ fontSize: 12, color: '#6f625b', lineHeight: 1.6 }}>
                 <strong style={{ color: '#3d332e' }}>Desempate:</strong> tie-break direto até 10 pontos.
