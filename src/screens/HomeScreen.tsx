@@ -27,6 +27,7 @@ interface Props {
   fotoUrl?:       string | null;
   telefone?:      string | null;
   localidade?:    string | null;
+  planoExpiraEm?: string | null;
   onLogout:       () => void;
   onNavigate:     (screen: Screen) => void;
   onFotoUpload:   (file: File) => Promise<void>;
@@ -87,6 +88,19 @@ function labelTipoAtividade(tipo: AtividadeHomeRecord['tipo']): string {
   if (tipo === 'aula') return 'Aula';
   if (tipo === 'desafio') return 'Desafio';
   return 'Jogo';
+}
+
+function calcularDiasRestantesPlano(planoExpiraEm?: string | null): number | null {
+  if (!planoExpiraEm) return null;
+
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const fim = new Date(`${String(planoExpiraEm).slice(0, 10)}T23:59:59`);
+  if (Number.isNaN(fim.getTime())) return null;
+
+  const diffMs = fim.getTime() - hoje.getTime();
+  return Math.max(0, Math.ceil(diffMs / 86400000));
 }
 
 
@@ -205,12 +219,20 @@ function TargetIcon({ size = 24 }: { size?: number }) {
 }
 
 export default function HomeScreen({
-  saveMode, username, emailUsuario, token, role, fotoUrl, telefone, localidade,
+  saveMode, username, emailUsuario, token, role, fotoUrl, telefone, localidade, planoExpiraEm,
   onLogout, onNavigate, onFotoUpload, onAssinar, onSalvarPerfil,
 }: Props) {
   const displayName = username
     ? username.charAt(0).toUpperCase() + username.slice(1)
     : 'Professor';
+
+  const diasPlanoPro = calcularDiasRestantesPlano(planoExpiraEm);
+  const textoPlanoPro =
+    role === 'admin'
+      ? 'Admin'
+      : role === 'aluno' && diasPlanoPro !== null
+        ? `${diasPlanoPro} ${diasPlanoPro === 1 ? 'dia' : 'dias'} PRO`
+        : '';
 
   const isAdmin = role === 'admin' || role === 'aluno';
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -839,7 +861,9 @@ export default function HomeScreen({
                   <p style={cfg.planDesc}>
                     {role === 'user'
                       ? 'Você está usando os recursos gratuitos do app.'
-                      : 'Seu perfil possui acesso liberado aos recursos avançados.'}
+                      : diasPlanoPro !== null
+                        ? `Seu perfil possui acesso liberado aos recursos avançados por mais ${diasPlanoPro} ${diasPlanoPro === 1 ? 'dia' : 'dias'}.`
+                        : 'Seu perfil possui acesso liberado aos recursos avançados.'}
                   </p>
                 </div>
 
@@ -861,7 +885,7 @@ export default function HomeScreen({
                 </button>
 
                 <p style={cfg.planHint}>
-                  As ações de assinatura e cancelamento serão conectadas depois no Mercado Pago.
+                  A assinatura é feita via PIX pela Stripe. O cancelamento será conectado depois.
                 </p>
               </>
             )}
@@ -886,7 +910,10 @@ export default function HomeScreen({
               </div>
 
               <div>
-                <h2 style={s.greeting}>Olá, <span style={s.greetingName}>{displayName}</span></h2>
+                <h2 style={s.greeting}>
+                  Olá, <span style={s.greetingName}>{displayName}</span>
+                  {textoPlanoPro && <span style={s.proBadge}>({textoPlanoPro})</span>}
+                </h2>
                 <p style={s.greetingSub}>Pronto para jogar melhor hoje?</p>
               </div>
             </div>
@@ -1361,6 +1388,17 @@ const s: Record<string, React.CSSProperties> = {
 
   greetingName: {
     color: '#2d2521',
+  },
+
+  proBadge: {
+    display: 'inline-block',
+    marginLeft: 6,
+    color: '#b45e45',
+    fontSize: 9.5,
+    fontWeight: 850,
+    letterSpacing: -0.1,
+    verticalAlign: 'middle',
+    whiteSpace: 'nowrap',
   },
 
   greetingSub: {
