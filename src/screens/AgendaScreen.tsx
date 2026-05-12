@@ -1115,6 +1115,21 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const renderReservarQuadra = () => {
     const localSel = locaisQuadra.find(l => l.id === localQuadraId);
     const isACTO   = localSel?.socios_only === true;
+
+    // Fallback visual: 07h–20h tudo livre, caso ACTO não tenha slots configurados
+    const actoSlots: SlotQuadra[] = slotsQuadra.length > 0
+      ? slotsQuadra
+      : Array.from({ length: 14 }, (_, i) => ({
+          hora_inicio: `${String(7 + i).padStart(2, '0')}:00`,
+          status: 'livre' as const,
+        }));
+
+    const periodos = [
+      { label: 'Manhã', icon: '🌅', de: 0,  ate: 12 },
+      { label: 'Tarde', icon: '☀️', de: 12, ate: 18 },
+      { label: 'Noite', icon: '🌙', de: 18, ate: 24 },
+    ];
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <FieldGroup label="Escolha o local">
@@ -1122,21 +1137,114 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             {locaisQuadra.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
           </select>
         </FieldGroup>
-        {localSel && (
-          <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 8px 20px rgba(117,76,56,0.06)' }}>
-            <span style={{ fontSize: 13, fontWeight: 850, color: '#2d2521' }}>{localSel.nome}</span>
-            <span style={{ fontSize: 12, color: '#94857a', fontWeight: 650 }}>{localSel.endereco}</span>
-            {localSel.observacao && <span style={{ fontSize: 11, color: '#b5a69d' }}>{localSel.observacao}</span>}
-          </div>
-        )}
+
         {isACTO ? (
-          <div style={s.emptyFeed}>
-            <div style={{ ...s.emptyIcon, fontSize: 26 }}>🎾</div>
-            <p style={s.emptyText}>Automóvel Clube (ACTO)</p>
-            <p style={s.emptyHint}>Reservas via contato direto com o clube. Em breve disponível no app.</p>
-          </div>
+          <>
+            {/* Info do local */}
+            {localSel && (
+              <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, boxShadow: '0 8px 20px rgba(117,76,56,0.06)' }}>
+                <span style={{ fontSize: 13, fontWeight: 850, color: '#2d2521' }}>📍 {localSel.nome}</span>
+                <span style={{ fontSize: 12, color: '#94857a', fontWeight: 650 }}>{localSel.endereco}</span>
+                {localSel.observacao && <span style={{ fontSize: 11, color: '#b5a69d', fontWeight: 600 }}>{localSel.observacao}</span>}
+              </div>
+            )}
+
+            {/* Seletor de quadra */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 850, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 10 }}>
+                Escolha a Quadra
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                {localSel?.quadras.map(q => (
+                  <button key={q.id} onClick={() => setQuadraId(q.id)}
+                    style={{
+                      padding: '8px 14px', borderRadius: 999, fontSize: 12, fontWeight: 850,
+                      cursor: 'pointer', border: '1px solid',
+                      background:  quadraId === q.id ? '#c66b4d' : '#fff',
+                      color:       quadraId === q.id ? '#fff'    : '#8f7769',
+                      borderColor: quadraId === q.id ? '#c66b4d' : '#eadfd6',
+                      boxShadow:   quadraId === q.id ? '0 4px 12px rgba(198,107,77,0.22)' : 'none',
+                    }}>
+                    {q.nome}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Navegação de data */}
+            <div style={s.sectionHead}>
+              <CalendarPicker data={dataQuadra} setData={setDataQuadra}/>
+              <div style={s.sectionInfo}>
+                <h2 style={s.sectionTitle}>{fmtDateBr(dataQuadra)}</h2>
+                <DateNav data={dataQuadra} setData={setDataQuadra}/>
+              </div>
+            </div>
+
+            {/* Grid de horários — visual only */}
+            {loadingSlots ? (
+              <div style={s.loadingBox}><div style={s.loadingDot}/><p style={s.loadingTxt}>Carregando...</p></div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {periodos.map(({ label, icon, de, ate }) => {
+                  const slots = actoSlots.filter(sl => {
+                    const h = parseInt(sl.hora_inicio.split(':')[0], 10);
+                    return h >= de && h < ate;
+                  });
+                  if (!slots.length) return null;
+                  return (
+                    <div key={label}>
+                      <div style={{ fontSize: 11, fontWeight: 850, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {icon} {label}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
+                        {slots.map(sl => {
+                          const livre = sl.status === 'livre';
+                          return (
+                            <div key={sl.hora_inicio} style={{
+                              padding: '9px 12px', borderRadius: 14, textAlign: 'center' as const,
+                              background: livre ? '#edf8ef' : '#f4ebe3',
+                              color:      livre ? '#3f8f5b' : '#8d7b70',
+                              border:     `1px solid ${livre ? '#bee0c8' : '#e5d8cf'}`,
+                              minWidth: 70,
+                            }}>
+                              <div style={{ fontSize: 13, fontWeight: 800 }}>{sl.hora_inicio}</div>
+                              <div style={{ fontSize: 10, fontWeight: 700, marginTop: 2 }}>{livre ? 'Livre' : 'Ocupado'}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Legenda */}
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', fontSize: 11, color: '#8f7769', fontWeight: 750 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 12, height: 12, borderRadius: 4, background: '#edf8ef', border: '1px solid #bee0c8', display: 'inline-block' }}/>
+                Livre
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 12, height: 12, borderRadius: 4, background: '#f4ebe3', border: '1px solid #e5d8cf', display: 'inline-block' }}/>
+                Ocupado
+              </span>
+            </div>
+
+            {/* Info reserva */}
+            <div style={{ background: '#fff1eb', border: '1px solid rgba(198,107,77,0.2)', borderRadius: 16, padding: '12px 14px', fontSize: 12, color: '#b65b43', fontWeight: 700, textAlign: 'center' as const }}>
+              🎾 Reservas via contato direto com o Automóvel Clube (ACTO)
+            </div>
+          </>
         ) : (
           <>
+            {localSel && (
+              <div style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 8px 20px rgba(117,76,56,0.06)' }}>
+                <span style={{ fontSize: 13, fontWeight: 850, color: '#2d2521' }}>{localSel.nome}</span>
+                <span style={{ fontSize: 12, color: '#94857a', fontWeight: 650 }}>{localSel.endereco}</span>
+                {localSel.observacao && <span style={{ fontSize: 11, color: '#b5a69d' }}>{localSel.observacao}</span>}
+              </div>
+            )}
             <div style={s.sectionHead}>
               <CalendarPicker data={dataQuadra} setData={setDataQuadra}/>
               <div style={s.sectionInfo}>
@@ -1212,6 +1320,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       </div>
     );
   };
+
 
   const renderReservasAdminQuadra = () => {
     const pendentes   = reservasAdmin.filter(r => r.status === 'pendente');
