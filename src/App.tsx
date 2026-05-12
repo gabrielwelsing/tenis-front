@@ -46,41 +46,41 @@ function ModalPagamento({ user, onClose, onSuccess }: {
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [step, setStep]       = useState<'escolha' | 'pix' | 'cartao_redirect' | 'loading'>('escolha');
-  const [qrCode, setQrCode]   = useState('');
-  const [qrB64, setQrB64]     = useState('');
-  const [erro, setErro]       = useState('');
-  const [copiado, setCopiado] = useState(false);
+  const [step, setStep] = useState<'escolha' | 'loading'>('escolha');
+  const [erro, setErro] = useState('');
 
-  const criar = async (tipo: 'pix' | 'cartao') => {
+  const criarPix = async () => {
     setErro('');
     setStep('loading');
+
     try {
       const res = await fetch(`${API_URL}/payment/criar`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ user_id: user.id, email: user.email, tipo }),
+        body:    JSON.stringify({ user_id: user.id, email: user.email, tipo: 'pix' }),
       });
+
       const data = await res.json();
-      if (!res.ok) { setErro(data.error ?? 'Erro ao criar pagamento.'); setStep('escolha'); return; }
-      if (tipo === 'pix') {
-        setQrCode(data.qr_code ?? '');
-        setQrB64(data.qr_code_b64 ?? '');
-        setStep('pix');
-      } else {
-        window.open(data.init_point, '_blank');
-        setStep('cartao_redirect');
+
+      if (!res.ok) {
+        setErro(data.error ?? 'Erro ao criar pagamento.');
+        setStep('escolha');
+        return;
       }
+
+      const checkoutUrl = data.checkout_url ?? data.init_point;
+
+      if (!checkoutUrl) {
+        setErro('Pagamento criado, mas a URL da Stripe não foi retornada.');
+        setStep('escolha');
+        return;
+      }
+
+      window.location.href = checkoutUrl;
     } catch {
       setErro('Erro de conexão. Tente novamente.');
       setStep('escolha');
     }
-  };
-
-  const copiarPix = () => {
-    navigator.clipboard.writeText(qrCode);
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 2000);
   };
 
   return (
@@ -111,26 +111,17 @@ function ModalPagamento({ user, onClose, onSuccess }: {
             {erro && <p style={mp.erro}>{erro}</p>}
 
             <div style={mp.btnGroup}>
-              <button style={mp.payBtnPrimary} onClick={() => criar('pix')}>
+              <button style={mp.payBtnPrimary} onClick={criarPix}>
                 <span style={mp.payIcon}>◆</span>
                 <div style={mp.payText}>
                   <strong>Pagar com PIX</strong>
-                  <span>Acesso imediato após confirmação</span>
+                  <span>Pagamento seguro via Stripe</span>
                 </div>
                 <span style={mp.payArrow}>›</span>
               </button>
-
-              <button style={mp.payBtnSecondary} onClick={() => criar('cartao')}>
-                <span style={mp.payIconLight}>▣</span>
-                <div style={mp.payText}>
-                  <strong>Cartão de Crédito</strong>
-                  <span>Renovação automática mensal</span>
-                </div>
-                <span style={mp.payArrowLight}>›</span>
-              </button>
             </div>
 
-            <p style={mp.hint}>Pagamento seguro via Mercado Pago.</p>
+            <p style={mp.hint}>Você será redirecionado para concluir o pagamento com PIX.</p>
           </>
         )}
 
@@ -139,44 +130,6 @@ function ModalPagamento({ user, onClose, onSuccess }: {
             <div style={mp.loadingIcon}>⏳</div>
             <h2 style={mp.stateTitle}>Gerando pagamento...</h2>
             <p style={mp.stateSub}>Aguarde alguns segundos.</p>
-          </div>
-        )}
-
-        {step === 'pix' && (
-          <>
-            <div style={mp.stateHeader}>
-              <span style={mp.kickerDark}>PAGAMENTO PIX</span>
-              <h2 style={mp.stateTitle}>Escaneie o QR Code</h2>
-              <p style={mp.stateSub}>Ou copie o código PIX para pagar no seu banco.</p>
-            </div>
-
-            {qrB64 && (
-              <div style={mp.qrWrap}>
-                <img
-                  src={`data:image/png;base64,${qrB64}`}
-                  alt="QR Code PIX"
-                  style={mp.qrImg}
-                />
-              </div>
-            )}
-
-            <button style={mp.btnCopiar} onClick={copiarPix}>
-              {copiado ? '✓ Código copiado!' : 'Copiar código PIX'}
-            </button>
-
-            <p style={mp.hint}>Após o pagamento, seu acesso será liberado automaticamente em até 1 minuto.</p>
-
-            <button style={mp.btnVoltar} onClick={() => setStep('escolha')}>← Voltar</button>
-          </>
-        )}
-
-        {step === 'cartao_redirect' && (
-          <div style={mp.stateBox}>
-            <div style={mp.successIcon}>✓</div>
-            <h2 style={mp.stateTitle}>Redirecionado!</h2>
-            <p style={mp.stateSub}>Complete o pagamento na página do Mercado Pago que foi aberta.</p>
-            <p style={mp.hint}>Após confirmar, seu acesso será liberado automaticamente.</p>
-            <button style={mp.primaryCloseBtn} onClick={onClose}>Fechar</button>
           </div>
         )}
       </div>
