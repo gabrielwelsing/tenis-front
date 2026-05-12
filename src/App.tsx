@@ -536,6 +536,7 @@ function App() {
                 fotoUrl={user.foto_url}
                 telefone={user.telefone}
                 localidade={user.localidade}
+                planoExpiraEm={user.plano_expira_em ?? null}
                 onLogout={handleLogout}
                 onNavigate={handleNavigate}
                 onFotoUpload={handleFotoUpload}
