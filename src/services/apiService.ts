@@ -118,13 +118,14 @@ export async function padronizarCidadeIBGE(valor?: string | null): Promise<strin
 // ---------------------------------------------------------------------------
 
 export interface UserRecord {
-  id:         number;
-  nome:       string;
-  email:      string;
-  role:       'user' | 'aluno' | 'admin';
-  foto_url:   string | null;
-  localidade: string | null;
-  telefone:   string | null;
+  id:              number;
+  nome:            string;
+  email:           string;
+  role:            'user' | 'aluno' | 'admin';
+  foto_url:        string | null;
+  localidade:      string | null;
+  telefone:        string | null;
+  plano_expira_em?: string | null;
 }
 
 export interface AuthResponse {
@@ -380,8 +381,6 @@ export async function getProximaAtividadeCompleta(
       } as ProximaAtividadeCompletaRecord;
     }
 
-    // Segurança: se a agenda consolidada vier vazia/erro parcial, não deixa
-    // a Home perder o comportamento antigo de mostrar jogo do mural ou aula.
     return buscarFallbackOriginal();
   }
 
