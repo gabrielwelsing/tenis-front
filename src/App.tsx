@@ -114,14 +114,14 @@ function ModalPagamento({ user, onClose, onSuccess }: {
               <button style={mp.payBtnPrimary} onClick={criarPix}>
                 <span style={mp.payIcon}>◆</span>
                 <div style={mp.payText}>
-                  <strong>Pagar com PIX</strong>
+                  <strong>Pagar com Cartão de crédito</strong>
                   <span>Pagamento seguro via Stripe</span>
                 </div>
                 <span style={mp.payArrow}>›</span>
               </button>
             </div>
 
-            <p style={mp.hint}>Você será redirecionado para concluir o pagamento com PIX.</p>
+            <p style={mp.hint}>Você será redirecionado para concluir o pagamento com cartão de crédito.</p>
           </>
         )}
 
