@@ -45,6 +45,9 @@ interface AdminInfo { email: string; telefone: string | null; }
 interface LocalQuadra {
   id: number; nome: string; endereco: string; observacao: string | null;
   socios_only: boolean; quadras: QuadraInfo[];
+  responsavel_email?: string | null;
+  responsavel_nome?: string | null;
+  responsavel_telefone?: string | null;
 }
 interface QuadraInfo { id: number; nome: string; preco_hora: number; }
 interface SlotQuadra { hora_inicio: string; status: 'livre' | 'pendente' | 'confirmada' | 'fila_espera' | 'bloqueado'; }
@@ -93,6 +96,39 @@ function addCourtMin(time: string, mins: number): string {
   const total = h * 60 + m + mins;
   if (total > 23 * 60) return '23:00';
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function courtTimeToMin(time: string): number {
+  const [h, m] = time.slice(0, 5).split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return 0;
+  return h * 60 + m;
+}
+
+function intervaloQuadraOcupado(slots: SlotQuadra[], inicio: string, fim: string): SlotQuadra | null {
+  const iniMin = courtTimeToMin(inicio);
+  const fimMin = courtTimeToMin(fim);
+
+  return slots.find(sl => {
+    const slotMin = courtTimeToMin(sl.hora_inicio);
+    return slotMin >= iniMin && slotMin < fimMin && sl.status !== 'livre';
+  }) ?? null;
+}
+
+function buildWaReservaQuadra(tel: string, params: {
+  nomeResponsavel?: string | null;
+  nomeQuadra: string;
+  nomeLocal: string;
+  data: string;
+  horaInicio: string;
+  horaFim: string;
+  nomeReserva: string;
+}) {
+  const numero = '55' + tel.replace(/\D/g, '');
+  const saudacao = params.nomeResponsavel ? `Olá, ${params.nomeResponsavel}!` : 'Olá!';
+  const msg = encodeURIComponent(
+    `${saudacao} Gostaria de solicitar a reserva da quadra ${params.nomeQuadra} (${params.nomeLocal}) no dia ${fmtDateBr(params.data)}, das ${fmt(params.horaInicio)} às ${fmt(params.horaFim)}. Nome: ${params.nomeReserva}.`
+  );
+  return 'https://wa.me/' + numero + '?text=' + msg;
 }
 
 function maskPhone(v: string): string {
@@ -324,6 +360,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     return d;
   });
   const [reservaLoading, setReservaLoading] = useState(false);
+  const [showReservaQuadraModal, setShowReservaQuadraModal] = useState(false);
   const [reservasAdmin,  setReservasAdmin]  = useState<ReservaQuadra[]>([]);
   const [dispConfig,     setDispConfig]     = useState<{ dias_semana: number[]; hi_text: string; hf_text: string } | null>(null);
   const [formDisp,       setFormDisp]       = useState({ dias_semana: [1,2,3,4,5,6], hi_text: '07:00', hf_text: '22:00' });
@@ -632,11 +669,50 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   };
 
   // ── Actions quadra ─────────────────────────────────────────────────────────
+  const abrirModalReservaQuadra = (slot: SlotQuadra) => {
+    if (slot.status !== 'livre') {
+      flash('err', 'Este horário não está disponível.');
+      return;
+    }
+
+    const fimPadrao = addCourtMin(slot.hora_inicio, 60);
+    const bloqueioPadrao = intervaloQuadraOcupado(slotsQuadra, slot.hora_inicio, fimPadrao);
+
+    setReservaHoraInicio(slot.hora_inicio);
+    setReservaHoraFim(fimPadrao);
+    setShowReservaQuadraModal(true);
+
+    if (bloqueioPadrao) {
+      flash('err', `O horário mínimo de 1h passa por ${bloqueioPadrao.hora_inicio}, que já está ocupado.`);
+    }
+  };
+
+  const fecharModalReservaQuadra = () => {
+    if (reservaLoading) return;
+    setShowReservaQuadraModal(false);
+    setReservaHoraInicio('');
+    setReservaHoraFim('');
+  };
+
   const solicitarReservaQuadra = async () => {
     if (!reservaHoraInicio || !reservaHoraFim) { flash('err', 'Selecione horário de início e fim.'); return; }
+    if (courtTimeToMin(reservaHoraFim) <= courtTimeToMin(reservaHoraInicio)) { flash('err', 'O horário final precisa ser maior que o início.'); return; }
+    if (courtTimeToMin(reservaHoraFim) - courtTimeToMin(reservaHoraInicio) < 60) { flash('err', 'A reserva mínima é de 1 hora.'); return; }
     if (!reservaNome.trim()) { flash('err', 'Informe seu nome.'); return; }
+
     const digits = reservaWhatsapp.replace(/\D/g, '');
     if (digits.length < 10) { flash('err', 'WhatsApp inválido.'); return; }
+
+    const localSel = locaisQuadra.find(l => l.id === localQuadraId);
+    const quadraSel = localSel?.quadras.find(q => q.id === quadraId);
+    const responsavelTelefone = localSel?.responsavel_telefone || adminInfo?.telefone || '';
+
+    const bloqueio = intervaloQuadraOcupado(slotsQuadra, reservaHoraInicio, reservaHoraFim);
+    if (bloqueio) {
+      flash('err', `Esse intervalo passa por ${bloqueio.hora_inicio}, que já está ocupado. Escolha outro horário.`);
+      return;
+    }
+
     const conflito = minhasInscricoes.some(i =>
       i.status === 'confirmada' &&
       i.data.slice(0, 10) === dataQuadra &&
@@ -644,6 +720,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       fmt(i.hora_fim) > reservaHoraInicio
     );
     if (conflito) { flash('err', 'Você tem aula confirmada neste horário.'); return; }
+
     setReservaLoading(true);
     try {
       const r = await fetch(`${API}/quadras/reservas`, {
@@ -654,12 +731,37 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
           data: dataQuadra, hora_inicio: reservaHoraInicio, hora_fim: reservaHoraFim,
         }),
       });
+
       const json = await r.json();
       if (!r.ok) { flash('err', json.error ?? 'Erro.'); return; }
-      flash('ok', json.fila ? 'Você entrou na fila de espera!' : 'Solicitação enviada! Aguarde o Carlão confirmar.');
-      setReservaHoraInicio(''); setReservaHoraFim('');
+
+      flash('ok', json.fila ? 'Você entrou na fila de espera!' : 'Solicitação enviada! Aguarde a confirmação.');
+
+      if (responsavelTelefone) {
+        window.open(
+          buildWaReservaQuadra(responsavelTelefone, {
+            nomeResponsavel: localSel?.responsavel_nome ?? null,
+            nomeQuadra: quadraSel?.nome ?? 'selecionada',
+            nomeLocal: localSel?.nome ?? 'local selecionado',
+            data: dataQuadra,
+            horaInicio: reservaHoraInicio,
+            horaFim: reservaHoraFim,
+            nomeReserva: reservaNome.trim(),
+          }),
+          '_blank'
+        );
+      } else {
+        flash('err', 'Solicitação criada, mas o responsável da quadra está sem WhatsApp cadastrado.');
+      }
+
+      setShowReservaQuadraModal(false);
+      setReservaHoraInicio('');
+      setReservaHoraFim('');
       loadSlotsQuadra();
-    } catch { flash('err', 'Erro de conexão.'); }
+    } catch {
+      flash('err', 'Erro de conexão.');
+    }
+
     setReservaLoading(false);
   };
 
@@ -1266,10 +1368,24 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                   {slotsQuadra.map(slot => {
                     const pal = SLOT_STATUS_PAL[slot.status] ?? SLOT_STATUS_PAL.bloqueado;
                     return (
-                      <div key={slot.hora_inicio} style={{ padding: '8px 4px', borderRadius: 12, textAlign: 'center', background: pal.bg, border: `1px solid ${pal.border}`, color: pal.color }}>
+                      <button
+                        key={slot.hora_inicio}
+                        type="button"
+                        onClick={() => slot.status === 'livre' ? abrirModalReservaQuadra(slot) : flash('err', 'Este horário não está disponível.')}
+                        style={{
+                          padding: '8px 4px',
+                          borderRadius: 12,
+                          textAlign: 'center',
+                          background: pal.bg,
+                          border: `1px solid ${pal.border}`,
+                          color: pal.color,
+                          cursor: slot.status === 'livre' ? 'pointer' : 'not-allowed',
+                          fontFamily: 'inherit',
+                        }}
+                      >
                         <div style={{ fontSize: 12, fontWeight: 800 }}>{slot.hora_inicio}</div>
                         <div style={{ fontSize: 9, fontWeight: 700, marginTop: 2 }}>{SLOT_STATUS_LABEL[slot.status] ?? slot.status}</div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -1285,35 +1401,8 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                 </div>
               </>
             )}
-            <div style={s.formCard}>
-              <div style={s.formTitle}>Solicitar Reserva</div>
-              <p style={{ margin: 0, fontSize: 12, color: '#94857a', fontWeight: 650, lineHeight: 1.5 }}>
-                Mínimo 1 hora. O Carlão confirmará pelo app.
-              </p>
-              <div style={s.formRow}>
-                <FieldGroup label="Das">
-                  <select style={s.select} value={reservaHoraInicio} onChange={e => setReservaHoraInicio(e.target.value)}>
-                    <option value="">Selecionar...</option>
-                    {COURT_SLOTS.filter(t => t < '23:00').map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </FieldGroup>
-                <FieldGroup label="Às">
-                  <select style={s.select} value={reservaHoraFim} onChange={e => setReservaHoraFim(e.target.value)}>
-                    <option value="">Selecionar...</option>
-                    {COURT_SLOTS.filter(t => !reservaHoraInicio || t >= addCourtMin(reservaHoraInicio, 60)).map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </FieldGroup>
-              </div>
-              <FieldGroup label="Seu nome">
-                <input style={s.input} value={reservaNome} onChange={e => setReservaNome(e.target.value)} placeholder="Como prefere ser chamado"/>
-              </FieldGroup>
-              <FieldGroup label="WhatsApp">
-                <input style={s.input} type="tel" inputMode="numeric" value={reservaWhatsapp}
-                  onChange={e => setReservaWhatsapp(maskPhone(e.target.value))} placeholder="(33) 99999-0000"/>
-              </FieldGroup>
-              <button style={{ ...s.publishBtn, opacity: reservaLoading ? 0.6 : 1 }} onClick={solicitarReservaQuadra} disabled={reservaLoading}>
-                {reservaLoading ? 'Enviando...' : 'Solicitar Reserva'}
-              </button>
+            <div style={{ background: '#fffaf7', border: '1px solid #f4ebe3', borderRadius: 16, padding: '12px 14px', fontSize: 12, color: '#8f7769', fontWeight: 700, textAlign: 'center' as const }}>
+              Toque em um horário livre para solicitar a reserva.
             </div>
           </>
         )}
@@ -1489,6 +1578,85 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
           {msg.text}
         </div>
       )}
+
+      {showReservaQuadraModal && (() => {
+        const localSel = locaisQuadra.find(l => l.id === localQuadraId);
+        const quadraSel = localSel?.quadras.find(q => q.id === quadraId);
+        const minFim = reservaHoraInicio ? addCourtMin(reservaHoraInicio, 60) : '';
+        const opcoesFim = COURT_SLOTS.filter(t => !reservaHoraInicio || t >= minFim);
+        const bloqueio = reservaHoraInicio && reservaHoraFim
+          ? intervaloQuadraOcupado(slotsQuadra, reservaHoraInicio, reservaHoraFim)
+          : null;
+
+        return (
+          <div
+            style={rq.overlay}
+            onClick={e => {
+              if (e.target === e.currentTarget) fecharModalReservaQuadra();
+            }}
+          >
+            <div style={rq.sheet}>
+              <div style={rq.topBar}>
+                <div>
+                  <h3 style={rq.title}>Solicitar reserva</h3>
+                  <p style={rq.subtitle}>{localSel?.nome ?? 'Local'} · {quadraSel?.nome ?? 'Quadra'}</p>
+                </div>
+                <button type="button" style={rq.closeBtn} onClick={fecharModalReservaQuadra}>✕</button>
+              </div>
+
+              <div style={rq.infoBox}>
+                <span style={rq.infoLabel}>Data</span>
+                <strong style={rq.infoValue}>{fmtDateBr(dataQuadra)}</strong>
+              </div>
+
+              <div style={s.formRow}>
+                <FieldGroup label="Das">
+                  <input style={{ ...s.input, opacity: 0.75 }} value={reservaHoraInicio} readOnly />
+                </FieldGroup>
+                <FieldGroup label="Até">
+                  <select style={s.select} value={reservaHoraFim} onChange={e => setReservaHoraFim(e.target.value)}>
+                    {opcoesFim.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </FieldGroup>
+              </div>
+
+              {bloqueio && (
+                <div style={rq.errorBox}>
+                  Esse intervalo passa por {bloqueio.hora_inicio}, que já está ocupado. Escolha outro horário final.
+                </div>
+              )}
+
+              <FieldGroup label="Seu nome">
+                <input style={s.input} value={reservaNome} onChange={e => setReservaNome(e.target.value)} placeholder="Como prefere ser chamado" />
+              </FieldGroup>
+
+              <FieldGroup label="WhatsApp">
+                <input
+                  style={s.input}
+                  type="tel"
+                  inputMode="numeric"
+                  value={reservaWhatsapp}
+                  onChange={e => setReservaWhatsapp(maskPhone(e.target.value))}
+                  placeholder="(33) 99999-0000"
+                />
+              </FieldGroup>
+
+              <p style={rq.hint}>
+                A solicitação será enviada para aprovação no app{localSel?.responsavel_nome ? ` e o WhatsApp abrirá para ${localSel.responsavel_nome}` : ''}.
+              </p>
+
+              <button
+                type="button"
+                style={{ ...s.publishBtn, opacity: reservaLoading || !!bloqueio ? 0.6 : 1 }}
+                onClick={solicitarReservaQuadra}
+                disabled={reservaLoading || !!bloqueio}
+              >
+                {reservaLoading ? 'Enviando...' : 'Solicitar reserva e abrir WhatsApp'}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {isAdmin && (
         <div style={s.tabBar}>
@@ -1848,6 +2016,104 @@ const sc: Record<string, React.CSSProperties> = {
   okBtn: { padding: '10px 0', borderRadius: 13, border: 'none', background: '#3f8f5b', color: '#fff', fontSize: 12, fontWeight: 850, cursor: 'pointer' },
   disputeBtn: { padding: '10px 0', borderRadius: 13, border: '1px solid rgba(201,84,65,0.22)', background: '#fff0ec', color: '#c95441', fontSize: 12, fontWeight: 850, cursor: 'pointer' },
   okBtnSm: { width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#3f8f5b', color: '#fff', fontSize: 14, cursor: 'pointer', flexShrink: 0 },
+};
+
+const rq: Record<string, React.CSSProperties> = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 120,
+    background: 'rgba(44,30,24,0.42)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    boxSizing: 'border-box',
+    backdropFilter: 'blur(5px)',
+  },
+  sheet: {
+    width: '100%',
+    maxWidth: 440,
+    background: '#fffaf5',
+    border: '1px solid rgba(130,82,62,0.12)',
+    borderRadius: 26,
+    padding: 16,
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 13,
+    boxShadow: '0 24px 70px rgba(44,36,31,0.30)',
+  },
+  topBar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  title: {
+    margin: 0,
+    color: '#2d2521',
+    fontSize: 18,
+    fontWeight: 950,
+    letterSpacing: -0.35,
+  },
+  subtitle: {
+    margin: '4px 0 0',
+    color: '#8f7769',
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  closeBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: '50%',
+    border: 'none',
+    background: '#f7eee7',
+    color: '#9a5a45',
+    fontSize: 16,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  infoBox: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    borderRadius: 16,
+    padding: '12px 13px',
+  },
+  infoLabel: {
+    color: '#8f7769',
+    fontSize: 11,
+    fontWeight: 900,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.6,
+  },
+  infoValue: {
+    color: '#2d2521',
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  errorBox: {
+    background: '#fff0ec',
+    border: '1px solid rgba(201,84,65,0.22)',
+    color: '#c95441',
+    borderRadius: 14,
+    padding: '10px 12px',
+    fontSize: 12,
+    fontWeight: 800,
+    lineHeight: 1.35,
+  },
+  hint: {
+    margin: 0,
+    color: '#8f7769',
+    fontSize: 12,
+    fontWeight: 650,
+    lineHeight: 1.45,
+    textAlign: 'center',
+  },
 };
 
 const dn: Record<string, React.CSSProperties> = {
