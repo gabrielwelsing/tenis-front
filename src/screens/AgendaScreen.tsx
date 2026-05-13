@@ -110,8 +110,12 @@ function intervaloQuadraOcupado(slots: SlotQuadra[], inicio: string, fim: string
 
   return slots.find(sl => {
     const slotMin = courtTimeToMin(sl.hora_inicio);
-    return slotMin >= iniMin && slotMin < fimMin && sl.status !== 'livre';
+    return slotMin >= iniMin && slotMin < fimMin && (sl.status === 'confirmada' || sl.status === 'bloqueado');
   }) ?? null;
+}
+
+function slotQuadraPermiteSolicitacao(status: SlotQuadra['status']): boolean {
+  return status === 'livre' || status === 'pendente' || status === 'fila_espera';
 }
 
 function buildWaReservaQuadra(tel: string, params: {
@@ -670,7 +674,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
 
   // ── Actions quadra ─────────────────────────────────────────────────────────
   const abrirModalReservaQuadra = (slot: SlotQuadra) => {
-    if (slot.status !== 'livre') {
+    if (!slotQuadraPermiteSolicitacao(slot.status)) {
       flash('err', 'Este horário não está disponível.');
       return;
     }
@@ -1371,7 +1375,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                       <button
                         key={slot.hora_inicio}
                         type="button"
-                        onClick={() => slot.status === 'livre' ? abrirModalReservaQuadra(slot) : flash('err', 'Este horário não está disponível.')}
+                        onClick={() => slotQuadraPermiteSolicitacao(slot.status) ? abrirModalReservaQuadra(slot) : flash('err', 'Este horário não está disponível.')}
                         style={{
                           padding: '8px 4px',
                           borderRadius: 12,
@@ -1379,7 +1383,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                           background: pal.bg,
                           border: `1px solid ${pal.border}`,
                           color: pal.color,
-                          cursor: slot.status === 'livre' ? 'pointer' : 'not-allowed',
+                          cursor: slotQuadraPermiteSolicitacao(slot.status) ? 'pointer' : 'not-allowed',
                           fontFamily: 'inherit',
                         }}
                       >
@@ -1412,9 +1416,10 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
 
 
   const renderReservasAdminQuadra = () => {
-    const pendentes   = reservasAdmin.filter(r => r.status === 'pendente');
-    const fila        = reservasAdmin.filter(r => r.status === 'fila_espera');
-    const confirmadas = reservasAdmin.filter(r => r.status === 'confirmada');
+    const porOrdemSolicitacao = (a: ReservaQuadra, b: ReservaQuadra) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    const pendentes   = reservasAdmin.filter(r => r.status === 'pendente').sort(porOrdemSolicitacao);
+    const fila        = reservasAdmin.filter(r => r.status === 'fila_espera').sort(porOrdemSolicitacao);
+    const confirmadas = reservasAdmin.filter(r => r.status === 'confirmada').sort(porOrdemSolicitacao);
 
     const renderCard = (r: ReservaQuadra) => {
       const sCor = r.status === 'confirmada' ? '#3f8f5b' : r.status === 'fila_espera' ? '#b98718' : '#b36a2f';
