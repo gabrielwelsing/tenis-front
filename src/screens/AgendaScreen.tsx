@@ -118,6 +118,31 @@ function slotQuadraPermiteSolicitacao(status: SlotQuadra['status']): boolean {
   return status === 'livre' || status === 'pendente' || status === 'fila_espera';
 }
 
+function todayLocalStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function nowCourtMin(): number {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+function slotQuadraJaPassou(dataRef: string, horaInicio: string): boolean {
+  const hoje = todayLocalStr();
+  const dataOnly = dataRef.slice(0, 10);
+  if (dataOnly < hoje) return true;
+  if (dataOnly > hoje) return false;
+  return courtTimeToMin(horaInicio) <= nowCourtMin();
+}
+
+function filtrarSlotsQuadraFuturos(slots: SlotQuadra[], dataRef: string): SlotQuadra[] {
+  return slots.filter(sl => !slotQuadraJaPassou(dataRef, sl.hora_inicio));
+}
+
 function buildWaReservaQuadra(tel: string, params: {
   nomeResponsavel?: string | null;
   nomeQuadra: string;
@@ -500,6 +525,21 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     if (!reservaHoraFim || reservaHoraFim < minFim) setReservaHoraFim(minFim);
   }, [reservaHoraInicio]);
 
+  useEffect(() => {
+    const hoje = todayLocalStr();
+    if (dataQuadra < hoje) setDataQuadra(hoje);
+  }, [dataQuadra]);
+
+  const setDataQuadraSegura = (novaData: string) => {
+    const hoje = todayLocalStr();
+    if (novaData < hoje) {
+      setDataQuadra(hoje);
+      flash('err', 'Não é possível reservar em data anterior a hoje.');
+      return;
+    }
+    setDataQuadra(novaData);
+  };
+
   // ── Actions agenda ─────────────────────────────────────────────────────────
   const saveSlot = async () => {
     if (!adminInfo?.email) return;
@@ -674,6 +714,11 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
 
   // ── Actions quadra ─────────────────────────────────────────────────────────
   const abrirModalReservaQuadra = (slot: SlotQuadra) => {
+    if (slotQuadraJaPassou(dataQuadra, slot.hora_inicio)) {
+      flash('err', 'Este horário já passou.');
+      return;
+    }
+
     if (!slotQuadraPermiteSolicitacao(slot.status)) {
       flash('err', 'Este horário não está disponível.');
       return;
@@ -699,7 +744,9 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   };
 
   const solicitarReservaQuadra = async () => {
+    if (dataQuadra < todayLocalStr()) { flash('err', 'Não é possível reservar em data anterior a hoje.'); return; }
     if (!reservaHoraInicio || !reservaHoraFim) { flash('err', 'Selecione horário de início e fim.'); return; }
+    if (slotQuadraJaPassou(dataQuadra, reservaHoraInicio)) { flash('err', 'Este horário já passou.'); return; }
     if (courtTimeToMin(reservaHoraFim) <= courtTimeToMin(reservaHoraInicio)) { flash('err', 'O horário final precisa ser maior que o início.'); return; }
     if (courtTimeToMin(reservaHoraFim) - courtTimeToMin(reservaHoraInicio) < 60) { flash('err', 'A reserva mínima é de 1 hora.'); return; }
     if (!reservaNome.trim()) { flash('err', 'Informe seu nome.'); return; }
@@ -1221,14 +1268,16 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const renderReservarQuadra = () => {
     const localSel = locaisQuadra.find(l => l.id === localQuadraId);
     const isACTO   = localSel?.socios_only === true;
+    const slotsQuadraVisiveis = filtrarSlotsQuadraFuturos(slotsQuadra, dataQuadra);
 
     // Fallback visual: 07h–20h tudo livre, caso ACTO não tenha slots configurados
-    const actoSlots: SlotQuadra[] = slotsQuadra.length > 0
+    const actoSlotsBase: SlotQuadra[] = slotsQuadra.length > 0
       ? slotsQuadra
       : Array.from({ length: 14 }, (_, i) => ({
           hora_inicio: `${String(7 + i).padStart(2, '0')}:00`,
           status: 'livre' as const,
         }));
+    const actoSlots = filtrarSlotsQuadraFuturos(actoSlotsBase, dataQuadra);
 
     const periodos = [
       { label: 'Manhã', icon: '🌅', de: 0,  ate: 12 },
@@ -1279,16 +1328,22 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
 
             {/* Navegação de data */}
             <div style={s.sectionHead}>
-              <CalendarPicker data={dataQuadra} setData={setDataQuadra}/>
+              <CalendarPicker data={dataQuadra} setData={setDataQuadraSegura}/>
               <div style={s.sectionInfo}>
                 <h2 style={s.sectionTitle}>{fmtDateBr(dataQuadra)}</h2>
-                <DateNav data={dataQuadra} setData={setDataQuadra}/>
+                <DateNav data={dataQuadra} setData={setDataQuadraSegura}/>
               </div>
             </div>
 
             {/* Grid de horários — visual only */}
             {loadingSlots ? (
               <div style={s.loadingBox}><div style={s.loadingDot}/><p style={s.loadingTxt}>Carregando...</p></div>
+            ) : actoSlots.length === 0 ? (
+              <div style={s.emptyFeed}>
+                <div style={s.emptyIcon}><CalendarLineIcon size={28}/></div>
+                <p style={s.emptyText}>Nenhum horário disponível em {fmtDateBr(dataQuadra)}.</p>
+                <p style={s.emptyHint}>Mostramos apenas horários de agora em diante.</p>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {periodos.map(({ label, icon, de, ate }) => {
@@ -1352,24 +1407,24 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               </div>
             )}
             <div style={s.sectionHead}>
-              <CalendarPicker data={dataQuadra} setData={setDataQuadra}/>
+              <CalendarPicker data={dataQuadra} setData={setDataQuadraSegura}/>
               <div style={s.sectionInfo}>
                 <h2 style={s.sectionTitle}>Horários</h2>
-                <DateNav data={dataQuadra} setData={setDataQuadra}/>
+                <DateNav data={dataQuadra} setData={setDataQuadraSegura}/>
               </div>
             </div>
             {loadingSlots ? (
               <div style={s.loadingBox}><div style={s.loadingDot}/><p style={s.loadingTxt}>Carregando...</p></div>
-            ) : slotsQuadra.length === 0 ? (
+            ) : slotsQuadraVisiveis.length === 0 ? (
               <div style={s.emptyFeed}>
                 <div style={s.emptyIcon}><CalendarLineIcon size={28}/></div>
-                <p style={s.emptyText}>Quadra indisponível em {fmtDateBr(dataQuadra)}.</p>
-                <p style={s.emptyHint}>Tente outro dia.</p>
+                <p style={s.emptyText}>Nenhum horário disponível em {fmtDateBr(dataQuadra)}.</p>
+                <p style={s.emptyHint}>Mostramos apenas horários de agora em diante.</p>
               </div>
             ) : (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                  {slotsQuadra.map(slot => {
+                  {slotsQuadraVisiveis.map(slot => {
                     const pal = SLOT_STATUS_PAL[slot.status] ?? SLOT_STATUS_PAL.bloqueado;
                     return (
                       <button
