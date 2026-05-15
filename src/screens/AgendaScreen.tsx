@@ -66,7 +66,13 @@ const TIPOS = [
   { value: 'bloqueado',  label: 'Bloqueado'  },
 ];
 
-const HORAS = Array.from({ length: 28 }, (_, i) => {
+const HORAS_INICIO = Array.from({ length: 33 }, (_, i) => {
+  const h = Math.floor(i / 2) + 6;
+  const m = i % 2 === 0 ? '00' : '30';
+  return `${h.toString().padStart(2, '0')}:${m}`;
+});
+
+const HORAS_FIM = Array.from({ length: 35 }, (_, i) => {
   const h = Math.floor(i / 2) + 6;
   const m = i % 2 === 0 ? '00' : '30';
   return `${h.toString().padStart(2, '0')}:${m}`;
@@ -1172,12 +1178,12 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             <div style={s.formRow}>
               <FieldGroup label="Início">
                 <select style={s.select} value={formFixo.hora_inicio} onChange={e => setFormFixo(f => ({ ...f, hora_inicio: e.target.value }))}>
-                  {HORAS.map(h => <option key={h}>{h}</option>)}
+                  {HORAS_INICIO.map(h => <option key={h}>{h}</option>)}
                 </select>
               </FieldGroup>
               <FieldGroup label="Fim">
                 <select style={s.select} value={formFixo.hora_fim} onChange={e => setFormFixo(f => ({ ...f, hora_fim: e.target.value }))}>
-                  {HORAS.map(h => <option key={h}>{h}</option>)}
+                  {HORAS_FIM.map(h => <option key={h}>{h}</option>)}
                 </select>
               </FieldGroup>
             </div>
@@ -1789,12 +1795,12 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                     <div style={s.formRow}>
                       <FieldGroup label="Início">
                         <select style={s.select} value={form.hora_inicio} onChange={e => setForm(f => ({ ...f, hora_inicio: e.target.value }))}>
-                          {HORAS.map(h => <option key={h}>{h}</option>)}
+                          {HORAS_INICIO.map(h => <option key={h}>{h}</option>)}
                         </select>
                       </FieldGroup>
                       <FieldGroup label="Fim">
                         <select style={s.select} value={form.hora_fim} onChange={e => setForm(f => ({ ...f, hora_fim: e.target.value }))}>
-                          {HORAS.map(h => <option key={h}>{h}</option>)}
+                          {HORAS_FIM.map(h => <option key={h}>{h}</option>)}
                         </select>
                       </FieldGroup>
                     </div>
