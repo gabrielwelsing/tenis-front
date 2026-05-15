@@ -1965,7 +1965,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       {isAdmin && (
         <div style={s.tabSelectBar}>
           <div style={s.tabSelectBox}>
-            <span style={s.tabSelectLabel}>Área da agenda</span>
+            <span style={s.tabSelectLabel}>Selecione</span>
             <select
               style={s.tabSelect}
               value={adminTab}
@@ -1986,7 +1986,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       {!isAdmin && (
         <div style={s.tabSelectBar}>
           <div style={s.tabSelectBox}>
-            <span style={s.tabSelectLabel}>Área da agenda</span>
+            <span style={s.tabSelectLabel}>Selecione</span>
             <select
               style={s.tabSelect}
               value={userTab}
@@ -2316,8 +2316,8 @@ const s: Record<string, React.CSSProperties> = {
   tabBar: { display: 'flex', gap: 7, overflowX: 'auto', padding: '0 14px 10px', background: '#fbf7f1', flexShrink: 0, zIndex: 4, position: 'relative' },
   tabBtn: { flex: '0 0 auto', padding: '9px 14px', background: '#fff', border: '1px solid rgba(130,82,62,0.08)', color: '#8f7769', fontSize: 12, fontWeight: 900, cursor: 'pointer', borderRadius: 999, whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(117,76,56,0.05)' },
   tabActive: { background: '#c66b4d', color: '#fff', borderColor: '#c66b4d', boxShadow: '0 8px 18px rgba(198,107,77,0.18)' },
-  tabSelectBar: { padding: '0 14px 10px', background: '#fbf7f1', flexShrink: 0, zIndex: 4, position: 'relative' },
-  tabSelectBox: { display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, padding: '10px 12px', boxShadow: '0 8px 20px rgba(117,76,56,0.06)' },
+  tabSelectBar: { padding: '0 16px 10px', background: '#fbf7f1', flexShrink: 0, zIndex: 4, position: 'relative', display: 'flex', justifyContent: 'center', boxSizing: 'border-box' },
+  tabSelectBox: { width: '100%', maxWidth: 540, display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, padding: '10px 12px', boxShadow: '0 8px 20px rgba(117,76,56,0.06)', boxSizing: 'border-box' },
   tabSelectLabel: { flexShrink: 0, fontSize: 11, fontWeight: 900, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.6 },
   tabSelect: { flex: 1, minWidth: 0, border: 'none', outline: 'none', background: '#fffaf7', color: '#2d2521', fontSize: 14, fontWeight: 850, borderRadius: 13, padding: '11px 12px', fontFamily: 'inherit', colorScheme: 'light' as React.CSSProperties['colorScheme'] },
   scrollBody: { flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], position: 'relative', zIndex: 2 },
