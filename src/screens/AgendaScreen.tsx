@@ -1963,34 +1963,40 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       })()}
 
       {isAdmin && (
-        <div style={s.tabBar}>
-          {([
-            { key: 'agenda',       label: 'Agenda'          },
-            { key: 'solicitacoes', label: 'Solicitações'    },
-            { key: 'confirmadas',  label: 'Confirmadas'     },
-            { key: 'historico',    label: 'Histórico'       },
-            { key: 'fixos',        label: 'Horários Fixos'  },
-            { key: 'quadra_res',   label: 'Reservas Quadra' },
-            { key: 'quadra_gest',  label: 'Gestão Quadra'   },
-          ] as { key: AdminTab; label: string }[]).map(t => (
-            <button key={t.key} style={{ ...s.tabBtn, ...(adminTab === t.key ? s.tabActive : {}) }} onClick={() => setAdminTab(t.key)}>
-              {t.label}
-            </button>
-          ))}
+        <div style={s.tabSelectBar}>
+          <div style={s.tabSelectBox}>
+            <span style={s.tabSelectLabel}>Área da agenda</span>
+            <select
+              style={s.tabSelect}
+              value={adminTab}
+              onChange={e => setAdminTab(e.target.value as AdminTab)}
+            >
+              <option value="agenda">Agenda</option>
+              <option value="solicitacoes">Solicitações</option>
+              <option value="confirmadas">Confirmadas</option>
+              <option value="historico">Histórico</option>
+              <option value="fixos">Horários Fixos</option>
+              <option value="quadra_res">Reservas Quadra</option>
+              <option value="quadra_gest">Gestão Quadra</option>
+            </select>
+          </div>
         </div>
       )}
 
       {!isAdmin && (
-        <div style={s.tabBar}>
-          {([
-            { key: 'agenda',   label: 'Agenda' },
-            { key: 'minhas',   label: 'Minhas Aulas' + (minhasInscricoes.length > 0 ? ' (' + minhasInscricoes.length + ')' : '') },
-            { key: 'reservar', label: 'Reservar Quadra' },
-          ] as { key: UserTab; label: string }[]).map(t => (
-            <button key={t.key} style={{ ...s.tabBtn, ...(userTab === t.key ? s.tabActive : {}) }} onClick={() => setUserTab(t.key)}>
-              {t.label}
-            </button>
-          ))}
+        <div style={s.tabSelectBar}>
+          <div style={s.tabSelectBox}>
+            <span style={s.tabSelectLabel}>Área da agenda</span>
+            <select
+              style={s.tabSelect}
+              value={userTab}
+              onChange={e => setUserTab(e.target.value as UserTab)}
+            >
+              <option value="agenda">Agenda</option>
+              <option value="minhas">Minhas Aulas{minhasInscricoes.length > 0 ? ' (' + minhasInscricoes.length + ')' : ''}</option>
+              <option value="reservar">Reservar Quadra</option>
+            </select>
+          </div>
         </div>
       )}
 
@@ -2310,6 +2316,10 @@ const s: Record<string, React.CSSProperties> = {
   tabBar: { display: 'flex', gap: 7, overflowX: 'auto', padding: '0 14px 10px', background: '#fbf7f1', flexShrink: 0, zIndex: 4, position: 'relative' },
   tabBtn: { flex: '0 0 auto', padding: '9px 14px', background: '#fff', border: '1px solid rgba(130,82,62,0.08)', color: '#8f7769', fontSize: 12, fontWeight: 900, cursor: 'pointer', borderRadius: 999, whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(117,76,56,0.05)' },
   tabActive: { background: '#c66b4d', color: '#fff', borderColor: '#c66b4d', boxShadow: '0 8px 18px rgba(198,107,77,0.18)' },
+  tabSelectBar: { padding: '0 14px 10px', background: '#fbf7f1', flexShrink: 0, zIndex: 4, position: 'relative' },
+  tabSelectBox: { display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 18, padding: '10px 12px', boxShadow: '0 8px 20px rgba(117,76,56,0.06)' },
+  tabSelectLabel: { flexShrink: 0, fontSize: 11, fontWeight: 900, color: '#8f7769', textTransform: 'uppercase' as const, letterSpacing: 0.6 },
+  tabSelect: { flex: 1, minWidth: 0, border: 'none', outline: 'none', background: '#fffaf7', color: '#2d2521', fontSize: 14, fontWeight: 850, borderRadius: 13, padding: '11px 12px', fontFamily: 'inherit', colorScheme: 'light' as React.CSSProperties['colorScheme'] },
   scrollBody: { flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], position: 'relative', zIndex: 2 },
   inner: { display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 16px 36px', maxWidth: 540, margin: '0 auto', boxSizing: 'border-box', width: '100%' },
   heroCard: { position: 'relative', overflow: 'hidden', borderRadius: 24, minHeight: 132, background: 'linear-gradient(135deg, #c66b4d, #8f4635)', boxShadow: '0 16px 34px rgba(134,72,50,0.20)', padding: '20px 18px', boxSizing: 'border-box' },
