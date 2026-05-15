@@ -1626,6 +1626,8 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const aulasConfirmadas = solicitacoes.filter(i => i.status === 'confirmada');
   const aulasConfirmadasFuturas   = aulasConfirmadas.filter(i => !inscricaoJaPassou(i)).sort(ordenarInscricoesAsc);
   const aulasConfirmadasHistorico = aulasConfirmadas.filter(inscricaoJaPassou).sort(ordenarInscricoesDesc);
+  const localQuadraAdminSel = locaisQuadra.find(l => l.id === localQuadraId);
+  const quadraAdminSel = localQuadraAdminSel?.quadras.find(q => q.id === quadraId);
 
   return (
     <div style={s.page}>
@@ -1944,8 +1946,30 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             <section style={s.section}>
               <div style={s.sectionHead}>
                 <div style={s.sectionIcon}><CalendarLineIcon size={20}/></div>
-                <div style={s.sectionInfo}><h2 style={s.sectionTitle}>Reservas de Quadra</h2><span style={{ fontSize: 12, color: '#94857a' }}>Arena Tênis — Prof. Carlão</span></div>
+                <div style={s.sectionInfo}>
+                  <h2 style={s.sectionTitle}>Reservas de Quadra</h2>
+                  <span style={{ fontSize: 12, color: '#94857a' }}>
+                    {localQuadraAdminSel?.nome ?? 'Selecione um local'}{quadraAdminSel ? ' — ' + quadraAdminSel.nome : ''}
+                  </span>
+                </div>
               </div>
+
+              <div style={s.formCard}>
+                <div style={s.formTitle}>Filtrar reservas</div>
+                <div style={s.formRow}>
+                  <FieldGroup label="Local">
+                    <select style={s.select} value={localQuadraId} onChange={e => setLocalQuadraId(Number(e.target.value))}>
+                      {locaisQuadra.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                    </select>
+                  </FieldGroup>
+                  <FieldGroup label="Quadra">
+                    <select style={s.select} value={quadraId} onChange={e => setQuadraId(Number(e.target.value))}>
+                      {(localQuadraAdminSel?.quadras ?? []).map(q => <option key={q.id} value={q.id}>{q.nome}</option>)}
+                    </select>
+                  </FieldGroup>
+                </div>
+              </div>
+
               {renderReservasAdminQuadra()}
             </section>
           )}
