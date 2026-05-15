@@ -57,6 +57,10 @@ interface ReservaQuadra {
   status: string; confirmado_admin: boolean; created_at: string;
 }
 
+interface UsuarioBusca {
+  id: number; nome: string; email: string; telefone?: string | null; foto_url?: string | null;
+}
+
 type AdminTab = 'agenda' | 'solicitacoes' | 'confirmadas' | 'historico' | 'fixos' | 'quadra_res' | 'quadra_gest';
 type UserTab  = 'agenda' | 'minhas' | 'reservar';
 
@@ -376,6 +380,8 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   // ── Nome fixo ──────────────────────────────────────────────────────────────
   const [editandoNomeFixoId, setEditandoNomeFixoId] = useState<number | null>(null);
   const [formNomeFixo,       setFormNomeFixo]       = useState({ nome: '', email_vinculado: '', valido_de: '', valido_ate: '' });
+  const [sugestoesNomeFixo,  setSugestoesNomeFixo]  = useState<UsuarioBusca[]>([]);
+  const [buscandoNomeFixo,   setBuscandoNomeFixo]   = useState(false);
 
   // ── Quadra ─────────────────────────────────────────────────────────────────
   const [locaisQuadra,      setLocaisQuadra]      = useState<LocalQuadra[]>([]);
@@ -545,6 +551,35 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     setDataQuadra(novaData);
   };
 
+  useEffect(() => {
+    const termo = formNomeFixo.nome.trim();
+
+    if (!isAdmin || editandoNomeFixoId === null || termo.length < 2) {
+      setSugestoesNomeFixo([]);
+      setBuscandoNomeFixo(false);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setBuscandoNomeFixo(true);
+      try {
+        const r = await fetch(`${API}/auth/users/search?q=${encodeURIComponent(termo)}`);
+        const json = await r.json();
+        setSugestoesNomeFixo(Array.isArray(json) ? json : []);
+      } catch {
+        setSugestoesNomeFixo([]);
+      }
+      setBuscandoNomeFixo(false);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [formNomeFixo.nome, editandoNomeFixoId, isAdmin]);
+
+  const selecionarUsuarioNomeFixo = (usuario: UsuarioBusca) => {
+    setFormNomeFixo(f => ({ ...f, nome: usuario.nome, email_vinculado: usuario.email }));
+    setSugestoesNomeFixo([]);
+  };
+
   // ── Actions agenda ─────────────────────────────────────────────────────────
   const saveSlot = async () => {
     if (!adminInfo?.email) return;
@@ -703,6 +738,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       });
       flash('ok', 'Nome fixado!');
       setEditandoNomeFixoId(null);
+      setSugestoesNomeFixo([]);
       loadHorariosFixos(); loadSlotsDia();
     } catch { flash('err', 'Erro ao salvar.'); }
   };
@@ -714,6 +750,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       body: JSON.stringify({ admin_email: adminInfo.email, nome: null, email_vinculado: null, valido_de: null, valido_ate: null }),
     });
     flash('ok', 'Nome removido.');
+    setSugestoesNomeFixo([]);
     loadHorariosFixos(); loadSlotsDia();
   };
 
@@ -1212,6 +1249,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                   <button
                     style={{ padding: '5px 9px', borderRadius: 10, border: '1px solid rgba(198,107,77,0.3)', background: '#fff1eb', color: '#b65b43', fontSize: 11, fontWeight: 850, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
                     onClick={() => {
+                      setSugestoesNomeFixo([]);
                       if (editandoNomeFixoId === h.id) { setEditandoNomeFixoId(null); return; }
                       setEditandoNomeFixoId(h.id);
                       setFormNomeFixo({
@@ -1230,8 +1268,32 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                   <div style={{ padding: '10px 14px 14px', background: '#fffaf7', display: 'flex', flexDirection: 'column', gap: 10, borderBottom: idx < horas.length - 1 ? '1px solid #f4ebe3' : 'none' }}>
                     <div style={s.formRow}>
                       <FieldGroup label="Nome(s)">
-                        <input style={s.input} placeholder="Ex: Nath, Gisely" value={formNomeFixo.nome}
-                          onChange={e => setFormNomeFixo(f => ({ ...f, nome: e.target.value }))}/>
+                        <div style={{ position: 'relative' }}>
+                          <input style={s.input} placeholder="Ex: Nath, Gisely" value={formNomeFixo.nome}
+                            onChange={e => setFormNomeFixo(f => ({ ...f, nome: e.target.value }))}/>
+                          {(sugestoesNomeFixo.length > 0 || buscandoNomeFixo) && (
+                            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 40, background: '#fff', border: '1px solid #eadfd6', borderRadius: 14, boxShadow: '0 14px 30px rgba(57,37,28,0.14)', overflow: 'hidden' }}>
+                              {buscandoNomeFixo && sugestoesNomeFixo.length === 0 && (
+                                <div style={{ padding: '10px 12px', fontSize: 12, color: '#94857a', fontWeight: 700 }}>Buscando...</div>
+                              )}
+                              {sugestoesNomeFixo.map(usuario => (
+                                <button
+                                  key={usuario.id}
+                                  type="button"
+                                  onMouseDown={e => e.preventDefault()}
+                                  onClick={() => selecionarUsuarioNomeFixo(usuario)}
+                                  style={{ width: '100%', padding: '10px 12px', border: 'none', borderBottom: '1px solid #f4ebe3', background: '#fff', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 9 }}
+                                >
+                                  {avatarEl(usuario.nome, usuario.foto_url, 28)}
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 850, color: '#2d2521', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{usuario.nome}</div>
+                                    <div style={{ fontSize: 11, fontWeight: 650, color: '#94857a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{usuario.email}</div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </FieldGroup>
                       <FieldGroup label="Email (opcional)">
                         <input style={s.input} placeholder="aluno@email.com" value={formNomeFixo.email_vinculado}
