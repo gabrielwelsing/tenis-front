@@ -313,6 +313,51 @@ function montarProximasAulasFixas(horarios: HorarioFixo[], dias = 30): ProximaAu
   });
 }
 
+
+function montarAulasFixasNoDia(horarios: HorarioFixo[], dataRef: string, incluirPassadas = false): ProximaAulaAdmin[] {
+  return horarios
+    .filter(h => horarioFixoValidoNaData(h, dataRef))
+    .filter(h => incluirPassadas || !horarioFixoJaPassou(dataRef, h.hora_fim))
+    .map(h => ({
+      key: `fixo-${h.id}-${dataRef}`,
+      origem: 'fixo' as const,
+      data: dataRef,
+      hora_inicio: h.hora_inicio,
+      hora_fim: h.hora_fim,
+      nome_aluno: h.nome?.trim() || 'Horário fixo',
+      email_aluno: h.email_vinculado ?? null,
+    }))
+    .sort((a, b) => fmt(a.hora_inicio).localeCompare(fmt(b.hora_inicio)));
+}
+
+function montarAulasFixasHistorico(horarios: HorarioFixo[], diasParaTras = 60): ProximaAulaAdmin[] {
+  const hoje = todayStr();
+  const aulas: ProximaAulaAdmin[] = [];
+
+  for (let i = 0; i <= diasParaTras; i++) {
+    const dataRef = addDays(hoje, -i);
+    montarAulasFixasNoDia(horarios, dataRef, true).forEach(aula => {
+      if (horarioFixoJaPassou(aula.data, aula.hora_fim)) aulas.push(aula);
+    });
+  }
+
+  return aulas.sort((a, b) => {
+    const da = `${a.data.slice(0, 10)}T${fmt(a.hora_inicio)}:00`;
+    const db = `${b.data.slice(0, 10)}T${fmt(b.hora_inicio)}:00`;
+    return new Date(db).getTime() - new Date(da).getTime();
+  });
+}
+
+function ordenarAulasAdminAsc(a: ProximaAulaAdmin, b: ProximaAulaAdmin): number {
+  const da = `${a.data.slice(0, 10)}T${fmt(a.hora_inicio)}:00`;
+  const db = `${b.data.slice(0, 10)}T${fmt(b.hora_inicio)}:00`;
+  return new Date(da).getTime() - new Date(db).getTime();
+}
+
+function ordenarAulasAdminDesc(a: ProximaAulaAdmin, b: ProximaAulaAdmin): number {
+  return ordenarAulasAdminAsc(b, a);
+}
+
 function CalendarLineIcon({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -420,6 +465,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const isAdmin = role === 'admin';
 
   const [data,          setData]          = useState(todayStr());
+  const [dataConfirmadas, setDataConfirmadas] = useState(todayStr());
   const [loading,       setLoading]       = useState(false);
   const [msg,           setMsg]           = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [adminInfo,     setAdminInfo]     = useState<AdminInfo | null>(null);
@@ -1757,7 +1803,12 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const aulasConfirmadas = solicitacoes.filter(i => i.status === 'confirmada');
   const aulasConfirmadasFuturas   = aulasConfirmadas.filter(i => !inscricaoJaPassou(i)).sort(ordenarInscricoesAsc);
   const aulasConfirmadasHistorico = aulasConfirmadas.filter(inscricaoJaPassou).sort(ordenarInscricoesDesc);
-  const aulasConfirmadasAdmin: ProximaAulaAdmin[] = aulasConfirmadasFuturas.map(insc => ({
+
+  const aulasConfirmadasFuturasDoDia = aulasConfirmadasFuturas.filter(insc =>
+    insc.data.slice(0, 10) === dataConfirmadas
+  );
+
+  const aulasConfirmadasAdmin: ProximaAulaAdmin[] = aulasConfirmadasFuturasDoDia.map(insc => ({
     key: `confirmada-${insc.id}`,
     origem: 'confirmada',
     data: insc.data,
@@ -1769,8 +1820,9 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     foto_url: insc.foto_url,
     inscricao_id: insc.id,
   }));
-  const aulasFixasFuturas = montarProximasAulasFixas(horariosFixos).filter(fixa =>
-    !aulasConfirmadasFuturas.some(insc =>
+
+  const aulasFixasDoDia = montarAulasFixasNoDia(horariosFixos, dataConfirmadas).filter(fixa =>
+    !aulasConfirmadasFuturasDoDia.some(insc =>
       insc.data.slice(0, 10) === fixa.data.slice(0, 10) &&
       fmt(insc.hora_inicio) === fmt(fixa.hora_inicio) &&
       (
@@ -1779,11 +1831,36 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       )
     )
   );
-  const proximasAulasAdmin = [...aulasConfirmadasAdmin, ...aulasFixasFuturas].sort((a, b) => {
-    const da = `${a.data.slice(0, 10)}T${fmt(a.hora_inicio)}:00`;
-    const db = `${b.data.slice(0, 10)}T${fmt(b.hora_inicio)}:00`;
-    return new Date(da).getTime() - new Date(db).getTime();
-  });
+
+  const proximasAulasAdmin = [...aulasConfirmadasAdmin, ...aulasFixasDoDia].sort(ordenarAulasAdminAsc);
+
+  const aulasConfirmadasHistoricoAdmin: ProximaAulaAdmin[] = aulasConfirmadasHistorico.map(insc => ({
+    key: `historico-confirmada-${insc.id}`,
+    origem: 'confirmada',
+    data: insc.data,
+    hora_inicio: insc.hora_inicio,
+    hora_fim: insc.hora_fim,
+    nome_aluno: insc.nome_aluno,
+    email_aluno: insc.email_aluno,
+    telefone_usuario: insc.telefone_usuario,
+    foto_url: insc.foto_url,
+    inscricao_id: insc.id,
+  }));
+
+  const aulasFixasHistorico = montarAulasFixasHistorico(horariosFixos).filter(fixa =>
+    !aulasConfirmadasHistorico.some(insc =>
+      insc.data.slice(0, 10) === fixa.data.slice(0, 10) &&
+      fmt(insc.hora_inicio) === fmt(fixa.hora_inicio) &&
+      (
+        insc.nome_aluno.trim().toLowerCase() === fixa.nome_aluno.trim().toLowerCase() ||
+        (!!fixa.email_aluno && insc.email_aluno.trim().toLowerCase() === fixa.email_aluno.trim().toLowerCase())
+      )
+    )
+  );
+
+  const aulasHistoricoAdmin = [...aulasConfirmadasHistoricoAdmin, ...aulasFixasHistorico]
+    .sort(ordenarAulasAdminDesc)
+    .slice(0, 80);
   const localQuadraAdminSel = locaisQuadra.find(l => l.id === localQuadraId);
   const quadraAdminSel = localQuadraAdminSel?.quadras.find(q => q.id === quadraId);
 
@@ -2005,13 +2082,18 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             <section style={s.section}>
               <div style={s.sectionHead}>
                 <div style={s.sectionIcon}><ClockLineIcon size={20}/></div>
-                <div style={s.sectionInfo}><h2 style={s.sectionTitle}>Aulas Confirmadas</h2><span style={{ fontSize: 12, color: '#94857a' }}>Próximas aulas agendadas e horários fixos</span></div>
+                <div style={s.sectionInfo}>
+                  <h2 style={s.sectionTitle}>Aulas Confirmadas</h2>
+                  <span style={{ fontSize: 12, color: '#94857a' }}>Aulas do dia selecionado</span>
+                  <DateNav data={dataConfirmadas} setData={setDataConfirmadas}/>
+                </div>
+                <CalendarPicker data={dataConfirmadas} setData={setDataConfirmadas}/>
               </div>
               {proximasAulasAdmin.length === 0 ? (
                 <div style={s.emptyFeed}>
                   <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
-                  <p style={s.emptyText}>Nenhuma aula futura.</p>
-                  <p style={s.emptyHint}>As próximas aulas confirmadas e fixas aparecerão aqui.</p>
+                  <p style={s.emptyText}>Nenhuma aula em {fmtDateBr(dataConfirmadas)}.</p>
+                  <p style={s.emptyHint}>Use as setas ou o calendário para consultar outro dia.</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -2032,7 +2114,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                           {avatarEl(aula.nome_aluno, aula.foto_url, 30)}
                           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                             <span style={{ fontSize: 13, fontWeight: 700, color: '#2d2521', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{aula.nome_aluno}</span>
-                            {aula.origem === 'fixo' && aula.email_aluno && (
+                            {aula.email_aluno && (
                               <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{aula.email_aluno}</span>
                             )}
                           </div>
@@ -2060,9 +2142,9 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             <section style={s.section}>
               <div style={s.sectionHead}>
                 <div style={s.sectionIcon}><ClockLineIcon size={20}/></div>
-                <div style={s.sectionInfo}><h2 style={s.sectionTitle}>Histórico</h2><span style={{ fontSize: 12, color: '#94857a' }}>Aulas confirmadas que já passaram</span></div>
+                <div style={s.sectionInfo}><h2 style={s.sectionTitle}>Histórico</h2><span style={{ fontSize: 12, color: '#94857a' }}>Aulas e horários fixos que já passaram</span></div>
               </div>
-              {aulasConfirmadasHistorico.length === 0 ? (
+              {aulasHistoricoAdmin.length === 0 ? (
                 <div style={s.emptyFeed}>
                   <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
                   <p style={s.emptyText}>Nenhuma aula no histórico.</p>
@@ -2070,23 +2152,30 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {aulasConfirmadasHistorico.map(insc => (
-                    <div key={insc.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: '4px solid #8d7b70', opacity: 0.92 }}>
+                  {aulasHistoricoAdmin.map(aula => (
+                    <div key={aula.key} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: '4px solid #8d7b70', opacity: 0.92 }}>
                       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: '#f1e9e4', border: '1px solid #e5d8cf', color: '#8d7b70' }}>Histórico</span>
-                          <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>{fmtDateBr(insc.data)}</span>
+                          <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: '#f1e9e4', border: '1px solid #e5d8cf', color: '#8d7b70' }}>
+                            {aula.origem === 'fixo' ? '📌 Fixo passado' : 'Histórico'}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>{fmtDateBr(aula.data)}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#8d7b70' }}>
                           <ClockLineIcon size={17}/>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: '#2d2521' }}>{fmt(insc.hora_inicio)} – {fmt(insc.hora_fim)}</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: '#2d2521' }}>{fmt(aula.hora_inicio)} – {fmt(aula.hora_fim)}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {avatarEl(insc.nome_aluno, insc.foto_url, 30)}
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#2d2521' }}>{insc.nome_aluno}</span>
+                          {avatarEl(aula.nome_aluno, aula.foto_url, 30)}
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#2d2521', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{aula.nome_aluno}</span>
+                            {aula.email_aluno && (
+                              <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{aula.email_aluno}</span>
+                            )}
+                          </div>
                         </div>
-                        {insc.telefone_usuario && (
-                          <button onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
+                        {aula.telefone_usuario && (
+                          <button onClick={() => window.open(buildWaAluno(aula.telefone_usuario!, aula.nome_aluno), '_blank')}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: '#edf8ef', color: '#3f8f5b', border: '1px solid #bee0c8', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}>
                             <WaIcon/> WhatsApp do aluno
                           </button>
