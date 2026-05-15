@@ -61,6 +61,19 @@ interface UsuarioBusca {
   id: number; nome: string; email: string; telefone?: string | null; foto_url?: string | null;
 }
 
+interface ProximaAulaAdmin {
+  key: string;
+  origem: 'confirmada' | 'fixo';
+  data: string;
+  hora_inicio: string;
+  hora_fim: string;
+  nome_aluno: string;
+  email_aluno?: string | null;
+  telefone_usuario?: string | null;
+  foto_url?: string | null;
+  inscricao_id?: number;
+}
+
 type AdminTab = 'agenda' | 'solicitacoes' | 'confirmadas' | 'historico' | 'fixos' | 'quadra_res' | 'quadra_gest';
 type UserTab  = 'agenda' | 'minhas' | 'reservar';
 
@@ -248,6 +261,56 @@ function ordenarInscricoesAsc(a: Inscricao, b: Inscricao): number {
 
 function ordenarInscricoesDesc(a: Inscricao, b: Inscricao): number {
   return ordenarInscricoesAsc(b, a);
+}
+
+
+function horarioFixoValidoNaData(h: HorarioFixo, dataRef: string): boolean {
+  if (!h.ativo || !h.nome?.trim()) return false;
+  const dataOnly = dataRef.slice(0, 10);
+  const dt = new Date(dataOnly + 'T12:00:00');
+  if (dt.getDay() !== h.dia_semana) return false;
+  if (h.valido_de && dataOnly < String(h.valido_de).slice(0, 10)) return false;
+  if (h.valido_ate && dataOnly > String(h.valido_ate).slice(0, 10)) return false;
+  return true;
+}
+
+function horarioFixoJaPassou(dataRef: string, horaFim: string): boolean {
+  const hoje = todayStr();
+  const dataOnly = dataRef.slice(0, 10);
+  if (dataOnly < hoje) return true;
+  if (dataOnly > hoje) return false;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const [hh, mm] = horaFim.slice(0, 5).split(':').map(Number);
+  return hh * 60 + mm <= nowMin;
+}
+
+function montarProximasAulasFixas(horarios: HorarioFixo[], dias = 30): ProximaAulaAdmin[] {
+  const hoje = todayStr();
+  const aulas: ProximaAulaAdmin[] = [];
+
+  for (let i = 0; i <= dias; i++) {
+    const dataRef = addDays(hoje, i);
+    horarios.forEach(h => {
+      if (!horarioFixoValidoNaData(h, dataRef)) return;
+      if (horarioFixoJaPassou(dataRef, h.hora_fim)) return;
+      aulas.push({
+        key: `fixo-${h.id}-${dataRef}`,
+        origem: 'fixo',
+        data: dataRef,
+        hora_inicio: h.hora_inicio,
+        hora_fim: h.hora_fim,
+        nome_aluno: h.nome?.trim() || 'Horário fixo',
+        email_aluno: h.email_vinculado ?? null,
+      });
+    });
+  }
+
+  return aulas.sort((a, b) => {
+    const da = `${a.data.slice(0, 10)}T${fmt(a.hora_inicio)}:00`;
+    const db = `${b.data.slice(0, 10)}T${fmt(b.hora_inicio)}:00`;
+    return new Date(da).getTime() - new Date(db).getTime();
+  });
 }
 
 function CalendarLineIcon({ size = 22 }: { size?: number }) {
@@ -1694,6 +1757,33 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
   const aulasConfirmadas = solicitacoes.filter(i => i.status === 'confirmada');
   const aulasConfirmadasFuturas   = aulasConfirmadas.filter(i => !inscricaoJaPassou(i)).sort(ordenarInscricoesAsc);
   const aulasConfirmadasHistorico = aulasConfirmadas.filter(inscricaoJaPassou).sort(ordenarInscricoesDesc);
+  const aulasConfirmadasAdmin: ProximaAulaAdmin[] = aulasConfirmadasFuturas.map(insc => ({
+    key: `confirmada-${insc.id}`,
+    origem: 'confirmada',
+    data: insc.data,
+    hora_inicio: insc.hora_inicio,
+    hora_fim: insc.hora_fim,
+    nome_aluno: insc.nome_aluno,
+    email_aluno: insc.email_aluno,
+    telefone_usuario: insc.telefone_usuario,
+    foto_url: insc.foto_url,
+    inscricao_id: insc.id,
+  }));
+  const aulasFixasFuturas = montarProximasAulasFixas(horariosFixos).filter(fixa =>
+    !aulasConfirmadasFuturas.some(insc =>
+      insc.data.slice(0, 10) === fixa.data.slice(0, 10) &&
+      fmt(insc.hora_inicio) === fmt(fixa.hora_inicio) &&
+      (
+        insc.nome_aluno.trim().toLowerCase() === fixa.nome_aluno.trim().toLowerCase() ||
+        (!!fixa.email_aluno && insc.email_aluno.trim().toLowerCase() === fixa.email_aluno.trim().toLowerCase())
+      )
+    )
+  );
+  const proximasAulasAdmin = [...aulasConfirmadasAdmin, ...aulasFixasFuturas].sort((a, b) => {
+    const da = `${a.data.slice(0, 10)}T${fmt(a.hora_inicio)}:00`;
+    const db = `${b.data.slice(0, 10)}T${fmt(b.hora_inicio)}:00`;
+    return new Date(da).getTime() - new Date(db).getTime();
+  });
   const localQuadraAdminSel = locaisQuadra.find(l => l.id === localQuadraId);
   const quadraAdminSel = localQuadraAdminSel?.quadras.find(q => q.id === quadraId);
 
@@ -1915,40 +2005,49 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
             <section style={s.section}>
               <div style={s.sectionHead}>
                 <div style={s.sectionIcon}><ClockLineIcon size={20}/></div>
-                <div style={s.sectionInfo}><h2 style={s.sectionTitle}>Aulas Confirmadas</h2><span style={{ fontSize: 12, color: '#94857a' }}>Próximas aulas agendadas</span></div>
+                <div style={s.sectionInfo}><h2 style={s.sectionTitle}>Aulas Confirmadas</h2><span style={{ fontSize: 12, color: '#94857a' }}>Próximas aulas agendadas e horários fixos</span></div>
               </div>
-              {aulasConfirmadasFuturas.length === 0 ? (
+              {proximasAulasAdmin.length === 0 ? (
                 <div style={s.emptyFeed}>
                   <div style={s.emptyIcon}><CalendarLineIcon size={34}/></div>
-                  <p style={s.emptyText}>Nenhuma aula confirmada futura.</p>
-                  <p style={s.emptyHint}>As próximas aulas confirmadas aparecerão aqui.</p>
+                  <p style={s.emptyText}>Nenhuma aula futura.</p>
+                  <p style={s.emptyHint}>As próximas aulas confirmadas e fixas aparecerão aqui.</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {aulasConfirmadasFuturas.map(insc => (
-                    <div key={insc.id} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: '4px solid #3f8f5b' }}>
+                  {proximasAulasAdmin.map(aula => (
+                    <div key={aula.key} style={{ background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 10px 24px rgba(57,37,28,0.06)', borderLeft: '4px solid ' + (aula.origem === 'fixo' ? '#b98718' : '#3f8f5b') }}>
                       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: '#edf8ef', border: '1px solid #bee0c8', color: '#3f8f5b' }}>✓ Confirmada</span>
-                          <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>{fmtDateBr(insc.data)}</span>
+                          <span style={{ fontSize: 12, fontWeight: 850, padding: '5px 10px', borderRadius: 999, background: aula.origem === 'fixo' ? '#fff8e6' : '#edf8ef', border: '1px solid ' + (aula.origem === 'fixo' ? '#f0d58a' : '#bee0c8'), color: aula.origem === 'fixo' ? '#b98718' : '#3f8f5b' }}>
+                            {aula.origem === 'fixo' ? '📌 Horário fixo' : '✓ Confirmada'}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650 }}>{fmtDateBr(aula.data)}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c66b4d' }}>
                           <ClockLineIcon size={17}/>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: '#2d2521' }}>{fmt(insc.hora_inicio)} – {fmt(insc.hora_fim)}</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: '#2d2521' }}>{fmt(aula.hora_inicio)} – {fmt(aula.hora_fim)}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {avatarEl(insc.nome_aluno, insc.foto_url, 30)}
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#2d2521' }}>{insc.nome_aluno}</span>
+                          {avatarEl(aula.nome_aluno, aula.foto_url, 30)}
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#2d2521', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{aula.nome_aluno}</span>
+                            {aula.origem === 'fixo' && aula.email_aluno && (
+                              <span style={{ fontSize: 11, color: '#94857a', fontWeight: 650, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{aula.email_aluno}</span>
+                            )}
+                          </div>
                         </div>
-                        {insc.telefone_usuario && (
-                          <button onClick={() => window.open(buildWaAluno(insc.telefone_usuario!, insc.nome_aluno), '_blank')}
+                        {aula.telefone_usuario && (
+                          <button onClick={() => window.open(buildWaAluno(aula.telefone_usuario!, aula.nome_aluno), '_blank')}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: 'linear-gradient(135deg, #1b8f45, #146d35)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 850 }}>
                             <WaIcon/> WhatsApp do aluno
                           </button>
                         )}
-                        <button style={{ padding: '9px 0', borderRadius: 12, border: '1px solid rgba(201,84,65,0.22)', background: '#fff0ec', color: '#c95441', fontSize: 12, fontWeight: 850, cursor: 'pointer' }} onClick={() => cancelarReserva(insc.id)}>
-                          Cancelar aula
-                        </button>
+                        {aula.origem === 'confirmada' && aula.inscricao_id && (
+                          <button style={{ padding: '9px 0', borderRadius: 12, border: '1px solid rgba(201,84,65,0.22)', background: '#fff0ec', color: '#c95441', fontSize: 12, fontWeight: 850, cursor: 'pointer' }} onClick={() => cancelarReserva(aula.inscricao_id!)}>
+                            Cancelar aula
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
