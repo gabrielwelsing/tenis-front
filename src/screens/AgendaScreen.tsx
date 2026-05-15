@@ -790,7 +790,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
       if (responsavelTelefone) {
         window.open(
           buildWaReservaQuadra(responsavelTelefone, {
-            nomeResponsavel: localSel?.responsavel_nome ?? null,
+            nomeResponsavel: localSel?.responsavel_nome ?? (adminInfo?.telefone ? 'Carlão' : null),
             nomeQuadra: quadraSel?.nome ?? 'selecionada',
             nomeLocal: localSel?.nome ?? 'local selecionado',
             data: dataQuadra,
@@ -1334,7 +1334,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               </div>
             </div>
 
-            {/* Grid de horários — visual only */}
+            {/* Grid de horários */}
             {loadingSlots ? (
               <div style={s.loadingBox}><div style={s.loadingDot}/><p style={s.loadingTxt}>Carregando...</p></div>
             ) : actoSlots.length === 0 ? (
@@ -1357,18 +1357,28 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
                         {slots.map(sl => {
-                          const livre = sl.status === 'livre';
+                          const pal = SLOT_STATUS_PAL[sl.status] ?? SLOT_STATUS_PAL.bloqueado;
+                          const podeSolicitar = slotQuadraPermiteSolicitacao(sl.status);
                           return (
-                            <div key={sl.hora_inicio} style={{
-                              padding: '9px 12px', borderRadius: 14, textAlign: 'center' as const,
-                              background: livre ? '#edf8ef' : '#f4ebe3',
-                              color:      livre ? '#3f8f5b' : '#8d7b70',
-                              border:     `1px solid ${livre ? '#bee0c8' : '#e5d8cf'}`,
-                              minWidth: 70,
-                            }}>
+                            <button
+                              key={sl.hora_inicio}
+                              type="button"
+                              onClick={() => podeSolicitar ? abrirModalReservaQuadra(sl) : flash('err', 'Este horário não está disponível.')}
+                              style={{
+                                padding: '9px 12px',
+                                borderRadius: 14,
+                                textAlign: 'center' as const,
+                                background: pal.bg,
+                                color: pal.color,
+                                border: `1px solid ${pal.border}`,
+                                minWidth: 70,
+                                cursor: podeSolicitar ? 'pointer' : 'not-allowed',
+                                fontFamily: 'inherit',
+                              }}
+                            >
                               <div style={{ fontSize: 13, fontWeight: 800 }}>{sl.hora_inicio}</div>
-                              <div style={{ fontSize: 10, fontWeight: 700, marginTop: 2 }}>{livre ? 'Livre' : 'Ocupado'}</div>
-                            </div>
+                              <div style={{ fontSize: 10, fontWeight: 700, marginTop: 2 }}>{SLOT_STATUS_LABEL[sl.status] ?? sl.status}</div>
+                            </button>
                           );
                         })}
                       </div>
@@ -1392,7 +1402,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
 
             {/* Info reserva */}
             <div style={{ background: '#fff1eb', border: '1px solid rgba(198,107,77,0.2)', borderRadius: 16, padding: '12px 14px', fontSize: 12, color: '#b65b43', fontWeight: 700, textAlign: 'center' as const }}>
-              🎾 Reservas via contato direto com o Automóvel Clube (ACTO)
+              Toque em um horário disponível para solicitar a reserva.
             </div>
           </>
         ) : (
@@ -1699,7 +1709,7 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               </FieldGroup>
 
               <p style={rq.hint}>
-                A solicitação será enviada para aprovação no app{localSel?.responsavel_nome ? ` e o WhatsApp abrirá para ${localSel.responsavel_nome}` : ''}.
+                A solicitação será enviada para aprovação no app{(localSel?.responsavel_nome ?? (adminInfo?.telefone ? 'Carlão' : null)) ? ` e o WhatsApp abrirá para ${localSel?.responsavel_nome ?? 'Carlão'}` : ''}.
               </p>
 
               <button
