@@ -176,7 +176,7 @@ const TIPO_LABEL: Record<string, string> = {
 };
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-function todayStr() { return new Date().toISOString().split('T')[0]; }
+function todayStr() { return todayLocalStr(); }
 
 function addDays(s: string, n: number) {
   const d = new Date(s + 'T12:00:00');
@@ -534,7 +534,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
     const hoje = todayLocalStr();
     if (novaData < hoje) {
       setDataQuadra(hoje);
-      flash('err', 'Não é possível reservar em data anterior a hoje.');
       return;
     }
     setDataQuadra(novaData);
@@ -1342,7 +1341,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               <div style={s.emptyFeed}>
                 <div style={s.emptyIcon}><CalendarLineIcon size={28}/></div>
                 <p style={s.emptyText}>Nenhum horário disponível em {fmtDateBr(dataQuadra)}.</p>
-                <p style={s.emptyHint}>Mostramos apenas horários de agora em diante.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1419,7 +1417,6 @@ export default function AgendaScreen({ onBack, emailUsuario, role, username, tel
               <div style={s.emptyFeed}>
                 <div style={s.emptyIcon}><CalendarLineIcon size={28}/></div>
                 <p style={s.emptyText}>Nenhum horário disponível em {fmtDateBr(dataQuadra)}.</p>
-                <p style={s.emptyHint}>Mostramos apenas horários de agora em diante.</p>
               </div>
             ) : (
               <>
