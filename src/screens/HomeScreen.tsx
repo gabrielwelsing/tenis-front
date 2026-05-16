@@ -918,11 +918,6 @@ export default function HomeScreen({
               </div>
             </div>
 
-            <div style={s.headerActions}>
-              <button onClick={() => setShowConfig(true)} style={s.profileBtn} title="Perfil">
-                <UserOutlineIcon size={21} />
-              </button>
-            </div>
           </div>
 
           {semTelefone && (
