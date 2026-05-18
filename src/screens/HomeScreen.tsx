@@ -12,6 +12,9 @@ import {
   getAtividadesHome,
   buscarCidadesIBGE,
   padronizarCidadeIBGE,
+  buscarUsuariosGratisAdmin,
+  liberarProManualAdmin,
+  type AdminUserSearchRecord,
   type AtividadeHomeRecord,
   type CidadeIBGE,
   type HomePrioridadeRecord,
@@ -260,6 +263,13 @@ export default function HomeScreen({
     anteriores: [],
   });
 
+  const [adminProBusca, setAdminProBusca] = useState('');
+  const [adminProUsuarios, setAdminProUsuarios] = useState<AdminUserSearchRecord[]>([]);
+  const [adminProUsuarioSel, setAdminProUsuarioSel] = useState<AdminUserSearchRecord | null>(null);
+  const [adminProDias, setAdminProDias] = useState('7');
+  const [adminProLoading, setAdminProLoading] = useState(false);
+  const [adminProMsg, setAdminProMsg] = useState('');
+
   useEffect(() => {
     let ativo = true;
 
@@ -309,6 +319,39 @@ export default function HomeScreen({
     };
   }, [cfgLocalidade, configView]);
 
+  useEffect(() => {
+    let ativo = true;
+    const termo = adminProBusca.trim();
+
+    if (role !== 'admin' || configView !== 'assinatura' || termo.length < 2 || adminProUsuarioSel) {
+      setAdminProUsuarios([]);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setAdminProLoading(true);
+      setAdminProMsg('');
+
+      buscarUsuariosGratisAdmin(token, termo)
+        .then(usuarios => {
+          if (ativo) setAdminProUsuarios(usuarios);
+        })
+        .catch(err => {
+          if (!ativo) return;
+          setAdminProUsuarios([]);
+          setAdminProMsg(err instanceof Error ? err.message : 'Erro ao buscar usuários.');
+        })
+        .finally(() => {
+          if (ativo) setAdminProLoading(false);
+        });
+    }, 300);
+
+    return () => {
+      ativo = false;
+      window.clearTimeout(timer);
+    };
+  }, [adminProBusca, adminProUsuarioSel, configView, role, token]);
+
 
   const handleAvatarClick = () => fileInputRef.current?.click();
 
@@ -357,6 +400,38 @@ export default function HomeScreen({
       setCfgMsg('Erro ao salvar. Tente novamente.');
     } finally {
       setCfgLoading(false);
+    }
+  };
+
+  const handleLiberarProManual = async () => {
+    if (role !== 'admin') return;
+
+    if (!adminProUsuarioSel) {
+      setAdminProMsg('Selecione um usuário.');
+      return;
+    }
+
+    const dias = Number(adminProDias);
+
+    if (!Number.isInteger(dias) || dias <= 0 || dias > 365) {
+      setAdminProMsg('Informe uma quantidade de dias entre 1 e 365.');
+      return;
+    }
+
+    setAdminProLoading(true);
+    setAdminProMsg('');
+
+    try {
+      const userLiberado = await liberarProManualAdmin(token, adminProUsuarioSel.id, dias);
+      setAdminProMsg(`✅ PRO liberado para ${userLiberado.nome} até ${String(userLiberado.plano_expira_em ?? '').slice(0, 10)}.`);
+      setAdminProBusca('');
+      setAdminProUsuarios([]);
+      setAdminProUsuarioSel(null);
+      setAdminProDias('7');
+    } catch (err) {
+      setAdminProMsg(err instanceof Error ? err.message : 'Erro ao liberar PRO.');
+    } finally {
+      setAdminProLoading(false);
     }
   };
 
@@ -867,6 +942,137 @@ export default function HomeScreen({
                   </p>
                 </div>
 
+                {role === 'admin' && (
+                  <div style={cfg.adminProCard}>
+                    <div style={cfg.adminProHead}>
+                      <strong>Liberação manual de PRO</strong>
+                      <span>Busque usuários gratuitos e libere acesso por quantidade de dias.</span>
+                    </div>
+
+                    <div style={cfg.fieldGroup}>
+                      <span style={cfg.label}>Buscar usuário gratuito</span>
+
+                      <div style={cfg.adminSearchWrap}>
+                        <input
+                          style={cfg.input}
+                          type="text"
+                          value={adminProBusca}
+                          onChange={e => {
+                            setAdminProBusca(e.target.value);
+                            setAdminProUsuarioSel(null);
+                            setAdminProMsg('');
+                          }}
+                          placeholder="Digite nome ou e-mail"
+                          autoComplete="off"
+                        />
+
+                        {(adminProLoading || adminProUsuarios.length > 0) && !adminProUsuarioSel && adminProBusca.trim().length >= 2 && (
+                          <div style={cfg.adminSearchList}>
+                            {adminProLoading ? (
+                              <div style={cfg.adminSearchEmpty}>Buscando usuários...</div>
+                            ) : adminProUsuarios.length === 0 ? (
+                              <div style={cfg.adminSearchEmpty}>Nenhum usuário gratuito encontrado.</div>
+                            ) : adminProUsuarios.map(u => (
+                              <button
+                                key={u.id}
+                                type="button"
+                                style={cfg.adminSearchItem}
+                                onClick={() => {
+                                  setAdminProUsuarioSel(u);
+                                  setAdminProBusca(`${u.nome} — ${u.email}`);
+                                  setAdminProUsuarios([]);
+                                  setAdminProMsg('');
+                                }}
+                              >
+                                <div style={cfg.adminSearchAvatar}>
+                                  {u.foto_url ? (
+                                    <img src={u.foto_url} alt={u.nome} style={cfg.adminSearchAvatarImg} />
+                                  ) : (
+                                    String(u.nome || u.email).charAt(0).toUpperCase()
+                                  )}
+                                </div>
+                                <div style={cfg.adminSearchInfo}>
+                                  <strong>{u.nome}</strong>
+                                  <span>{u.email}</span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {adminProUsuarioSel && (
+                      <div style={cfg.adminSelectedUser}>
+                        <div style={cfg.adminSelectedInfo}>
+                          <strong>{adminProUsuarioSel.nome}</strong>
+                          <span>{adminProUsuarioSel.email}</span>
+                        </div>
+                        <button
+                          type="button"
+                          style={cfg.adminClearBtn}
+                          onClick={() => {
+                            setAdminProUsuarioSel(null);
+                            setAdminProBusca('');
+                            setAdminProMsg('');
+                          }}
+                        >
+                          Trocar
+                        </button>
+                      </div>
+                    )}
+
+                    <div style={cfg.fieldGroup}>
+                      <span style={cfg.label}>Dias de PRO</span>
+                      <input
+                        style={cfg.input}
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={adminProDias}
+                        onChange={e => setAdminProDias(e.target.value)}
+                        placeholder="Ex: 7"
+                      />
+                    </div>
+
+                    <div style={cfg.adminQuickDays}>
+                      {[7, 15, 30, 60].map(dias => (
+                        <button
+                          key={dias}
+                          type="button"
+                          style={{
+                            ...cfg.adminQuickDayBtn,
+                            ...(adminProDias === String(dias) ? cfg.adminQuickDayBtnActive : {}),
+                          }}
+                          onClick={() => setAdminProDias(String(dias))}
+                        >
+                          {dias} dias
+                        </button>
+                      ))}
+                    </div>
+
+                    {adminProMsg && (
+                      <p
+                        style={{
+                          ...cfg.adminProMsg,
+                          color: adminProMsg.startsWith('✅') ? '#3f8f5b' : '#c95441',
+                        }}
+                      >
+                        {adminProMsg}
+                      </p>
+                    )}
+
+                    <button
+                      type="button"
+                      style={{ ...cfg.saveBtn, opacity: adminProLoading || !adminProUsuarioSel ? 0.6 : 1 }}
+                      onClick={handleLiberarProManual}
+                      disabled={adminProLoading || !adminProUsuarioSel}
+                    >
+                      {adminProLoading ? 'Liberando...' : 'Liberar PRO manualmente'}
+                    </button>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   style={cfg.saveBtn}
@@ -918,6 +1124,11 @@ export default function HomeScreen({
               </div>
             </div>
 
+            <div style={s.headerActions}>
+              <button onClick={() => setShowConfig(true)} style={s.profileBtn} title="Perfil">
+                <UserOutlineIcon size={21} />
+              </button>
+            </div>
           </div>
 
           {semTelefone && (
@@ -2538,6 +2749,162 @@ const cfg: Record<string, React.CSSProperties> = {
     fontSize: 15,
     fontWeight: 900,
     cursor: 'default',
+  },
+
+  adminProCard: {
+    borderRadius: 20,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.08)',
+    padding: 14,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    boxShadow: '0 10px 26px rgba(123,72,52,0.06)',
+  },
+
+  adminProHead: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    color: '#2d2521',
+    fontSize: 14,
+    fontWeight: 900,
+  },
+
+  adminSearchWrap: {
+    position: 'relative',
+    width: '100%',
+  },
+
+  adminSearchList: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    zIndex: 235,
+    background: '#fff',
+    border: '1px solid rgba(130,82,62,0.12)',
+    borderRadius: 16,
+    padding: 6,
+    boxShadow: '0 16px 34px rgba(70,45,34,0.18)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    maxHeight: 240,
+    overflowY: 'auto',
+  },
+
+  adminSearchItem: {
+    width: '100%',
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 13,
+    padding: '9px 10px',
+    display: 'grid',
+    gridTemplateColumns: '36px 1fr',
+    alignItems: 'center',
+    gap: 10,
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+  },
+
+  adminSearchAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #c6714e, #8f4635)',
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 950,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+
+  adminSearchAvatarImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+
+  adminSearchInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    minWidth: 0,
+  },
+
+  adminSearchEmpty: {
+    padding: '12px 10px',
+    color: '#8f7769',
+    fontSize: 12,
+    fontWeight: 750,
+    textAlign: 'center',
+  },
+
+  adminSelectedUser: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    padding: '11px 12px',
+    borderRadius: 16,
+    background: '#fff7ef',
+    border: '1px solid rgba(198,107,77,0.16)',
+    color: '#2d2521',
+  },
+
+  adminSelectedInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    minWidth: 0,
+  },
+
+  adminClearBtn: {
+    border: 'none',
+    borderRadius: 999,
+    background: '#fff',
+    color: '#a54f3d',
+    padding: '7px 10px',
+    fontSize: 11,
+    fontWeight: 900,
+    cursor: 'pointer',
+    boxShadow: '0 6px 14px rgba(123,72,52,0.06)',
+  },
+
+  adminQuickDays: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: 7,
+  },
+
+  adminQuickDayBtn: {
+    border: '1px solid rgba(130,82,62,0.10)',
+    background: '#fff',
+    color: '#8f7769',
+    borderRadius: 999,
+    padding: '9px 6px',
+    fontSize: 11,
+    fontWeight: 900,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+
+  adminQuickDayBtnActive: {
+    background: '#c66b4d',
+    color: '#fff',
+    borderColor: '#c66b4d',
+  },
+
+  adminProMsg: {
+    margin: 0,
+    fontSize: 12,
+    fontWeight: 800,
+    textAlign: 'center',
+    lineHeight: 1.35,
   },
 
   planHint: {
