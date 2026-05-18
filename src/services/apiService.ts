@@ -165,6 +165,66 @@ export async function updateProfile(token: string, data: { nome?: string; locali
   return result.user;
 }
 
+
+// ---------------------------------------------------------------------------
+// Admin — liberar PRO manualmente
+// ---------------------------------------------------------------------------
+
+export interface AdminUserSearchRecord {
+  id: number;
+  nome: string;
+  email: string;
+  role: 'user' | 'aluno' | 'admin';
+  foto_url: string | null;
+  telefone: string | null;
+  plano_expira_em?: string | null;
+}
+
+export async function buscarUsuariosGratisAdmin(
+  token: string,
+  query: string
+): Promise<AdminUserSearchRecord[]> {
+  const q = query.trim();
+
+  if (q.length < 2) return [];
+
+  const res = await fetch(`${BASE_URL}/auth/admin/users/search?q=${encodeURIComponent(q)}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Erro ao buscar usuários.');
+  }
+
+  return res.json();
+}
+
+export async function liberarProManualAdmin(
+  token: string,
+  userId: number,
+  dias: number
+): Promise<UserRecord> {
+  const res = await fetch(`${BASE_URL}/auth/admin/users/${userId}/liberar-pro`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ dias }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Erro ao liberar acesso PRO.');
+  }
+
+  const json = await res.json();
+  return json.user;
+}
+
 // ---------------------------------------------------------------------------
 // Gabarito biomecânico
 // ---------------------------------------------------------------------------
