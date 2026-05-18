@@ -1124,11 +1124,6 @@ export default function HomeScreen({
               </div>
             </div>
 
-            <div style={s.headerActions}>
-              <button onClick={() => setShowConfig(true)} style={s.profileBtn} title="Perfil">
-                <UserOutlineIcon size={21} />
-              </button>
-            </div>
           </div>
 
           {semTelefone && (
@@ -1615,26 +1610,6 @@ const s: Record<string, React.CSSProperties> = {
     lineHeight: 1.2,
   },
 
-  headerActions: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    flexShrink: 0,
-  },
-
-  profileBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: '50%',
-    border: 'none',
-    background: '#f3e8de',
-    color: '#6e4b3c',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 8px 20px rgba(111,73,54,0.08)',
-  },
 
   alertBanner: {
     background: '#fff',
