@@ -57,7 +57,7 @@ interface Liga {
 
 type FiltroMural = 'todos' | 'hoje' | 'amanha' | 'calendario' | 'meus' | 'historico';
 
-const CLASSES     = ['Iniciante', '5a classe', '4a classe', '3a classe', '2a classe', '1a classe'];
+const CLASSES     = ['Iniciante', '5ª classe', '4ª classe', '3ª classe', '2ª classe', '1ª classe'];
 const LOCAIS      = ['Arena Bar (Prof. Carlos)', 'Automóvel Clube (ACTO)', 'Quadra Pública', 'Condomínio', 'Outro'];
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES       = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
