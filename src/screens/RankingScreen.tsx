@@ -24,8 +24,23 @@ interface Desafio   { id: string; liga_id: string; desafiante_id: number; desafi
 interface Rodada    { id: string; temporada_id: string; numero: number; ativa: boolean; total_matchups: number; }
 
 type Tab = 'ranking' | 'rodada' | 'partidas' | 'desafios' | 'config';
-const CLASSES = ['iniciante', 'intermediario', 'avancado'];
-const CLASSE_LABELS: Record<string, string> = { iniciante: 'Iniciante', intermediario: 'Intermediário', avancado: 'Avançado' };
+const CLASSES = [
+  'iniciante',
+  '5a_classe',
+  '4a_classe',
+  '3a_classe',
+  '2a_classe',
+  '1a_classe',
+];
+
+const CLASSE_LABELS: Record<string, string> = {
+  iniciante: 'Iniciantes',
+  '5a_classe': '5ª Classe',
+  '4a_classe': '4ª Classe',
+  '3a_classe': '3ª Classe',
+  '2a_classe': '2ª Classe',
+  '1a_classe': '1ª Classe',
+};
 const TIPO_LABELS: Record<string, string>   = { melhor_de_3: 'Melhor de 3', '2sets_supertiebreak': '2 Sets + ST', pro_set: 'Pró-set' };
 
 function normalizarBusca(v: string): string {
@@ -46,10 +61,13 @@ function membrosPorBusca(membros: Membro[], termo: string, excluirId?: number): 
 }
 
 const CLASSE_COLORS: Record<string, { color: string; bg: string; border: string; glow: string }> = {
-  avancado:      { color: '#b98718', bg: '#fff8e6', border: '#f0d58a', glow: 'rgba(185,135,24,0.18)' },
-  intermediario: { color: '#c66b4d', bg: '#fff1eb', border: '#efc7b8', glow: 'rgba(198,107,77,0.18)' },
-  iniciante:     { color: '#3f8f5b', bg: '#edf8ef', border: '#bee0c8', glow: 'rgba(63,143,91,0.16)' },
-  geral:         { color: '#8d7b70', bg: '#fffaf7', border: '#eadfd6', glow: 'rgba(117,76,56,0.10)' },
+  iniciante:   { color: '#3f8f5b', bg: '#edf8ef', border: '#bee0c8', glow: 'rgba(63,143,91,0.16)' },
+  '5a_classe': { color: '#4f8f73', bg: '#eef8f3', border: '#c4dfd3', glow: 'rgba(79,143,115,0.16)' },
+  '4a_classe': { color: '#8d7b3f', bg: '#faf7e9', border: '#dfd5a9', glow: 'rgba(141,123,63,0.16)' },
+  '3a_classe': { color: '#c66b4d', bg: '#fff1eb', border: '#efc7b8', glow: 'rgba(198,107,77,0.18)' },
+  '2a_classe': { color: '#a55442', bg: '#fff0ec', border: '#e9bcb1', glow: 'rgba(165,84,66,0.18)' },
+  '1a_classe': { color: '#b98718', bg: '#fff8e6', border: '#f0d58a', glow: 'rgba(185,135,24,0.18)' },
+  geral:       { color: '#8d7b70', bg: '#fffaf7', border: '#eadfd6', glow: 'rgba(117,76,56,0.10)' },
 };
 
 function getClasseColor(classe: string) { return CLASSE_COLORS[classe] ?? CLASSE_COLORS['geral']; }
@@ -153,7 +171,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
 
   const [novaLiga,    setNovaLiga]    = useState('');
   const [formTemp,    setFormTemp]    = useState({ nome: '', data_inicio: '', data_fim: '' });
-  const [formMembro,  setFormMembro]  = useState({ email: '', classe: 'intermediario' });
+  const [formMembro,  setFormMembro]  = useState({ email: '', classe: 'iniciante' });
   const [formPartida, setFormPartida] = useState({
     jogador_a_id: 0, jogador_b_id: 0, tipo_partida: 'melhor_de_3',
     wo: false, wo_vencedor_id: 0, data_partida: new Date().toISOString().split('T')[0],
@@ -250,7 +268,7 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   const adicionarMembro = async () => {
     if (!formMembro.email) { flash('err', 'E-mail obrigatório.'); return; }
     setLoading(true);
-    try { await api('POST', `/ranking/ligas/${ligaId}/membros`, formMembro); setFormMembro({ email: '', classe: 'intermediario' }); flash('ok', 'Membro adicionado!'); await loadMembros(); }
+    try { await api('POST', `/ranking/ligas/${ligaId}/membros`, formMembro); setFormMembro({ email: '', classe: 'iniciante' }); flash('ok', 'Membro adicionado!'); await loadMembros(); }
     catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
@@ -430,13 +448,34 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     );
   };
 
-  const CLASS_ICONS: Record<string, string> = { avancado: '🏆', intermediario: '🎾', iniciante: '🌱', geral: '📋' };
-  const CLASS_ORDER = ['avancado', 'intermediario', 'iniciante', 'geral'];
+  const CLASS_ICONS: Record<string, string> = {
+    iniciante: '🌱',
+    '5a_classe': '🎾',
+    '4a_classe': '🎾',
+    '3a_classe': '🎾',
+    '2a_classe': '🎾',
+    '1a_classe': '🏆',
+    geral: '📋',
+  };
+
+  const CLASS_ORDER = [
+    'iniciante',
+    '5a_classe',
+    '4a_classe',
+    '3a_classe',
+    '2a_classe',
+    '1a_classe',
+    'geral',
+  ];
+
   const CLASSE_FILTER_OPTIONS: Array<{ value: string; label: string }> = [
     { value: '', label: 'Todos' },
-    { value: 'avancado', label: 'Avançado' },
-    { value: 'intermediario', label: 'Intermediário' },
-    { value: 'iniciante', label: 'Iniciante' },
+    { value: 'iniciante', label: 'Iniciantes' },
+    { value: '5a_classe', label: '5ª Classe' },
+    { value: '4a_classe', label: '4ª Classe' },
+    { value: '3a_classe', label: '3ª Classe' },
+    { value: '2a_classe', label: '2ª Classe' },
+    { value: '1a_classe', label: '1ª Classe' },
   ];
 
   const renderRanking = () => {
