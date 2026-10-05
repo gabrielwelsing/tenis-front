@@ -120,12 +120,15 @@ export async function padronizarCidadeIBGE(valor?: string | null): Promise<strin
 export interface UserRecord {
   id:              number;
   nome:            string;
+  // Vem null enquanto primeiro_acesso = true (conta criada pelo professor)
   email:           string;
   role:            'user' | 'aluno' | 'admin';
   foto_url:        string | null;
   localidade:      string | null;
   telefone:        string | null;
   plano_expira_em?: string | null;
+  username?:        string | null;
+  primeiro_acesso?: boolean;
 }
 
 export interface AuthResponse {
@@ -165,6 +168,16 @@ export async function updateProfile(token: string, data: { nome?: string; locali
   return result.user;
 }
 
+// Primeiro acesso: define a senha definitiva e vincula o e-mail (digitado ou Google)
+export async function concluirPrimeiroAcesso(
+  token: string,
+  data: { nova_senha: string; email?: string; credential?: string }
+): Promise<AuthResponse> {
+  const res = await fetch(`${BASE_URL}/auth/primeiro-acesso`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(data) });
+  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error ?? 'Erro ao concluir o primeiro acesso.'); }
+  return res.json();
+}
+
 
 // ---------------------------------------------------------------------------
 // Admin — liberar PRO manualmente
@@ -173,7 +186,8 @@ export async function updateProfile(token: string, data: { nome?: string; locali
 export interface AdminUserSearchRecord {
   id: number;
   nome: string;
-  email: string;
+  email: string | null;
+  username?: string | null;
   role: 'user' | 'aluno' | 'admin';
   foto_url: string | null;
   telefone: string | null;
@@ -223,6 +237,61 @@ export async function liberarProManualAdmin(
 
   const json = await res.json();
   return json.user;
+}
+
+// ---------------------------------------------------------------------------
+// Admin — criar acesso de aluno (usuário + senha provisória)
+// ---------------------------------------------------------------------------
+
+export interface CriarUsuarioAdminInput {
+  nome: string;
+  username: string;
+  senha: string;
+  plano: 'user' | 'aluno';
+  dias?: number;
+  telefone?: string;
+}
+
+export async function criarUsuarioAdmin(token: string, data: CriarUsuarioAdminInput): Promise<UserRecord> {
+  const res = await fetch(`${BASE_URL}/auth/admin/users`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Erro ao criar usuário.');
+  }
+
+  const json = await res.json();
+  return json.user;
+}
+
+export async function listarPendentesAdmin(token: string): Promise<UserRecord[]> {
+  const res = await fetch(`${BASE_URL}/auth/admin/users/pendentes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Erro ao listar contas pendentes.');
+  }
+
+  return res.json();
+}
+
+export async function redefinirSenhaProvisoriaAdmin(token: string, userId: number, senha: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/admin/users/${userId}/senha-provisoria`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ senha }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Erro ao redefinir senha.');
+  }
 }
 
 // ---------------------------------------------------------------------------

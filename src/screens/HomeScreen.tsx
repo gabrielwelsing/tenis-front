@@ -14,7 +14,11 @@ import {
   padronizarCidadeIBGE,
   buscarUsuariosGratisAdmin,
   liberarProManualAdmin,
+  criarUsuarioAdmin,
+  listarPendentesAdmin,
+  redefinirSenhaProvisoriaAdmin,
   type AdminUserSearchRecord,
+  type UserRecord,
   type AtividadeHomeRecord,
   type CidadeIBGE,
   type HomePrioridadeRecord,
@@ -106,6 +110,27 @@ function calcularDiasRestantesPlano(planoExpiraEm?: string | null): number | nul
   return Math.max(0, Math.ceil(diffMs / 86400000));
 }
 
+
+// "Maria Souza" -> "maria.souza"
+function sugerirUsername(nome: string): string {
+  return nome
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((_, i, arr) => i === 0 || i === arr.length - 1)
+    .join('.')
+    .replace(/[^a-z0-9._-]/g, '')
+    .slice(0, 30);
+}
+
+// Sem caracteres ambíguos (0/O, 1/l) para facilitar ditar/digitar
+function gerarSenhaProvisoria(): string {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
 
 function UserOutlineIcon({ size = 22 }: { size?: number }) {
   return (
@@ -241,7 +266,7 @@ export default function HomeScreen({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
-  const [configView, setConfigView] = useState<'menu' | 'dados' | 'assinatura'>('menu');
+  const [configView, setConfigView] = useState<'menu' | 'dados' | 'assinatura' | 'alunos'>('menu');
 
   const [cfgNome, setCfgNome] = useState(username ?? '');
   const [cfgLocalidade, setCfgLocalidade] = useState(localidade ?? '');
@@ -269,6 +294,17 @@ export default function HomeScreen({
   const [adminProDias, setAdminProDias] = useState('7');
   const [adminProLoading, setAdminProLoading] = useState(false);
   const [adminProMsg, setAdminProMsg] = useState('');
+
+  const [novoNome, setNovoNome] = useState('');
+  const [novoUsername, setNovoUsername] = useState('');
+  const [novoUsernameEditado, setNovoUsernameEditado] = useState(false);
+  const [novoSenha, setNovoSenha] = useState('');
+  const [novoPlano, setNovoPlano] = useState<'user' | 'aluno'>('aluno');
+  const [novoDias, setNovoDias] = useState('30');
+  const [novoLoading, setNovoLoading] = useState(false);
+  const [novoMsg, setNovoMsg] = useState('');
+  const [novoCriado, setNovoCriado] = useState('');
+  const [pendentes, setPendentes] = useState<UserRecord[]>([]);
 
   useEffect(() => {
     let ativo = true;
@@ -432,6 +468,67 @@ export default function HomeScreen({
       setAdminProMsg(err instanceof Error ? err.message : 'Erro ao liberar PRO.');
     } finally {
       setAdminProLoading(false);
+    }
+  };
+
+  const carregarPendentes = () => {
+    listarPendentesAdmin(token).then(setPendentes).catch(() => setPendentes([]));
+  };
+
+  useEffect(() => {
+    if (role === 'admin' && configView === 'alunos') carregarPendentes();
+  }, [configView, role, token]);
+
+  const handleCriarAluno = async () => {
+    if (role !== 'admin') return;
+    setNovoMsg('');
+    setNovoCriado('');
+
+    if (!novoNome.trim()) { setNovoMsg('Informe o nome do aluno.'); return; }
+    if (!/^[a-z0-9._-]{3,30}$/.test(novoUsername)) { setNovoMsg('Usuário inválido (3 a 30 caracteres: letras, números, ponto, hífen).'); return; }
+    if (novoSenha.length < 6) { setNovoMsg('A senha provisória deve ter pelo menos 6 caracteres.'); return; }
+
+    const dias = Number(novoDias);
+    if (novoPlano === 'aluno' && (!Number.isInteger(dias) || dias <= 0 || dias > 365)) {
+      setNovoMsg('Informe uma quantidade de dias entre 1 e 365.');
+      return;
+    }
+
+    setNovoLoading(true);
+    try {
+      const criado = await criarUsuarioAdmin(token, {
+        nome: novoNome.trim(),
+        username: novoUsername,
+        senha: novoSenha,
+        plano: novoPlano,
+        dias: novoPlano === 'aluno' ? dias : undefined,
+      });
+      setNovoMsg(`✅ Acesso criado para ${criado.nome}.`);
+      setNovoCriado(`Tênis Coach\nUsuário: ${criado.username}\nSenha provisória: ${novoSenha}\nNo primeiro acesso você cria sua senha e vincula seu e-mail.`);
+      setNovoNome('');
+      setNovoUsername('');
+      setNovoUsernameEditado(false);
+      setNovoSenha('');
+      carregarPendentes();
+    } catch (err) {
+      setNovoMsg(err instanceof Error ? err.message : 'Erro ao criar acesso.');
+    } finally {
+      setNovoLoading(false);
+    }
+  };
+
+  const handleRedefinirSenha = async (p: UserRecord) => {
+    const sugestao = gerarSenhaProvisoria();
+    const senha = window.prompt(`Nova senha provisória para ${p.nome} (${p.username}):`, sugestao);
+    if (senha === null) return;
+    if (senha.length < 6) { setNovoMsg('A senha provisória deve ter pelo menos 6 caracteres.'); return; }
+
+    try {
+      await redefinirSenhaProvisoriaAdmin(token, p.id, senha);
+      setNovoMsg(`✅ Senha de ${p.nome} redefinida.`);
+      setNovoCriado(`Tênis Coach\nUsuário: ${p.username}\nSenha provisória: ${senha}\nNo primeiro acesso você cria sua senha e vincula seu e-mail.`);
+    } catch (err) {
+      setNovoMsg(err instanceof Error ? err.message : 'Erro ao redefinir senha.');
     }
   };
 
@@ -753,6 +850,7 @@ export default function HomeScreen({
                 {configView === 'menu' && 'Perfil & Configurações'}
                 {configView === 'dados' && 'Dados'}
                 {configView === 'assinatura' && 'Gerenciar assinatura'}
+                {configView === 'alunos' && 'Criar acesso de aluno'}
               </h2>
 
               <button
@@ -818,6 +916,17 @@ export default function HomeScreen({
                     </div>
                     <div style={cfg.menuArrow}>›</div>
                   </button>
+
+                  {role === 'admin' && (
+                    <button type="button" style={cfg.menuItem} onClick={() => setConfigView('alunos')}>
+                      <div style={cfg.menuIcon}>＋</div>
+                      <div style={cfg.menuText}>
+                        <strong>Criar acesso de aluno</strong>
+                        <span>Usuário e senha provisória</span>
+                      </div>
+                      <div style={cfg.menuArrow}>›</div>
+                    </button>
+                  )}
 
                   <button type="button" style={{ ...cfg.menuItem, ...cfg.logoutItem }} onClick={onLogout}>
                     <div style={cfg.menuIcon}>↪</div>
@@ -979,7 +1088,7 @@ export default function HomeScreen({
                                 style={cfg.adminSearchItem}
                                 onClick={() => {
                                   setAdminProUsuarioSel(u);
-                                  setAdminProBusca(`${u.nome} — ${u.email}`);
+                                  setAdminProBusca(`${u.nome} — ${u.email ?? u.username}`);
                                   setAdminProUsuarios([]);
                                   setAdminProMsg('');
                                 }}
@@ -993,7 +1102,7 @@ export default function HomeScreen({
                                 </div>
                                 <div style={cfg.adminSearchInfo}>
                                   <strong>{u.nome}</strong>
-                                  <span>{u.email}</span>
+                                  <span>{u.email ?? u.username}</span>
                                 </div>
                               </button>
                             ))}
@@ -1006,7 +1115,7 @@ export default function HomeScreen({
                       <div style={cfg.adminSelectedUser}>
                         <div style={cfg.adminSelectedInfo}>
                           <strong>{adminProUsuarioSel.nome}</strong>
-                          <span>{adminProUsuarioSel.email}</span>
+                          <span>{adminProUsuarioSel.email ?? adminProUsuarioSel.username}</span>
                         </div>
                         <button
                           type="button"
@@ -1093,6 +1202,168 @@ export default function HomeScreen({
                 <p style={cfg.planHint}>
                   A assinatura é feita via PIX pela Stripe. O cancelamento será conectado depois.
                 </p>
+              </>
+            )}
+
+            {configView === 'alunos' && role === 'admin' && (
+              <>
+                <div style={cfg.infoBox}>
+                  <strong>Novo acesso</strong>
+                  <span>O aluno entra com o usuário e a senha provisória. No primeiro acesso ele cria a própria senha e vincula o e-mail.</span>
+                </div>
+
+                <div style={cfg.fieldGroup}>
+                  <span style={cfg.label}>Nome do aluno</span>
+                  <input
+                    style={cfg.input}
+                    type="text"
+                    value={novoNome}
+                    onChange={e => {
+                      setNovoNome(e.target.value);
+                      if (!novoUsernameEditado) setNovoUsername(sugerirUsername(e.target.value));
+                    }}
+                    autoCapitalize="words"
+                    placeholder="Ex: Maria Souza"
+                  />
+                </div>
+
+                <div style={cfg.fieldGroup}>
+                  <span style={cfg.label}>Usuário (login)</span>
+                  <input
+                    style={cfg.input}
+                    type="text"
+                    value={novoUsername}
+                    onChange={e => {
+                      setNovoUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''));
+                      setNovoUsernameEditado(true);
+                    }}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="off"
+                    placeholder="Ex: maria.souza"
+                  />
+                </div>
+
+                <div style={cfg.fieldGroup}>
+                  <span style={cfg.label}>Senha provisória</span>
+                  <div style={cfg.adminSelectedUser}>
+                    <input
+                      style={{ ...cfg.input, border: 'none', background: 'transparent', padding: 0 }}
+                      type="text"
+                      value={novoSenha}
+                      onChange={e => setNovoSenha(e.target.value)}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      autoComplete="off"
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                    <button type="button" style={cfg.adminClearBtn} onClick={() => setNovoSenha(gerarSenhaProvisoria())}>
+                      Gerar
+                    </button>
+                  </div>
+                </div>
+
+                <div style={cfg.fieldGroup}>
+                  <span style={cfg.label}>Plano</span>
+                  <div style={{ ...cfg.adminQuickDays, gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                    {(['user', 'aluno'] as const).map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        style={{ ...cfg.adminQuickDayBtn, ...(novoPlano === p ? cfg.adminQuickDayBtnActive : {}) }}
+                        onClick={() => setNovoPlano(p)}
+                      >
+                        {p === 'user' ? 'Gratuito' : 'PRO'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {novoPlano === 'aluno' && (
+                  <>
+                    <div style={cfg.fieldGroup}>
+                      <span style={cfg.label}>Dias de PRO</span>
+                      <input
+                        style={cfg.input}
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={novoDias}
+                        onChange={e => setNovoDias(e.target.value)}
+                        placeholder="Ex: 30"
+                      />
+                    </div>
+
+                    <div style={cfg.adminQuickDays}>
+                      {[7, 15, 30, 60].map(dias => (
+                        <button
+                          key={dias}
+                          type="button"
+                          style={{ ...cfg.adminQuickDayBtn, ...(novoDias === String(dias) ? cfg.adminQuickDayBtnActive : {}) }}
+                          onClick={() => setNovoDias(String(dias))}
+                        >
+                          {dias} dias
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {novoMsg && (
+                  <p style={{ ...cfg.adminProMsg, color: novoMsg.startsWith('✅') ? '#3f8f5b' : '#c95441' }}>
+                    {novoMsg}
+                  </p>
+                )}
+
+                {novoCriado && (
+                  <div style={cfg.adminProCard}>
+                    <div style={cfg.adminProHead}>
+                      <strong>Envie para o aluno</strong>
+                      <span style={{ whiteSpace: 'pre-line', fontWeight: 700 }}>{novoCriado}</span>
+                    </div>
+                    <button
+                      type="button"
+                      style={cfg.adminClearBtn}
+                      onClick={() => {
+                        navigator.clipboard?.writeText(novoCriado)
+                          .then(() => setNovoMsg('✅ Dados copiados.'))
+                          .catch(() => setNovoMsg('Não foi possível copiar.'));
+                      }}
+                    >
+                      Copiar dados de acesso
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  style={{ ...cfg.saveBtn, opacity: novoLoading ? 0.6 : 1 }}
+                  onClick={handleCriarAluno}
+                  disabled={novoLoading}
+                >
+                  {novoLoading ? 'Criando...' : 'Criar acesso'}
+                </button>
+
+                {pendentes.length > 0 && (
+                  <div style={cfg.adminProCard}>
+                    <div style={cfg.adminProHead}>
+                      <strong>Aguardando primeiro acesso</strong>
+                      <span>Contas criadas que ainda não vincularam o e-mail.</span>
+                    </div>
+
+                    {pendentes.map(p => (
+                      <div key={p.id} style={cfg.adminSelectedUser}>
+                        <div style={cfg.adminSelectedInfo}>
+                          <strong>{p.nome}</strong>
+                          <span>{p.username}{p.role === 'aluno' ? ' · PRO' : ''}</span>
+                        </div>
+                        <button type="button" style={cfg.adminClearBtn} onClick={() => handleRedefinirSenha(p)}>
+                          Nova senha
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>

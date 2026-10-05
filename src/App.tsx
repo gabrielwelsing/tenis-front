@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import { login, register, loginGoogle, getMe, updateProfile, buscarCidadesIBGE, padronizarCidadeIBGE, type CidadeIBGE, type UserRecord } from '@services/apiService';
+import { login, register, loginGoogle, getMe, concluirPrimeiroAcesso, updateProfile, buscarCidadesIBGE, padronizarCidadeIBGE, type CidadeIBGE, type UserRecord } from '@services/apiService';
 import { setCurrentUser } from '@services/localSaveService';
 import CameraScreen       from '@screens/CameraScreen';
 import HistoryScreen      from '@screens/HistoryScreen';
@@ -210,7 +210,12 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
   const handleSubmit = async () => {
     setError(''); setInfo('');
     const rawEmail = email.trim().toLowerCase();
-    if (!rawEmail || !EMAIL_REGEX.test(rawEmail)) { setError('E-mail inválido.'); return; }
+    // No login aceita também o usuário criado pelo professor (sem @)
+    const ehUsuario = mode === 'login' && rawEmail.length > 0 && !rawEmail.includes('@');
+    if (!rawEmail || (!ehUsuario && !EMAIL_REGEX.test(rawEmail))) {
+      setError(mode === 'login' ? 'Informe seu e-mail ou usuário.' : 'E-mail inválido.');
+      return;
+    }
     if (!pass)                                     { setError('Preencha a senha.'); return; }
     if (mode === 'register' && !nome.trim())       { setError('Preencha seu nome.'); return; }
     setLoading(true);
@@ -389,8 +394,8 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
 
               <input
                 style={s.input}
-                placeholder="seu@email.com *"
-                type="email"
+                placeholder={mode === 'login' ? 'E-mail ou usuário *' : 'seu@email.com *'}
+                type={mode === 'login' ? 'text' : 'email'}
                 inputMode="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -434,6 +439,144 @@ function LoginScreen({ onLogin }: { onLogin: (user: UserRecord, token: string) =
 
 
 // ---------------------------------------------------------------------------
+// PrimeiroAcessoScreen — conta criada pelo professor: nova senha + e-mail
+// ---------------------------------------------------------------------------
+function PrimeiroAcessoScreen({ user, token, onConcluir, onSair }: {
+  user: UserRecord;
+  token: string;
+  onConcluir: (user: UserRecord, token: string) => void;
+  onSair: () => void;
+}) {
+  const [senha,    setSenha]    = useState('');
+  const [confirma, setConfirma] = useState('');
+  const [email,    setEmail]    = useState('');
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
+
+  const validarSenha = (): boolean => {
+    if (senha.length < 6)   { setError('A nova senha deve ter pelo menos 6 caracteres.'); return false; }
+    if (senha !== confirma) { setError('As senhas não conferem.'); return false; }
+    return true;
+  };
+
+  const concluir = async (dados: { email?: string; credential?: string }) => {
+    setLoading(true);
+    try {
+      const res = await concluirPrimeiroAcesso(token, { nova_senha: senha, ...dados });
+      localStorage.setItem(TOKEN_KEY, res.token);
+      onConcluir(res.user, res.token);
+    } catch (e: any) {
+      setError(e.message ?? 'Erro. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmail = () => {
+    setError('');
+    if (!validarSenha()) return;
+    const rawEmail = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(rawEmail)) { setError('E-mail inválido.'); return; }
+    concluir({ email: rawEmail });
+  };
+
+  const handleGoogle = (credentialResponse: any) => {
+    setError('');
+    if (!credentialResponse.credential) return;
+    if (!validarSenha()) return;
+    concluir({ credential: credentialResponse.credential });
+  };
+
+  const primeiroNome = (user.nome || user.username || '').split(' ')[0];
+
+  return (
+    <div style={s.page}>
+      <div style={s.bgImage} />
+      <div style={s.bgOverlay} />
+
+      <div style={s.authOverlay}>
+        <section style={s.authSheet}>
+          <div style={s.sheetHandle} />
+
+          <div style={s.sheetHeader}>
+            <h2 style={s.sheetTitle}>Bem-vindo(a){primeiroNome ? `, ${primeiroNome}` : ''}!</h2>
+            <p style={s.sheetSub}>
+              Primeiro acesso: crie sua senha e vincule seu e-mail para continuar.
+            </p>
+          </div>
+
+          <div style={s.admForm}>
+            <input
+              style={s.input}
+              placeholder="Nova senha (mín. 6) *"
+              type="password"
+              value={senha}
+              onChange={e => setSenha(e.target.value)}
+              autoComplete="new-password"
+            />
+
+            <input
+              style={s.input}
+              placeholder="Confirme a nova senha *"
+              type="password"
+              value={confirma}
+              onChange={e => setConfirma(e.target.value)}
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div style={s.googleWrap}>
+            <GoogleLogin
+              onSuccess={handleGoogle}
+              onError={() => setError('Falha ao vincular com Google.')}
+              text="continue_with"
+              shape="rectangular"
+              theme="outline"
+              width="312"
+            />
+          </div>
+
+          <div style={s.divider}>
+            <div style={s.dividerLine} />
+            <span style={s.dividerText}>ou digite seu e-mail</span>
+            <div style={s.dividerLine} />
+          </div>
+
+          <div style={s.admForm}>
+            <input
+              style={s.input}
+              placeholder="seu@email.com *"
+              type="email"
+              inputMode="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleEmail()}
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+
+            {error && <p style={s.error}>{error}</p>}
+
+            <button
+              type="button"
+              onClick={handleEmail}
+              style={{ ...s.admBtn, opacity: loading ? 0.6 : 1 }}
+              disabled={loading}
+            >
+              {loading ? 'Aguarde...' : 'Concluir primeiro acesso'}
+            </button>
+          </div>
+
+          <p style={s.hint}>
+            Não é você? <button type="button" onClick={onSair} style={s.inlineLink}>Sair</button>
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // App principal
 // ---------------------------------------------------------------------------
 function App() {
@@ -447,14 +590,14 @@ function App() {
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) { setChecking(false); return; }
     getMe(saved)
-      .then(u => { setUser(u); setToken(saved); setCurrentUser(u.email.split('@')[0]); })
+      .then(u => { setUser(u); setToken(saved); if (u.email) setCurrentUser(u.email.split('@')[0]); })
       .catch(() => localStorage.removeItem(TOKEN_KEY))
       .finally(() => setChecking(false));
   }, []);
 
   const handleLogin = (u: UserRecord, t: string) => {
     setUser(u); setToken(t);
-    setCurrentUser(u.email.split('@')[0]);
+    if (u.email) setCurrentUser(u.email.split('@')[0]);
     setScreen('home');
   };
 
@@ -513,6 +656,10 @@ function App() {
   }
 
   if (!user) return <LoginScreen onLogin={handleLogin} />;
+
+  if (user.primeiro_acesso || !user.email) {
+    return <PrimeiroAcessoScreen user={user} token={token ?? ''} onConcluir={handleLogin} onSair={handleLogout} />;
+  }
 
   const username = user.nome || user.email.split('@')[0];
   const saveMode: SaveMode = 'local';
