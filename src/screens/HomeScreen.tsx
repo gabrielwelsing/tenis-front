@@ -5,6 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
+import SponsorStrip from '@components/SponsorStrip';
 import {
   getPrioridadeHome,
   responderDesafioPendente,
@@ -1644,6 +1645,8 @@ export default function HomeScreen({
               )}
             </div>
           </section>
+
+          <SponsorStrip />
 
           <section style={s.section}>
             <div style={s.sectionHeader}>
