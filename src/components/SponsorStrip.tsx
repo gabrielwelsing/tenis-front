@@ -33,6 +33,7 @@ const SPONSORS: Sponsor[] = [
     descricao: 'Parceira do Tênis Coach',
     banner: '/patrocinadores/bola-na-rede.jpg',
     logo: '/patrocinadores/bola-na-rede-logo.jpg',
+    whatsapp: '5533988285777',
     instagram: 'https://www.instagram.com/lojabolanarede/',
   },
   {
