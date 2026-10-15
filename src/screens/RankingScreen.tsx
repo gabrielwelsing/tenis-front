@@ -15,7 +15,7 @@ interface Props {
   fotoUrl?:  string | null;
 }
 
-interface Liga { id: string; admin_id: number; nome: string; is_admin: boolean; admin_nome: string; temporada_ativa_id: string | null; temporada_ativa_nome: string | null; total_membros: number; }
+interface Liga { id: string; admin_id: number; nome: string; is_admin: boolean; admin_nome: string; temporada_ativa_id: string | null; temporada_ativa_nome: string | null; total_membros: number; total_partidas?: number; created_at?: string; }
 interface Temporada { id: string; liga_id: string; nome: string; data_inicio: string; data_fim: string; ativa: boolean; total_partidas: number; }
 interface Membro    { membro_id: string; user_id: number; classe: string; nome: string; email: string; foto_url: string | null; }
 interface RankingEntry { id: number; nome: string; foto_url: string | null; classe: string; total_pontos: number; jogos: number; vitorias: number; derrotas: number; }
@@ -248,6 +248,31 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     setLoading(true);
     try { await api('POST', '/ranking/ligas', { nome: novaLiga.trim() }); setNovaLiga(''); flash('ok', 'Liga criada!'); await loadLigas(); }
     catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    setLoading(false);
+  };
+
+  const excluirLiga = async (liga: Liga) => {
+    const membros = Number(liga.total_membros) || 0;
+    const partidas = Number(liga.total_partidas) || 0;
+    const resumo = membros || partidas ? `
+
+Ela tem ${membros} membro(s) e ${partidas} partida(s) registrada(s).` : '';
+    if (!window.confirm(`Excluir o ranking "${liga.nome}"?${resumo}
+
+Ele some para todos os jogadores.`)) return;
+    if ((membros || partidas) && window.prompt(`Para confirmar, digite EXCLUIR`)?.trim().toUpperCase() !== 'EXCLUIR') return;
+    setLoading(true);
+    try {
+      await api('DELETE', `/ranking/ligas/${liga.id}`, {});
+      flash('ok', 'Ranking excluído.');
+      const restantes: Liga[] = await api('GET', '/ranking/ligas');
+      setLigas(restantes);
+      if (liga.id === ligaId) {
+        const prox = restantes[0];
+        setLigaId(prox?.id ?? '');
+        setTemporadaId(prox?.temporada_ativa_id ?? '');
+      }
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
@@ -813,6 +838,23 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
           <button style={{ ...s.submitBtn, opacity: loading ? 0.6 : 1 }} onClick={criarLiga} disabled={loading}>{loading ? 'Criando…' : 'Criar Liga'}</button>
         </div>
       )}
+      {isAdmin && ligas.some(l => l.is_admin) && (
+        <div style={s.formCard}>
+          <div style={s.formTitle}>Seus rankings</div>
+          {ligas.filter(l => l.is_admin).map(l => (
+            <div key={l.id} style={s.ligaItem}>
+              <div style={s.ligaRowInfo}>
+                <strong style={s.ligaRowNome}>{l.nome}</strong>
+                <span style={s.ligaRowMeta}>
+                  {Number(l.total_membros) || 0} membros · {Number(l.total_partidas) || 0} partidas
+                  {l.created_at ? ` · criado em ${new Date(l.created_at).toLocaleDateString('pt-BR')}` : ''}
+                </span>
+              </div>
+              <button style={s.ligaRowDel} onClick={() => excluirLiga(l)} disabled={loading}>Excluir</button>
+            </div>
+          ))}
+        </div>
+      )}
       {isAdmin && (
         <>
           {renderLigaSelect()}
@@ -1003,6 +1045,11 @@ const s: Record<string, React.CSSProperties> = {
   emptyBig: { background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '44px 24px', gap: 12, boxShadow: '0 10px 28px rgba(117,76,56,0.07)' },
   emptyBigText: { color: '#8d7b70', fontSize: 14, textAlign: 'center', lineHeight: 1.6, fontWeight: 700 },
   formCard: { background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 22, padding: 16, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 10px 28px rgba(117,76,56,0.07)' },
+  ligaItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 14, background: '#fffaf6', border: '1px solid rgba(130,82,62,0.08)' },
+  ligaRowInfo: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
+  ligaRowNome: { color: '#2d2521', fontSize: 13, fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  ligaRowMeta: { color: '#8f7769', fontSize: 11, fontWeight: 700 },
+  ligaRowDel: { flexShrink: 0, padding: '7px 12px', borderRadius: 999, background: '#fff0ec', border: '1px solid rgba(201,84,65,0.25)', color: '#c95441', fontSize: 11, fontWeight: 900, cursor: 'pointer' },
   formTitle: { color: '#b65b43', fontSize: 13, fontWeight: 950, textTransform: 'uppercase', letterSpacing: 0.6 },
   formRow: { display: 'flex', gap: 10 },
   formGroup: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
