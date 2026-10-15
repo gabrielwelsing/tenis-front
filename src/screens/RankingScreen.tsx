@@ -180,6 +180,9 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
   const [formDesafio,     setFormDesafio]     = useState({ desafiado_id: 0, data_sugerida: '', horario_sugerido: '', local_sugerido: '' });
   const [showDesafioForm, setShowDesafioForm] = useState(false);
 
+  // Dono da liga selecionada: aprova/exclui partidas
+  const ligaAdmin = ligas.find(l => l.id === ligaId)?.is_admin === true;
+
   const flash = (type: 'ok' | 'err', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 3500); };
 
   const loadLigas = useCallback(async () => {
@@ -248,6 +251,36 @@ export default function RankingScreen({ onBack, userId, role, username, fotoUrl 
     setLoading(true);
     try { await api('POST', '/ranking/ligas', { nome: novaLiga.trim() }); setNovaLiga(''); flash('ok', 'Liga criada!'); await loadLigas(); }
     catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    setLoading(false);
+  };
+
+  const aprovarPartida = async (pt: Partida) => {
+    if (!window.confirm(`Aprovar o resultado ${pt.jogador_a_nome} x ${pt.jogador_b_nome}?
+
+Os pontos passam a contar no ranking.`)) return;
+    setLoading(true);
+    try {
+      await api('PATCH', `/ranking/partidas/${pt.id}/aprovar`, {});
+      flash('ok', 'Resultado aprovado.');
+      await loadPartidas();
+      await loadRanking();
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
+    setLoading(false);
+  };
+
+  const excluirPartida = async (pt: Partida) => {
+    const placar = Array.isArray(pt.placar) ? pt.placar.map(st => `${st.setA}–${st.setB}`).join(' ') : (pt.wo ? 'W.O.' : '');
+    const data = pt.data_partida ? new Date(pt.data_partida).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '';
+    if (!window.confirm(`Excluir a partida ${pt.jogador_a_nome} x ${pt.jogador_b_nome}${placar ? ` (${placar})` : ''}${data ? ` de ${data}` : ''}?
+
+Os pontos dela saem do ranking. Não dá para desfazer.`)) return;
+    setLoading(true);
+    try {
+      await api('DELETE', `/ranking/partidas/${pt.id}`, {});
+      flash('ok', 'Partida excluída. Ranking atualizado.');
+      await loadPartidas();
+      await loadRanking();
+    } catch (e: unknown) { flash('err', e instanceof Error ? e.message : 'Erro.'); }
     setLoading(false);
   };
 
@@ -750,7 +783,15 @@ Ele some para todos os jogadores.`)) return;
                     <span style={s.ptsTag}>{pt.jogador_a_nome}: {pt.pontos_a + pt.bonus_a} pts{pt.bonus_a > 0 ? ` (+${pt.bonus_a})` : ''}</span>
                     <span style={s.ptsTag}>{pt.jogador_b_nome}: {pt.pontos_b + pt.bonus_b} pts{pt.bonus_b > 0 ? ` (+${pt.bonus_b})` : ''}</span>
                   </div>
-                  {isPending && isEnvolved && !isVencedor && (
+                  {ligaAdmin && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                      {pt.status !== 'confirmada' && (
+                        <button style={{ ...s.okBtn, flex: 1 }} onClick={() => aprovarPartida(pt)} disabled={loading}>Aprovar resultado</button>
+                      )}
+                      <button style={{ ...s.ligaRowDel, marginLeft: 'auto' }} onClick={() => excluirPartida(pt)} disabled={loading}>Excluir</button>
+                    </div>
+                  )}
+                  {!ligaAdmin && isPending && isEnvolved && !isVencedor && (
                     <div style={s.confirmBtns}>
                       <button style={s.okBtn} onClick={() => confirmarPartida(pt.id, true)}>Confirmar resultado</button>
                       <button style={s.disputeBtn} onClick={() => confirmarPartida(pt.id, false)}>Disputar</button>
@@ -858,6 +899,26 @@ Ele some para todos os jogadores.`)) return;
       {isAdmin && (
         <>
           {renderLigaSelect()}
+          {ligas.find(l => l.id === ligaId)?.is_admin && (
+            <div style={s.formCard}>
+              <div style={s.formTitle}>Partidas registradas</div>
+              {partidas.length === 0 && <div style={s.ligaRowMeta}>Nenhuma partida nesta temporada.</div>}
+              {partidas.map(pt => (
+                <div key={pt.id} style={s.ligaItem}>
+                  <div style={s.ligaRowInfo}>
+                    <strong style={s.ligaRowNome}>{pt.jogador_a_nome} x {pt.jogador_b_nome}</strong>
+                    <span style={s.ligaRowMeta}>
+                      {pt.data_partida ? new Date(pt.data_partida).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—'}
+                      {Array.isArray(pt.placar) && pt.placar.length ? ` · ${pt.placar.map(st => `${st.setA}–${st.setB}`).join(' ')}` : ''}
+                      {pt.wo ? ' · W.O.' : ''}
+                      {` · ${pt.status === 'confirmada' ? 'confirmada' : pt.status === 'disputada_admin' ? 'em disputa' : 'pendente'}`}
+                    </span>
+                  </div>
+                  <button style={s.ligaRowDel} onClick={() => excluirPartida(pt)} disabled={loading}>Excluir</button>
+                </div>
+              ))}
+            </div>
+          )}
           <div style={s.formCard}>
             <div style={s.formTitle}>Nova Temporada</div>
             <div style={s.formGroup}>
