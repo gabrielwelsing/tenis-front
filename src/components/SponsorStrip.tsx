@@ -45,6 +45,14 @@ const SPONSORS: Sponsor[] = [
     whatsapp: '5533997057567',
     site: 'https://proengenharia.srv.br/',
   },
+  {
+    id: 'primavera-modas',
+    nome: 'Primavera Modas',
+    descricao: 'Moda e estilo para você',
+    banner: '/patrocinadores/primavera-modas.jpg',
+    logo: '/patrocinadores/primavera-modas-logo.jpg',
+    instagram: 'https://www.instagram.com/primaveramodass/',
+  },
 ];
 
 const THUMB = 46;
