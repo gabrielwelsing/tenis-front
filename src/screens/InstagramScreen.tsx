@@ -812,6 +812,7 @@ const s: Record<string, React.CSSProperties> = {
     margin: '0 auto',
     boxSizing: 'border-box',
     overflowY: 'auto',
+    overflowX: 'hidden',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
 
@@ -1188,6 +1189,7 @@ const s: Record<string, React.CSSProperties> = {
     gap: 14,
     padding: '4px 16px 28px',
     overflowY: 'auto',
+    overflowX: 'hidden',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
     maxWidth: 540,
     width: '100%',

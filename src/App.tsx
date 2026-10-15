@@ -948,6 +948,7 @@ const s: Record<string, React.CSSProperties> = {
     maxWidth: 420,
     maxHeight: 'min(86dvh, 720px)',
     overflowY: 'auto',
+    overflowX: 'hidden',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
     display: 'flex',
     flexDirection: 'column',
@@ -1110,6 +1111,7 @@ const s: Record<string, React.CSSProperties> = {
     gap: 4,
     maxHeight: 220,
     overflowY: 'auto',
+    overflowX: 'hidden',
   },
 
   citySuggestItem: {
@@ -1243,6 +1245,7 @@ const mp: Record<string, React.CSSProperties> = {
     width: '100%',
     maxHeight: '92dvh',
     overflowY: 'auto',
+    overflowX: 'hidden',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
     display: 'flex',
     flexDirection: 'column',

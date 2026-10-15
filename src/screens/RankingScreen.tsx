@@ -1037,7 +1037,7 @@ const s: Record<string, React.CSSProperties> = {
   tabBar: { display: 'flex', gap: 7, overflowX: 'auto', padding: '0 14px 12px', background: '#fbf7f1', flexShrink: 0, position: 'relative', zIndex: 8 },
   tabBtn: { flex: '0 0 auto', padding: '10px 13px', background: '#fff', border: '1px solid rgba(130,82,62,0.08)', color: '#8f7769', fontSize: 12, fontWeight: 900, cursor: 'pointer', borderRadius: 999, boxShadow: '0 8px 20px rgba(117,76,56,0.05)', lineHeight: 1.25, whiteSpace: 'nowrap' },
   tabActive: { background: '#c66b4d', color: '#fff', borderColor: '#c66b4d', boxShadow: '0 10px 20px rgba(198,107,77,0.18)' },
-  body: { flex: 1, overflowY: 'auto', padding: '4px 14px 40px', maxWidth: 540, width: '100%', margin: '0 auto', boxSizing: 'border-box', position: 'relative', zIndex: 2 },
+  body: { flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '4px 14px 40px', maxWidth: 540, width: '100%', margin: '0 auto', boxSizing: 'border-box', position: 'relative', zIndex: 2 },
   ligaRow: { display: 'flex', gap: 8, marginBottom: 14 },
   ligaSelect: { flex: 1, background: '#fff', border: '1px solid rgba(130,82,62,0.08)', borderRadius: 14, color: '#332a25', padding: '11px 12px', fontSize: 13, fontWeight: 750, appearance: 'none', WebkitAppearance: 'none', boxShadow: '0 8px 20px rgba(117,76,56,0.05)', colorScheme: 'light' },
   filterRow: { display: 'flex', gap: 7, marginBottom: 14, flexWrap: 'wrap' },

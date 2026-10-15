@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
 import SponsorStrip from '@components/SponsorStrip';
+import { nomeExibicao } from '@utils/nomeExibicao';
 import { instalarApp, isIOS, isStandalone, onPwaChange, podeInstalarDireto } from '@services/pwaService';
 import {
   getPrioridadeHome,
@@ -252,9 +253,8 @@ export default function HomeScreen({
   saveMode, username, emailUsuario, token, role, fotoUrl, telefone, localidade, planoExpiraEm,
   onLogout, onNavigate, onFotoUpload, onAssinar, onSalvarPerfil,
 }: Props) {
-  const displayName = username
-    ? username.charAt(0).toUpperCase() + username.slice(1)
-    : 'Professor';
+  // Nome curto só para exibição; o completo segue editável em Configurações > Dados
+  const displayName = username ? nomeExibicao(username) : 'Professor';
 
   const diasPlanoPro = calcularDiasRestantesPlano(planoExpiraEm);
   const textoPlanoPro =
@@ -1435,9 +1435,9 @@ export default function HomeScreen({
                 <div style={s.avatarEditBadge}>📷</div>
               </div>
 
-              <div>
+              <div style={s.greetingWrap}>
                 <h2 style={s.greeting}>
-                  Olá, <span style={s.greetingName}>{displayName}</span>
+                  <span style={s.greetingName}>Olá, {displayName}</span>
                   {textoPlanoPro && <span style={s.proBadge}>({textoPlanoPro})</span>}
                 </h2>
                 <p style={s.greetingSub}>Pronto para jogar melhor hoje?</p>
@@ -1819,6 +1819,7 @@ const s: Record<string, React.CSSProperties> = {
   scrollBody: {
     flex: 1,
     overflowY: 'auto',
+    overflowX: 'hidden',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
     position: 'relative',
     zIndex: 2,
@@ -1899,22 +1900,35 @@ const s: Record<string, React.CSSProperties> = {
     boxShadow: '0 6px 16px rgba(111,73,54,0.16)',
   },
 
+  greetingWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+
   greeting: {
     color: '#2d2521',
-    fontSize: 22,
+    // encolhe um pouco em telas estreitas; se ainda faltar espaço, corta com "…"
+    fontSize: 'clamp(18px, 5.6vw, 22px)',
     fontWeight: 850,
     margin: 0,
     lineHeight: 1.1,
     letterSpacing: -0.55,
     whiteSpace: 'nowrap',
+    display: 'flex',
+    alignItems: 'center',
+    minWidth: 0,
   },
 
   greetingName: {
     color: '#2d2521',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    minWidth: 0,
   },
 
   proBadge: {
     display: 'inline-block',
+    flexShrink: 0,
     marginLeft: 6,
     color: '#b45e45',
     fontSize: 9.5,
@@ -2458,6 +2472,7 @@ const agendaModal: Record<string, React.CSSProperties> = {
     maxWidth: 440,
     maxHeight: '88dvh',
     overflowY: 'auto',
+    overflowX: 'hidden',
     background: '#fffaf5',
     borderRadius: 28,
     border: '1px solid rgba(130,82,62,0.12)',
@@ -2667,6 +2682,7 @@ const cfg: Record<string, React.CSSProperties> = {
     padding: 16,
     boxSizing: 'border-box',
     overflowY: 'auto',
+    overflowX: 'hidden',
     backdropFilter: 'blur(5px)',
   },
 
@@ -2679,6 +2695,7 @@ const cfg: Record<string, React.CSSProperties> = {
     width: '100%',
     maxHeight: '90dvh',
     overflowY: 'auto',
+    overflowX: 'hidden',
     display: 'flex',
     flexDirection: 'column',
     gap: 14,
@@ -2945,6 +2962,7 @@ const cfg: Record<string, React.CSSProperties> = {
     gap: 4,
     maxHeight: 220,
     overflowY: 'auto',
+    overflowX: 'hidden',
   },
 
   citySuggestItem: {
@@ -3089,6 +3107,7 @@ const cfg: Record<string, React.CSSProperties> = {
     gap: 4,
     maxHeight: 240,
     overflowY: 'auto',
+    overflowX: 'hidden',
   },
 
   adminSearchItem: {

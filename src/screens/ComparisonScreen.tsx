@@ -948,6 +948,7 @@ const s: Record<string, React.CSSProperties> = {
     padding: '0 16px',
     flex: 1,
     overflowY: 'auto',
+    overflowX: 'hidden',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
 
@@ -960,6 +961,7 @@ const s: Record<string, React.CSSProperties> = {
     padding: '0 16px',
     flex: 1,
     overflowY: 'auto',
+    overflowX: 'hidden',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
   },
 

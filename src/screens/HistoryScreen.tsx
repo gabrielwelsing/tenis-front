@@ -374,6 +374,7 @@ const s: Record<string, React.CSSProperties> = {
   scrollBody: {
     flex: 1,
     overflowY: 'auto',
+    overflowX: 'hidden',
     WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
     position: 'relative',
     zIndex: 2,

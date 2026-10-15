@@ -57,6 +57,7 @@ const SPONSORS: Sponsor[] = [
 
 const THUMB = 46;
 const ROTACAO_MS = 6000;
+const LIMIAR_ARRASTE = 45; // px para trocar de anúncio
 
 type Canal = 'whatsapp' | 'site' | 'instagram';
 
@@ -77,14 +78,63 @@ function temContato(sp: Sponsor): boolean {
 export default function SponsorStrip() {
   const [ativo, setAtivo] = useState(0);
   const [aberto, setAberto] = useState<Sponsor | null>(null);
+  const [entrada, setEntrada] = useState<'esq' | 'dir'>('dir'); // lado de onde o próximo card entra
+  const [arrasteX, setArrasteX] = useState(0);
+  const [arrastando, setArrastando] = useState(false);
   const pausadoRef = useRef(false);
+  const toqueRef = useRef<{ x: number; y: number; id: number; horizontal: boolean | null } | null>(null);
+  const ignorarCliqueRef = useRef(false);
 
+  const total = SPONSORS.length;
+  const irPara = (i: number, lado: 'esq' | 'dir') => {
+    setEntrada(lado);
+    setAtivo(((i % total) + total) % total);
+  };
+
+  // Rodízio automático; reinicia a contagem a cada troca (inclusive manual)
   useEffect(() => {
     const t = window.setInterval(() => {
-      if (!pausadoRef.current) setAtivo(i => (i + 1) % SPONSORS.length);
+      if (pausadoRef.current) return;
+      setEntrada('dir');
+      setAtivo(i => (i + 1) % total);
     }, ROTACAO_MS);
     return () => window.clearInterval(t);
-  }, []);
+  }, [ativo, total]);
+
+  // Arrastar com o dedo: para a esquerda = próximo, para a direita = anterior
+  const onPointerDown = (e: React.PointerEvent) => {
+    toqueRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: null };
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const t = toqueRef.current;
+    if (!t || t.id !== e.pointerId) return;
+    const dx = e.clientX - t.x;
+    const dy = e.clientY - t.y;
+    if (t.horizontal === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      t.horizontal = Math.abs(dx) > Math.abs(dy);
+      if (t.horizontal) {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        pausadoRef.current = true;
+        setArrastando(true);
+      }
+    }
+    if (t.horizontal) setArrasteX(dx);
+  };
+
+  const onPointerEnd = (e: React.PointerEvent) => {
+    const t = toqueRef.current;
+    toqueRef.current = null;
+    if (!t || !t.horizontal) return;
+    const dx = e.clientX - t.x;
+    ignorarCliqueRef.current = true;
+    window.setTimeout(() => { ignorarCliqueRef.current = false; }, 50);
+    setArrastando(false);
+    setArrasteX(0);
+    pausadoRef.current = false;
+    if (dx <= -LIMIAR_ARRASTE) irPara(ativo + 1, 'dir');
+    else if (dx >= LIMIAR_ARRASTE) irPara(ativo - 1, 'esq');
+  };
 
   const sp = SPONSORS[ativo];
 
@@ -95,7 +145,22 @@ export default function SponsorStrip() {
         onPointerEnter={() => { pausadoRef.current = true; }}
         onPointerLeave={() => { pausadoRef.current = false; }}
       >
-        <button type="button" key={sp.id} style={st.card} onClick={() => setAberto(sp)}>
+        <button
+          type="button"
+          key={sp.id}
+          style={{
+            ...st.card,
+            animation: arrastando ? 'none' : `${entrada === 'dir' ? 'sponsorInDir' : 'sponsorInEsq'} 0.35s ease`,
+            transform: arrasteX ? `translateX(${arrasteX}px)` : undefined,
+            opacity: arrasteX ? Math.max(0.35, 1 - Math.abs(arrasteX) / 260) : 1,
+            transition: arrastando ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
+          }}
+          onClick={() => { if (!ignorarCliqueRef.current) setAberto(sp); }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+        >
           <img src={sp.logo} alt="" style={st.thumb} />
 
           <div style={st.info}>
@@ -116,7 +181,7 @@ export default function SponsorStrip() {
               type="button"
               aria-label={`Ver ${s.nome}`}
               style={{ ...st.dot, ...(i === ativo ? st.dotActive : {}) }}
-              onClick={() => setAtivo(i)}
+              onClick={() => irPara(i, i < ativo ? 'esq' : 'dir')}
             />
           ))}
         </div>
@@ -184,7 +249,8 @@ const st: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     textAlign: 'left',
     fontFamily: 'inherit',
-    animation: 'sponsorFade 0.45s ease',
+    touchAction: 'pan-y',
+    userSelect: 'none',
   },
 
   thumb: {
@@ -371,9 +437,9 @@ const st: Record<string, React.CSSProperties> = {
 };
 
 // Animação de troca entre anunciantes
-if (typeof document !== 'undefined' && !document.getElementById('sponsor-strip-anim')) {
+if (typeof document !== 'undefined' && !document.getElementById('sponsor-strip-anim-v2')) {
   const style = document.createElement('style');
-  style.id = 'sponsor-strip-anim';
-  style.textContent = '@keyframes sponsorFade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}';
+  style.id = 'sponsor-strip-anim-v2';
+  style.textContent = '@keyframes sponsorInDir{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:none}}@keyframes sponsorInEsq{from{opacity:0;transform:translateX(-36px)}to{opacity:1;transform:none}}';
   document.head.appendChild(style);
 }
