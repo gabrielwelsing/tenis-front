@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
 import SponsorStrip from '@components/SponsorStrip';
+import { instalarApp, isIOS, isStandalone, onPwaChange, podeInstalarDireto } from '@services/pwaService';
 import {
   getPrioridadeHome,
   responderDesafioPendente,
@@ -267,7 +268,20 @@ export default function HomeScreen({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
-  const [configView, setConfigView] = useState<'menu' | 'dados' | 'assinatura' | 'alunos'>('menu');
+  const [configView, setConfigView] = useState<'menu' | 'dados' | 'assinatura' | 'alunos' | 'instalar'>('menu');
+  const [appInstalado, setAppInstalado] = useState(() => isStandalone());
+
+  useEffect(() => onPwaChange(() => setAppInstalado(isStandalone())), []);
+
+  const handleInstalarApp = async () => {
+    // Android/Chrome: abre o diálogo nativo; iPhone e demais: mostra o passo a passo
+    if (podeInstalarDireto()) {
+      const aceitou = await instalarApp();
+      if (aceitou) setAppInstalado(true);
+      return;
+    }
+    setConfigView('instalar');
+  };
 
   const [cfgNome, setCfgNome] = useState(username ?? '');
   const [cfgLocalidade, setCfgLocalidade] = useState(localidade ?? '');
@@ -852,6 +866,7 @@ export default function HomeScreen({
                 {configView === 'dados' && 'Dados'}
                 {configView === 'assinatura' && 'Gerenciar assinatura'}
                 {configView === 'alunos' && 'Criar acesso de aluno'}
+                {configView === 'instalar' && 'Instalar app'}
               </h2>
 
               <button
@@ -924,6 +939,17 @@ export default function HomeScreen({
                       <div style={cfg.menuText}>
                         <strong>Criar acesso de aluno</strong>
                         <span>Usuário e senha provisória</span>
+                      </div>
+                      <div style={cfg.menuArrow}>›</div>
+                    </button>
+                  )}
+
+                  {!appInstalado && (
+                    <button type="button" style={cfg.menuItem} onClick={handleInstalarApp}>
+                      <div style={cfg.menuIcon}>⤓</div>
+                      <div style={cfg.menuText}>
+                        <strong>Instalar app no celular</strong>
+                        <span>Abrir direto pela tela inicial</span>
                       </div>
                       <div style={cfg.menuArrow}>›</div>
                     </button>
@@ -1203,6 +1229,28 @@ export default function HomeScreen({
                 <p style={cfg.planHint}>
                   A assinatura é feita via PIX pela Stripe. O cancelamento será conectado depois.
                 </p>
+              </>
+            )}
+
+            {configView === 'instalar' && (
+              <>
+                <div style={cfg.infoBox}>
+                  <strong>Tênis Coach na tela inicial</strong>
+                  <span>Instale para abrir o app com um toque, em tela cheia, como qualquer outro aplicativo.</span>
+                </div>
+
+                <div style={cfg.adminProCard}>
+                  <div style={cfg.adminProHead}>
+                    <strong>{isIOS() ? 'No iPhone (Safari)' : 'No Android (Chrome)'}</strong>
+                    <span style={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+                      {isIOS()
+                        ? '1. Abra este site no Safari\n2. Toque em Compartilhar (quadrado com a seta ↑)\n3. Escolha "Adicionar à Tela de Início"\n4. Toque em "Adicionar"'
+                        : '1. Abra este site no Chrome\n2. Toque no menu ⋮ (canto superior direito)\n3. Escolha "Instalar app" ou "Adicionar à tela inicial"\n4. Confirme em "Instalar"'}
+                    </span>
+                  </div>
+                </div>
+
+                <p style={cfg.planHint}>Depois de instalado, o ícone do Prof. Carlão aparece junto com seus outros apps.</p>
               </>
             )}
 
