@@ -53,6 +53,24 @@ const SPONSORS: Sponsor[] = [
     logo: '/patrocinadores/primavera-modas-logo.jpg',
     instagram: 'https://www.instagram.com/primaveramodass/',
   },
+  {
+    id: 'dama-advogados',
+    nome: 'DAMA Sociedade de Advogados',
+    descricao: 'Regularização de imóveis e planejamento sucessório',
+    banner: '/patrocinadores/dama-advogados.jpg',
+    logo: '/patrocinadores/dama-advogados-logo.jpg',
+    whatsapp: '5533988677000',
+    instagram: 'https://www.instagram.com/damaimob/',
+  },
+  {
+    id: 'sup-ia',
+    nome: 'SUP-IA',
+    descricao: 'Sistemas, automações e apps sob medida',
+    banner: '/patrocinadores/sup-ia.jpg',
+    logo: '/patrocinadores/sup-ia-logo.jpg',
+    whatsapp: '553196750513', // número como publicado em sup-ia.com
+    site: 'https://www.sup-ia.com/',
+  },
 ];
 
 const THUMB = 46;
