@@ -81,7 +81,7 @@ const SPONSORS: Sponsor[] = [
     descricao: 'Sua marca para os tenistas da região',
     banner: '/patrocinadores/anuncie-aqui.jpg',
     logo: '/patrocinadores/anuncie-aqui-logo.jpg',
-    whatsapp: '553399767677', // Prof. Carlão
+    whatsapp: '5533999767677', // Prof. Carlão
     selo: 'Seu anúncio',
     mensagem: 'Olá, Carlão! Quero anunciar minha marca no app Tênis Coach.',
     agradecimento: 'Fale com o Prof. Carlão e coloque sua marca aqui.',
