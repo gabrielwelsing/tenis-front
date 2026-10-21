@@ -760,6 +760,7 @@ async function rankingApi(token: string, method: string, path: string, body?: un
   return json.data;
 }
 
+export const getProximosJogos        = (t: string)                                                => rankingApi(t, 'GET',    '/ranking/proximos-jogos');
 export const getMinhasLigas          = (t: string)                                                => rankingApi(t, 'GET',    '/ranking/ligas');
 export const criarLiga               = (t: string, nome: string)                                  => rankingApi(t, 'POST',   '/ranking/ligas', { nome });
 export const getMembros              = (t: string, ligaId: string)                                 => rankingApi(t, 'GET',    `/ranking/ligas/${ligaId}/membros`);

@@ -6,10 +6,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
 import SponsorStrip from '@components/SponsorStrip';
+import { CONFRONTOS_MANUAIS, type ConfrontoVitrine } from '../data/confrontos';
 import { nomeExibicao } from '@utils/nomeExibicao';
 import { instalarApp, isIOS, isStandalone, onPwaChange, podeInstalarDireto } from '@services/pwaService';
 import {
   getPrioridadeHome,
+  getProximosJogos,
   responderDesafioPendente,
   responderResultadoPendente,
   getAtividadesHome,
@@ -45,7 +47,26 @@ interface Props {
   onSalvarPerfil: (dados: { nome: string; localidade: string; telefone: string }) => Promise<void>;
 }
 
+if (typeof document !== 'undefined' && !document.getElementById('hero-slide-anim')) {
+  const st = document.createElement('style');
+  st.id = 'hero-slide-anim';
+  st.textContent = '@keyframes heroSlideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}';
+  document.head.appendChild(st);
+}
+
 const DIAS_CARD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+// "2026-10-22", "20:00" -> "Qui, 22/10 · 20h"
+function formatarDataConfronto(dataIso: string, hora?: string | null): string {
+  const [a, m, d] = dataIso.split('-').map(Number);
+  const dt = new Date(a, (m || 1) - 1, d || 1);
+  const h = String(hora || '').slice(0, 5);
+  let horaTxt = '';
+  if (h) horaTxt = ' · ' + (h.endsWith(':00') ? String(Number(h.slice(0, 2))) + 'h' : h.replace(':', 'h'));
+  return DIAS_SEMANA[dt.getDay()] + ', ' + String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0') + horaTxt;
+}
 
 function formatarDataAtividade(dataIso: string, horaInicio: string, horaFim: string): string {
   const dt = new Date(`${dataIso}T12:00:00`);
@@ -290,6 +311,52 @@ export default function HomeScreen({
   const [cfgTelefone, setCfgTelefone] = useState(telefone ?? '');
   const [cfgLoading, setCfgLoading] = useState(false);
   const [cfgMsg, setCfgMsg] = useState('');
+
+  // Vitrine do card do topo: próximos confrontos (de todos) alternando com "Agende"
+  const [confrontosApi, setConfrontosApi] = useState<ConfrontoVitrine[]>([]);
+  const [slideVitrine, setSlideVitrine] = useState(0);
+
+  useEffect(() => {
+    let ativo = true;
+    if (!token) return;
+    getProximosJogos(token)
+      .then((rows: Array<{ data: string; horario: string; local: string | null; jogador_a: string; jogador_b: string }>) => {
+        if (ativo) setConfrontosApi(rows.map(r => ({ data: String(r.data).slice(0, 10), horario: r.horario, a: r.jogador_a, b: r.jogador_b, local: r.local ?? undefined })));
+      })
+      .catch(() => {});
+    return () => { ativo = false; };
+  }, [token]);
+
+  const confrontosVitrine = (() => {
+    const agora = Date.now();
+    const vistos = new Set<string>();
+    return [...CONFRONTOS_MANUAIS, ...confrontosApi]
+      .filter(c => new Date(c.data + 'T' + (c.horario || '00:00') + ':00-03:00').getTime() + 3 * 3600_000 > agora)
+      .filter(c => {
+        const k = c.data + '|' + c.horario + '|' + [c.a, c.b].map(n => n.toLowerCase()).sort().join('|');
+        if (vistos.has(k)) return false;
+        vistos.add(k);
+        return true;
+      })
+      .sort((x, y) => (x.data + ' ' + x.horario).localeCompare(y.data + ' ' + y.horario))
+      .slice(0, 6);
+  })();
+  const totalSlides = confrontosVitrine.length + 1; // + "Agende sua próxima atividade"
+  const slideAtual = slideVitrine % totalSlides;
+
+  useEffect(() => {
+    if (totalSlides <= 1) return;
+    const t = window.setInterval(() => setSlideVitrine(i => (i + 1) % totalSlides), 5000);
+    return () => window.clearInterval(t);
+  }, [totalSlides]);
+
+  const pontosVitrine = totalSlides > 1 ? (
+    <div style={s.heroDots}>
+      {Array.from({ length: totalSlides }).map((_, i) => (
+        <span key={i} style={{ ...s.heroDot, ...(i === slideAtual ? s.heroDotActive : {}) }} />
+      ))}
+    </div>
+  ) : null;
 
   const [proximaAtividade, setProximaAtividade] = useState<ProximaAtividadeCompletaRecord | null>(null);
   const [prioridadeHome, setPrioridadeHome] = useState<HomePrioridadeRecord>(null);
@@ -1598,8 +1665,26 @@ export default function HomeScreen({
                     {proximaAtividade.tipo === 'aula' ? 'Ver agenda ›' : proximaAtividade.tipo === 'desafio' ? 'Ver ranking ›' : 'Ver detalhes ›'}
                   </button>
                 </>
+              ) : slideAtual < confrontosVitrine.length ? (
+                <div key={'jogo-' + slideAtual} style={s.heroSlide}>
+                  <div style={s.heroKicker}>PRÓXIMOS JOGOS · {slideAtual + 1}/{confrontosVitrine.length}</div>
+                  <h1 style={s.heroTitle}>
+                    {confrontosVitrine[slideAtual].a} <span style={s.heroVs}>x</span> {confrontosVitrine[slideAtual].b}
+                  </h1>
+                  <div style={s.heroMeta}>
+                    <div style={s.heroMetaLine}>
+                      <CalendarIcon size={14} />
+                      <span>{formatarDataConfronto(confrontosVitrine[slideAtual].data, confrontosVitrine[slideAtual].horario)}</span>
+                    </div>
+                    <div style={s.heroMetaLine}>
+                      <TargetIcon size={14} />
+                      <span>{confrontosVitrine[slideAtual].local || 'Bora torcer! 🎾'}</span>
+                    </div>
+                  </div>
+                  {pontosVitrine}
+                </div>
               ) : (
-                <>
+                <div key="agende" style={s.heroSlide}>
                   <div style={s.heroKicker}>SEM ATIVIDADE AGENDADA</div>
 
                   <h1 style={s.heroTitle}>
@@ -1617,7 +1702,8 @@ export default function HomeScreen({
                       <span>Use o mural para encontrar parceiros</span>
                     </div>
                   </div>
-                </>
+                  {pontosVitrine}
+                </div>
               )}
             </div>
           </section>
@@ -2038,6 +2124,35 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 9,
+  },
+
+  heroSlide: {
+    animation: 'heroSlideIn 0.5s ease',
+  },
+
+  heroVs: {
+    opacity: 0.7,
+    fontWeight: 700,
+    margin: '0 2px',
+  },
+
+  heroDots: {
+    display: 'flex',
+    gap: 5,
+    marginTop: 12,
+  },
+
+  heroDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    background: 'rgba(255,255,255,0.4)',
+    transition: 'width 0.25s ease',
+  },
+
+  heroDotActive: {
+    width: 16,
+    background: '#fff',
   },
 
   heroKicker: {

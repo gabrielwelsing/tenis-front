@@ -16,6 +16,10 @@ interface Sponsor {
   whatsapp?: string;   // só dígitos, com DDI
   site?: string;
   instagram?: string;  // URL completa
+  selo?: string;       // padrão "Patrocinado"
+  mensagem?: string;   // texto inicial do WhatsApp
+  agradecimento?: string;
+  botaoWhatsapp?: string;
 }
 
 const SPONSORS: Sponsor[] = [
@@ -71,6 +75,18 @@ const SPONSORS: Sponsor[] = [
     whatsapp: '553196750513', // número como publicado em sup-ia.com
     site: 'https://www.sup-ia.com/',
   },
+  {
+    id: 'anuncie-aqui',
+    nome: 'Anuncie aqui',
+    descricao: 'Sua marca para os tenistas da região',
+    banner: '/patrocinadores/anuncie-aqui.jpg',
+    logo: '/patrocinadores/anuncie-aqui-logo.jpg',
+    whatsapp: '553399767677', // Prof. Carlão
+    selo: 'Seu anúncio',
+    mensagem: 'Olá, Carlão! Quero anunciar minha marca no app Tênis Coach.',
+    agradecimento: 'Fale com o Prof. Carlão e coloque sua marca aqui.',
+    botaoWhatsapp: 'Falar com o Prof. Carlão',
+  },
 ];
 
 const THUMB = 46;
@@ -81,7 +97,7 @@ type Canal = 'whatsapp' | 'site' | 'instagram';
 
 function urlContato(sp: Sponsor, canal: Canal): string {
   if (canal === 'whatsapp')
-    return `https://wa.me/${sp.whatsapp}?text=${encodeURIComponent('Olá! Vi vocês no app Tênis Coach com Carlão.')}`;
+    return `https://wa.me/${sp.whatsapp}?text=${encodeURIComponent(sp.mensagem ?? 'Olá! Vi vocês no app Tênis Coach com Carlão.')}`;
   return (canal === 'site' ? sp.site : sp.instagram) ?? '';
 }
 
@@ -184,7 +200,7 @@ export default function SponsorStrip() {
           <div style={st.info}>
             <strong style={st.nome}>{sp.nome}</strong>
             <div style={st.topLine}>
-              <span style={st.badge}>Patrocinado</span>
+              <span style={st.badge}>{sp.selo ?? 'Patrocinado'}</span>
               <span style={st.desc}>{sp.descricao}</span>
             </div>
           </div>
@@ -209,7 +225,7 @@ export default function SponsorStrip() {
         <div style={st.overlay} onClick={e => e.target === e.currentTarget && setAberto(null)}>
           <div style={st.sheet}>
             <div style={st.sheetHead}>
-              <span style={st.badge}>Patrocinado</span>
+              <span style={st.badge}>{aberto.selo ?? 'Patrocinado'}</span>
               <button type="button" style={st.closeBtn} onClick={() => setAberto(null)}>✕</button>
             </div>
 
@@ -223,7 +239,7 @@ export default function SponsorStrip() {
             <div style={st.sheetBtns}>
               {aberto.whatsapp && (
                 <button type="button" style={st.btnPrimary} onClick={() => abrirContato(aberto, 'whatsapp')}>
-                  Falar no WhatsApp
+                  {aberto.botaoWhatsapp ?? 'Falar no WhatsApp'}
                 </button>
               )}
               {aberto.site && (
@@ -238,7 +254,7 @@ export default function SponsorStrip() {
               )}
             </div>
 
-            <p style={st.thanks}>Obrigado por apoiar o tênis em Teófilo Otoni.</p>
+            <p style={st.thanks}>{aberto.agradecimento ?? 'Obrigado por apoiar o tênis em Teófilo Otoni.'}</p>
           </div>
         </div>,
         document.body,
