@@ -74,7 +74,11 @@ function formatarDataAtividade(dataIso: string, horaInicio: string, horaFim: str
   const dia = String(dt.getDate()).padStart(2, '0');
   const mes = String(dt.getMonth() + 1).padStart(2, '0');
 
-  return `${diaSemana}, ${dia}/${mes} • ${horaInicio} - ${horaFim}`;
+  const ini = String(horaInicio || '').slice(0, 5);
+  const fim = String(horaFim || '').slice(0, 5);
+  // jogos/desafios só têm horário de início
+  const horas = !fim || fim === ini ? ini : `${ini} - ${fim}`;
+  return `${diaSemana}, ${dia}/${mes} • ${horas}`;
 }
 
 function formatarDataHoraCurta(dataIso?: string | null, hora?: string | null): string {
@@ -348,7 +352,32 @@ export default function HomeScreen({
     if (totalSlides <= 1) return;
     const t = window.setInterval(() => setSlideVitrine(i => (i + 1) % totalSlides), 5000);
     return () => window.clearInterval(t);
-  }, [totalSlides]);
+  }, [totalSlides, slideVitrine]);
+
+  // Arrastar o card do topo: para a esquerda = próximo, para a direita = anterior
+  const toqueHeroRef = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
+  const [arrasteHero, setArrasteHero] = useState(0);
+  const heroSwipe = {
+    onPointerDown: (e: React.PointerEvent) => { toqueHeroRef.current = { x: e.clientX, y: e.clientY, horizontal: null }; },
+    onPointerMove: (e: React.PointerEvent) => {
+      const t = toqueHeroRef.current;
+      if (!t) return;
+      const dx = e.clientX - t.x;
+      const dy = e.clientY - t.y;
+      if (t.horizontal === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) t.horizontal = Math.abs(dx) > Math.abs(dy);
+      if (t.horizontal) setArrasteHero(dx);
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      const t = toqueHeroRef.current;
+      toqueHeroRef.current = null;
+      setArrasteHero(0);
+      if (!t || !t.horizontal || totalSlides <= 1) return;
+      const dx = e.clientX - t.x;
+      if (dx <= -45) setSlideVitrine(i => (i + 1) % totalSlides);
+      else if (dx >= 45) setSlideVitrine(i => (i - 1 + totalSlides) % totalSlides);
+    },
+    onPointerCancel: () => { toqueHeroRef.current = null; setArrasteHero(0); },
+  };
 
   const pontosVitrine = totalSlides > 1 ? (
     <div style={s.heroDots}>
@@ -771,10 +800,28 @@ export default function HomeScreen({
     ? atividadesHomeComFallback.proximas
     : atividadesHomeComFallback.anteriores;
   
-  const proximosEventosTela = atividadesHomeComFallback.proximas
+  const meusEventosTela = atividadesHomeComFallback.proximas
   .sort((a, b) => atividadeTimestamp(a) - atividadeTimestamp(b))
   .filter(a => !mesmaAtividadePrincipal(a, proximaAtividade))
   .slice(0, 2);
+
+  // Jogos divulgados (de outros) entram depois; ignora os que já são meus (mesma data/hora)
+  const jogosComoEventos: AtividadeHomeRecord[] = confrontosVitrine
+    .filter(c => !atividadesHomeComFallback.proximas.some(a => String(a.dataInicio).slice(0, 10) === c.data && String(a.horarioInicio).slice(0, 5) === c.horario))
+    .map(c => ({
+      id: 'confronto-' + c.data + '-' + c.horario + '-' + c.a,
+      tipo: 'jogo' as const,
+      dataInicio: c.data,
+      horarioInicio: c.horario,
+      horarioFim: c.horario,
+      local: c.local || 'Jogo do ranking',
+      titulo: c.a + ' x ' + c.b,
+    }));
+
+  const proximosEventosTela = [...meusEventosTela, ...jogosComoEventos].slice(0, 4);
+
+  // card do topo está no modo vitrine (sem pendência nem atividade própria)
+  const vitrineAtiva = prioridadeHome?.tipo !== 'desafio' && prioridadeHome?.tipo !== 'resultado' && !proximaAtividade;
 
   const eventosSlotsTela: Array<AtividadeHomeRecord | null> = [
   ...proximosEventosTela,
@@ -1533,10 +1580,19 @@ export default function HomeScreen({
             </div>
           )}
 
-          <section style={s.heroCard}>
+          <section
+            style={{ ...s.heroCard, ...(vitrineAtiva ? { touchAction: 'pan-y', userSelect: 'none' } : {}) }}
+            {...(vitrineAtiva ? heroSwipe : {})}
+          >
             <div style={s.heroOverlay} />
 
-            <div style={s.heroContent}>
+            <div
+              style={{
+                ...s.heroContent,
+                ...(vitrineAtiva && arrasteHero ? { transform: `translateX(${arrasteHero * 0.6}px)`, opacity: Math.max(0.4, 1 - Math.abs(arrasteHero) / 300) } : {}),
+                transition: arrasteHero ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
+              }}
+            >
               {prioridadeHome?.tipo === 'desafio' ? (
                 <>
                   <div style={s.heroKicker}>DESAFIO PENDENTE</div>
@@ -1800,7 +1856,7 @@ export default function HomeScreen({
                       ...s.eventItemBtn,
                       ...(index === 0 ? {} : s.eventItemBtnBorder),
                     }}
-                    onClick={evento ? abrirAgendaLista : () => onNavigate('mural')}
+                    onClick={!evento ? () => onNavigate('mural') : String(evento.id).startsWith('confronto-') ? () => onNavigate('ranking') : abrirAgendaLista}
                   >
                     <div style={s.eventDateBox}>
                       <strong>{dataBox ? dataBox.dia : '--'}</strong>
