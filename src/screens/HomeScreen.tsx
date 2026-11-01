@@ -596,7 +596,12 @@ export default function HomeScreen({
     setNovoCriado('');
 
     if (!novoNome.trim()) { setNovoMsg('Informe o nome do aluno.'); return; }
-    if (!/^[a-z0-9._-]{3,30}$/.test(novoUsername)) { setNovoMsg('Usuário inválido (3 a 30 caracteres: letras, números, ponto, hífen).'); return; }
+    if (novoUsername.includes('@')
+      ? !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(novoUsername)
+      : !/^[a-z0-9._-]{3,30}$/.test(novoUsername)) {
+      setNovoMsg(novoUsername.includes('@') ? 'E-mail inválido.' : 'Usuário inválido (3 a 30 caracteres: letras, números, ponto, hífen).');
+      return;
+    }
     if (novoSenha.length < 6) { setNovoMsg('A senha provisória deve ter pelo menos 6 caracteres.'); return; }
 
     const dias = Number(novoDias);
@@ -615,7 +620,7 @@ export default function HomeScreen({
         dias: novoPlano === 'aluno' ? dias : undefined,
       });
       setNovoMsg(`✅ Acesso criado para ${criado.nome}.`);
-      setNovoCriado(`Tênis Coach\nUsuário: ${criado.username}\nSenha provisória: ${novoSenha}\nNo primeiro acesso você cria sua senha e vincula seu e-mail.`);
+      setNovoCriado(`Tênis Coach\nUsuário: ${criado.username ?? criado.email}\nSenha provisória: ${novoSenha}\nNo primeiro acesso você cria sua senha e vincula seu e-mail.`);
       setNovoNome('');
       setNovoUsername('');
       setNovoUsernameEditado(false);
@@ -630,14 +635,14 @@ export default function HomeScreen({
 
   const handleRedefinirSenha = async (p: UserRecord) => {
     const sugestao = gerarSenhaProvisoria();
-    const senha = window.prompt(`Nova senha provisória para ${p.nome} (${p.username}):`, sugestao);
+    const senha = window.prompt(`Nova senha provisória para ${p.nome} (${p.username ?? p.email}):`, sugestao);
     if (senha === null) return;
     if (senha.length < 6) { setNovoMsg('A senha provisória deve ter pelo menos 6 caracteres.'); return; }
 
     try {
       await redefinirSenhaProvisoriaAdmin(token, p.id, senha);
       setNovoMsg(`✅ Senha de ${p.nome} redefinida.`);
-      setNovoCriado(`Tênis Coach\nUsuário: ${p.username}\nSenha provisória: ${senha}\nNo primeiro acesso você cria sua senha e vincula seu e-mail.`);
+      setNovoCriado(`Tênis Coach\nUsuário: ${p.username ?? p.email}\nSenha provisória: ${senha}\nNo primeiro acesso você cria sua senha e vincula seu e-mail.`);
     } catch (err) {
       setNovoMsg(err instanceof Error ? err.message : 'Erro ao redefinir senha.');
     }
@@ -1391,19 +1396,19 @@ export default function HomeScreen({
                 </div>
 
                 <div style={cfg.fieldGroup}>
-                  <span style={cfg.label}>Usuário (login)</span>
+                  <span style={cfg.label}>Usuário ou e-mail (login)</span>
                   <input
                     style={cfg.input}
                     type="text"
                     value={novoUsername}
                     onChange={e => {
-                      setNovoUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''));
+                      setNovoUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._@+-]/g, ''));
                       setNovoUsernameEditado(true);
                     }}
                     autoCapitalize="none"
                     autoCorrect="off"
                     autoComplete="off"
-                    placeholder="Ex: maria.souza"
+                    placeholder="Ex: maria.souza ou maria@email.com"
                   />
                 </div>
 
@@ -1518,7 +1523,7 @@ export default function HomeScreen({
                       <div key={p.id} style={cfg.adminSelectedUser}>
                         <div style={cfg.adminSelectedInfo}>
                           <strong>{p.nome}</strong>
-                          <span>{p.username}{p.role === 'aluno' ? ' · PRO' : ''}</span>
+                          <span>{p.username ?? p.email}{p.role === 'aluno' ? ' · PRO' : ''}</span>
                         </div>
                         <button type="button" style={cfg.adminClearBtn} onClick={() => handleRedefinirSenha(p)}>
                           Nova senha

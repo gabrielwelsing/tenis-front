@@ -449,7 +449,7 @@ function PrimeiroAcessoScreen({ user, token, onConcluir, onSair }: {
 }) {
   const [senha,    setSenha]    = useState('');
   const [confirma, setConfirma] = useState('');
-  const [email,    setEmail]    = useState('');
+  const [email,    setEmail]    = useState(user.email ?? '');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
 
