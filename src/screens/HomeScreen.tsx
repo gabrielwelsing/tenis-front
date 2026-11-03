@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { SaveMode } from '../App';
 import type { Screen } from '../App';
 import SponsorStrip from '@components/SponsorStrip';
+import MolduraFoto from '@components/MolduraFoto';
 import { CONFRONTOS_MANUAIS, type ConfrontoVitrine } from '../data/confrontos';
 import { nomeExibicao } from '@utils/nomeExibicao';
 import { instalarApp, isIOS, isStandalone, onPwaChange, podeInstalarDireto } from '@services/pwaService';
@@ -293,7 +294,7 @@ export default function HomeScreen({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
-  const [configView, setConfigView] = useState<'menu' | 'dados' | 'assinatura' | 'alunos' | 'instalar'>('menu');
+  const [configView, setConfigView] = useState<'menu' | 'dados' | 'assinatura' | 'alunos' | 'instalar' | 'moldura'>('menu');
   const [appInstalado, setAppInstalado] = useState(() => isStandalone());
 
   useEffect(() => onPwaChange(() => setAppInstalado(isStandalone())), []);
@@ -986,6 +987,7 @@ export default function HomeScreen({
                 {configView === 'assinatura' && 'Gerenciar assinatura'}
                 {configView === 'alunos' && 'Criar acesso de aluno'}
                 {configView === 'instalar' && 'Instalar app'}
+                {configView === 'moldura' && 'Foto com patrocinadores'}
               </h2>
 
               <button
@@ -1062,6 +1064,15 @@ export default function HomeScreen({
                       <div style={cfg.menuArrow}>›</div>
                     </button>
                   )}
+
+                  <button type="button" style={cfg.menuItem} onClick={() => setConfigView('moldura')}>
+                    <div style={cfg.menuIcon}>📷</div>
+                    <div style={cfg.menuText}>
+                      <strong>Foto com patrocinadores</strong>
+                      <span>Coloca a moldura e compartilha</span>
+                    </div>
+                    <div style={cfg.menuArrow}>›</div>
+                  </button>
 
                   {!appInstalado && (
                     <button type="button" style={cfg.menuItem} onClick={handleInstalarApp}>
@@ -1370,6 +1381,16 @@ export default function HomeScreen({
                 </div>
 
                 <p style={cfg.planHint}>Depois de instalado, o ícone do Prof. Carlão aparece junto com seus outros apps.</p>
+              </>
+            )}
+
+            {configView === 'moldura' && (
+              <>
+                <div style={cfg.infoBox}>
+                  <strong>Foto com moldura</strong>
+                  <span>Escolha uma foto e o app coloca o rodapé dos patrocinadores. Depois é só compartilhar no WhatsApp ou Instagram.</span>
+                </div>
+                <MolduraFoto />
               </>
             )}
 
